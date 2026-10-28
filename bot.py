@@ -5,6 +5,7 @@ import os
 import re
 import time
 from datetime import datetime, timedelta
+from aiohttp import web # RENDER İÇİN EKLENDİ
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import (
@@ -299,7 +300,6 @@ async def process_client_history_input(message: types.Message, state: FSMContext
 #            5. EXCEL (.XLSX) VE RESMİ PDF (.PDF) RAPOR ÜRETİCİLERİ
 # ==============================================================================
 def generate_excel_z_report(sales_data, title="Z_Raporu"):
-    """Satış listesini Excel tablosuna dönüştürür."""
     today_str = datetime.now().strftime("%d_%m_%Y")
     excel_filename = f"Eliar_{title}_{today_str}.xlsx"
     
@@ -377,7 +377,6 @@ def generate_excel_z_report(sales_data, title="Z_Raporu"):
         return csv_filename
 
 def generate_pdf_z_report(sales_data, title="Z_Raporu"):
-    """Satış listesini kurumsal bir PDF tablosuna dönüştürür."""
     today_str = datetime.now().strftime("%d_%m_%Y")
     pdf_filename = f"Eliar_{title}_{today_str}.pdf"
     
@@ -554,7 +553,6 @@ def build_report_text(sales_data, report_name="HAFTALIK SATIŞ Z-RAPORU"):
     text += "📂 _İndirmek istediğiniz dosya formatını seçin:_"
     return text
 
-# FORMAT SEÇİCİ BUTONLARI (EXCEL / PDF / İKİSİ)
 @dp.message(Command("zraporu"))
 @dp.message(F.text == "📊 Z-Raporu Al")
 async def trigger_z_report_manual(message: types.Message):
@@ -589,7 +587,6 @@ async def trigger_monthly_report_manual(message: types.Message):
     ])
     await message.answer(report_text, reply_markup=kb, parse_mode="Markdown")
 
-# BUTONLA SEÇİLEN FORMATI GÖNDERME HANDLER'I
 @dp.callback_query(F.data.startswith("dl_rep:"))
 async def handle_download_report_choice(callback: types.CallbackQuery):
     _, fmt, scope = callback.data.split(":")
@@ -752,7 +749,6 @@ def parse_quote_media(file_path: str, is_pdf: bool = False, original_filename: s
         "items": items
     }
 
-# FOTOĞRAF VE DÖKÜMANLARI (PDF DAHİL) YAKALAYAN KESİN HANDLER:
 @dp.message(F.photo | F.document)
 async def handle_quote_media(message: types.Message):
     if message.text in ["📦 Parça Listesi", "📊 Z-Raporu Al", "⏳ Bekleyen Teklifler", "🏢 Tesis Geçmişi"]:
@@ -776,7 +772,6 @@ async def handle_quote_media(message: types.Message):
         
         status_msg = await message.reply(f"🔍 _Eliar {doc_type_str} taranıyor ve karşı tarafa aktarılıyor..._", parse_mode="Markdown")
 
-        # 1. Orijinal dosyayı diğer kişiye de ilet
         try:
             if is_pdf:
                 await bot.send_document(
@@ -793,7 +788,6 @@ async def handle_quote_media(message: types.Message):
         except Exception as err:
             logging.warning(f"Orijinal dosya diğer kişiye iletilemedi: {err}")
 
-        # 2. Dosyayı Bot Sunucusuna İndir ve Oku
         file_id = message.document.file_id if message.document else message.photo[-1].file_id
         file = await bot.get_file(file_id)
         ext = ".pdf" if is_pdf else ".jpg"
@@ -1236,7 +1230,6 @@ async def automated_scheduler():
         now = datetime.now()
         today_str = now.strftime("%Y-%m-%d")
 
-        # 1. CUMARTESİ 12:30 OTOMATİK Z-RAPORU (EXCEL VE PDF DAHİL)
         if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_weekly_date != today_str:
             last_weekly_date = today_str
             logging.info("Cumartesi 12:30 Z-Raporu tetiklendi...")
@@ -1253,7 +1246,6 @@ async def automated_scheduler():
                 if pdf_file and os.path.exists(pdf_file):
                     await send_file_to_both(pdf_file, "📑 **Eliar Haftalık Satış Z-Raporu (PDF Tablosu)**")
 
-        # 2. AYIN SON GÜNÜ 18:00 AYLIK SATIŞ RAPORU (EXCEL VE PDF DAHİL)
         is_last_day_of_month = (now + timedelta(days=1)).day == 1
         if is_last_day_of_month and now.hour == 18 and now.minute == 0 and last_monthly_date != today_str:
             last_monthly_date = today_str
@@ -1272,7 +1264,6 @@ async def automated_scheduler():
                 if pdf_file and os.path.exists(pdf_file):
                     await send_file_to_both(pdf_file, f"📑 **Eliar {month_name} Aylık Satış Raporu (PDF)**")
 
-        # 3. BEKLEYEN TEKLİFLER İÇİN SABAH 09:00 DÜRTME HATIRLATICISI
         if now.hour == 9 and now.minute == 0 and last_reminder_date != today_str:
             last_reminder_date = today_str
             sales = load_sales()
@@ -1304,11 +1295,35 @@ async def automated_scheduler():
         await asyncio.sleep(25)
 
 # ==============================================================================
+#             13. RENDER İÇİN SAHTE WEB SUNUCUSU (PORT BINDING)
+# ==============================================================================
+async def handle(request):
+    return web.Response(text="Eliar Bot 7/24 Aktif ve Calisiyor!")
+
+async def start_dummy_server():
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    # Render'ın atadığı PORT'u okuyoruz, bulamazsa varsayılan 8080
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    logging.info(f"Render web portu açıldı: {port}")
+
+# ==============================================================================
 #                               ANA ÇALIŞTIRICI
 # ==============================================================================
 async def main():
     await setup_bot_commands()
+    
+    # 1. Render için Web Sunucusunu Arka Planda Başlatıyoruz
+    await start_dummy_server()
+    
+    # 2. Rapor Zamanlayıcıyı Başlatıyoruz
     asyncio.create_task(automated_scheduler())
+    
     print("=" * 60)
     print("🚀 Eliar Canlı Santral Başlatıldı!")
     print(f"• Ömer ID: {OMER_CHAT_ID}")
@@ -1318,6 +1333,8 @@ async def main():
     print("• Haftalık Z-Raporu: CUMARTESİ 12:30")
     print("• Aylık Z-Raporu: AYIN SON GÜNÜ 18:00")
     print("=" * 60)
+    
+    # 3. Telegram Botunu Başlatıyoruz
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

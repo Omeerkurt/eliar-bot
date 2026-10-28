@@ -162,12 +162,12 @@ async def cmd_start(message: types.Message):
 async def cmd_help(message: types.Message):
     await message.answer(
         "🛠 **Eliar Bot Komut Rehberi:**\n\n"
-        "1. `/stok` ➔ Fiyatsız tüm parça ve raf listesi.\n"
-        "2. `/zraporu` ➔ Haftalık Z-raporu (Excel / PDF indirme butonlarıyla).\n"
+        "1. `/stok` ➔ Stoktaki parçalar .\n"
+        "2. `/zraporu` ➔ Haftalık satış raporu (Excel / PDF indirme butonlarıyla).\n"
         "3. `/aylikrapor` ➔ Aylık satış raporu (Excel / PDF indirme butonlarıyla).\n"
         "4. `/ref [RefNo]` ➔ Teklifi referans numarasıyla bulur (Örn: `/ref 46189ND`).\n"
-        "5. `/gecmis [Müşteri]` ➔ O tesise geçmişte verilen tüm parçaları listeler.\n"
-        "6. `/bekleyenler` ➔ Onay bekleyen teklifleri gösterir.",
+        "5. `/gecmis [Müşteri]` ➔ O firmaya geçmişte verilen tüm parçaları listeler.\n"
+        "6. `/bekleyenler` ➔ Bekleyen teklifleri gösterir.",
         parse_mode="Markdown"
     )
 

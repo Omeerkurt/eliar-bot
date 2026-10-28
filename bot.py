@@ -138,7 +138,7 @@ async def cmd_start(message: types.Message):
     name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else message.from_user.first_name)
     
     welcome_text = (
-        f"👋 **Selam {name}! Eliar Depo & İş Santrali Devrede.**\n"
+        f"👋 **Selam {name}! Eliar - Elips Depo & İş Santrali Devrede.**\n"
         f"═══════════════════════════════\n\n"
         f"🚀 **SİSTEM KULLANIM REHBERİ**\n\n"
         f"📊 **Raporlama:**\n"
@@ -146,10 +146,8 @@ async def cmd_start(message: types.Message):
         f"📄 **Teklif & Evrak İşleme:**\n"
         f"└ PDF veya Fotoğraf attığınızda yapay zeka içeriği otomatik tarar ve karşı tarafa iletir.\n\n"
         f"🔎 **Hızlı Sorgulama:**\n"
-        f"└ `/ref [No]` ➔ Teklif detaylarını getirir (Örn: `/ref 46189ND`)\n"
-        f"└ `/gecmis [Müşteri]` ➔ Tesise verilen tüm parçaları listeler.\n\n"
+        f"└ `/gecmis [Müşteri]` ➔ Firmaya verilen tüm parçaları listeler.\n\n"
         f"⏱️ **Saha & İş Emri Takibi:**\n"
-        f"└ WebApp üzerindeki `🔍 İlgileniyorum` ve `✅ İşi Tamamladım` butonlarıyla süre takibi yapılır.\n\n"
         f"═══════════════════════════════\n"
         f"💡 _Aşağıdaki menüden veya komut listesinden bir işlem seçebilirsiniz._"
     )

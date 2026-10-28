@@ -136,13 +136,26 @@ async def setup_bot_commands():
 async def cmd_start(message: types.Message):
     user_id = message.chat.id
     name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else message.from_user.first_name)
+    
+    welcome_text = (
+        f"👋 **Selam {name}! Eliar Depo & İş Santrali Devrede.**\n"
+        f"═══════════════════════════════\n\n"
+        f"🚀 **SİSTEM KULLANIM REHBERİ**\n\n"
+        f"📊 **Raporlama:**\n"
+        f"└ `/zraporu` veya `/aylikrapor` ile **Excel**, **PDF** ya da **ikisini birden** anında indirin.\n\n"
+        f"📄 **Teklif & Evrak İşleme:**\n"
+        f"└ PDF veya Fotoğraf attığınızda yapay zeka içeriği otomatik tarar ve karşı tarafa iletir.\n\n"
+        f"🔎 **Hızlı Sorgulama:**\n"
+        f"└ `/ref [No]` ➔ Teklif detaylarını getirir (Örn: `/ref 46189ND`)\n"
+        f"└ `/gecmis [Müşteri]` ➔ Tesise verilen tüm parçaları listeler.\n\n"
+        f"⏱️ **Saha & İş Emri Takibi:**\n"
+        f"└ WebApp üzerindeki `🔍 İlgileniyorum` ve `✅ İşi Tamamladım` butonlarıyla süre takibi yapılır.\n\n"
+        f"═══════════════════════════════\n"
+        f"💡 _Aşağıdaki menüden veya komut listesinden bir işlem seçebilirsiniz._"
+    )
+    
     await message.answer(
-        f"👋 **Selam {name}! Eliar Depo & İş Santrali Devrede.**\n\n"
-        f"• **Rapor Çıktısı Seçimi:** Z-Raporu alırken ister **Excel**, ister **PDF**, ister **ikisini birden** indirebilirsiniz.\n"
-        f"• **İş Emri & Kronometre:** `🔍 İlgileniyorum` ve `✅ İşi Tamamladım` ile tam süre takibi yapılır.\n"
-        f"• **PDF / Fotoğraf At:** Orijinal dosya karşı tarafa iletilir ve yapay zeka tarafından okunur.\n"
-        f"• `/ref [No]`: Referans numarasıyla arayın (Örn: `/ref 46189ND`).\n"
-        f"• `🏢 Tesis Geçmişi`: Müşteriye daha önce hangi parçaları verdik döker (`/gecmis`).",
+        welcome_text,
         reply_markup=get_main_keyboard(),
         parse_mode="Markdown"
     )

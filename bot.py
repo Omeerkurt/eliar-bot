@@ -120,6 +120,7 @@ async def setup_bot_commands():
         BotCommand(command="ref", description="Ref No ile Teklif Sorgula (/ref 46189ND)"),
         BotCommand(command="bekleyenler", description="Bekleyen Teklifleri İncele"),
         BotCommand(command="gecmis", description="Fabrika Parça Geçmişi (/gecmis Müşteri)"),
+        BotCommand(command="sifirla", description="Tüm Verileri Sıfırla (0'la)"),
         BotCommand(command="yardim", description="Nasıl Kullanılır?")
     ]
     await bot.set_my_commands(commands)
@@ -145,6 +146,7 @@ async def cmd_start(message: types.Message):
         f"└ `/ref [No]` ➔ Teklif detaylarını getirir (Örn: `/ref 46189ND`)\n"
         f"└ `/gecmis [Müşteri]` ➔ Tesise verilen tüm parçaları listeler.\n\n"
         f"⚙️ **Sistem:**\n"
+        f"└ `/sifirla` ➔ Tüm verileri tamamen sıfırlar (0'lar).\n\n"
         f"═══════════════════════════════\n"
         f"💡 _Aşağıdaki menüden veya komut listesinden işlem seçebilirsiniz._"
     )
@@ -165,6 +167,7 @@ async def cmd_help(message: types.Message):
         "2. `/rapor [Başlangıç] [Bitiş]` ➔ İki tarih arası Excel/PDF rapor.\n"
         "3. `/ref [RefNo]` ➔ Teklifi referans numarasıyla bulur.\n"
         "4. `/gecmis [Müşteri]` ➔ O tesise geçmişte verilen parçalar.\n"
+        "5. `/sifirla` ➔ Tüm verileri sıfırlar.",
         parse_mode="Markdown"
     )
 

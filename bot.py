@@ -19,7 +19,7 @@ from aiogram.types import (
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.memory import MemoryStoragebura
 
 # ==============================================================================
 #                     ÖMER & KAMİL CANLI YAPILANDIRMASI
@@ -684,7 +684,7 @@ def parse_quote_media(file_path: str, is_pdf: bool = False, original_filename: s
     if len(clean_fn) >= 3:
         firm = clean_fn
 
-    if GEMINI_API_KEY and GEMINI_API_KEY != "BURAYA_GEMINI_API_KEY_YAZIN":
+    if GEMINI_API_KEY and GEMINI_API_KEY != "AIzaSyAuUg0a1ew5V4aF1E-FTsdVinsMpXckOgQ":
         try:
             from google import genai
             client = genai.Client(api_key=GEMINI_API_KEY)

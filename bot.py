@@ -147,7 +147,7 @@ async def cmd_start(message: types.Message):
         f"└ PDF veya Fotoğraf attığınızda yapay zeka içeriği otomatik tarar ve karşı tarafa iletir.\n\n"
         f"🔎 **Hızlı Sorgulama:**\n"
         f"└ `/gecmis [Müşteri]` ➔ Firmaya verilen tüm parçaları listeler.\n\n"
-        f"⏱️ **Saha & İş Emri Takibi:**\n"
+        f"⏱️ **İş Emri Takibi Yapabilirsiniz.**\n"
         f"═══════════════════════════════\n"
         f"💡 _Aşağıdaki menüden veya komut listesinden bir işlem seçebilirsiniz._"
     )

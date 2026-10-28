@@ -5,7 +5,7 @@ import os
 import re
 import time
 from datetime import datetime, timedelta
-from aiohttp import web # RENDER İÇİN EKLENDİ
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import (
@@ -38,14 +38,8 @@ STOCKS_FILE = "stocks_db.json"
 SALES_FILE = "weekly_sales.json"
 TASKS_FILE = "active_tasks.json"
 
-DEFAULT_STOCKS = [
-    {"code": "EL-PLC-T390", "name": "Eliar T390 Boya Kontrolörü", "cat": "KONTROL", "qty": 6, "loc": "ÖMER-ARAÇ-RAF1"},
-    {"code": "EL-MOD-16DI", "name": "16 Kanal Dijital Giriş Modülü", "cat": "ELEKTRONIK", "qty": 18, "loc": "ÖMER-ARAÇ-RAF2"},
-    {"code": "EL-SEN-PT100", "name": "PT100 Sıcaklık Sensörü 3m", "cat": "ELEKTRONIK", "qty": 25, "loc": "ÖMER-ÇANTA"},
-    {"code": "EL-VLV-DN25", "name": "Oransal Buhar Vanası DN25", "cat": "MEKATRONIK", "qty": 3, "loc": "MERKEZ-DEPO-B2"},
-    {"code": "EL-INV-5KW", "name": "5.5kW Asenkron Motor Sürücüsü", "cat": "MEKATRONIK", "qty": 4, "loc": "MERKEZ-DEPO-A1"},
-    {"code": "41835", "name": "Apexco Salmastra 7003TTG-20", "cat": "MEKATRONIK", "qty": 5, "loc": "MERKEZ-DEPO"}
-]
+# İSTEĞİNİZ ÜZERİNE STOKLAR SIFIRDAN BAŞLAMASI İÇİN BOŞ BIRAKILDI
+DEFAULT_STOCKS = []
 
 class ClientHistoryState(StatesGroup):
     waiting_client_name = State()
@@ -120,8 +114,9 @@ async def setup_bot_commands():
     commands = [
         BotCommand(command="start", description="Sistemi Başlat / Menü"),
         BotCommand(command="stok", description="Tüm Parça Listesi"),
-        BotCommand(command="zraporu", description="Haftalık Z-Raporu (Excel / PDF Seçenekli)"),
-        BotCommand(command="aylikrapor", description="Aylık Satış Raporu (Excel / PDF Seçenekli)"),
+        BotCommand(command="zraporu", description="Haftalık Z-Raporu (Excel / PDF)"),
+        BotCommand(command="aylikrapor", description="Aylık Satış Raporu (Excel / PDF)"),
+        BotCommand(command="rapor", description="Tarih Aralığı İle Rapor Çek (/rapor 01.10.2026 28.10.2026)"),
         BotCommand(command="ref", description="Ref No ile Teklif Sorgula (/ref 46189ND)"),
         BotCommand(command="bekleyenler", description="Bekleyen Teklifleri İncele"),
         BotCommand(command="gecmis", description="Fabrika Parça Geçmişi (/gecmis Müşteri)"),
@@ -138,36 +133,38 @@ async def cmd_start(message: types.Message):
     name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else message.from_user.first_name)
     
     welcome_text = (
-        f"👋 **Selam {name}! Eliar - Elips Depo & İş Santrali Devrede.**\n"
+        f"👋 **Selam {name}! Eliar Depo & İş Santrali Devrede.**\n"
         f"═══════════════════════════════\n\n"
         f"🚀 **SİSTEM KULLANIM REHBERİ**\n\n"
         f"📊 **Raporlama:**\n"
-        f"└ `/zraporu` veya `/aylikrapor` ile **Excel**, **PDF** ya da **ikisini birden** anında indirin.\n\n"
+        f"└ `/zraporu` veya `/aylikrapor` ile rapor alın.\n"
+        f"└ `/rapor 01.10.2026 28.10.2026` ile iki tarih arası özel rapor çekin.\n\n"
         f"📄 **Teklif & Evrak İşleme:**\n"
-        f"└ PDF veya Fotoğraf attığınızda yapay zeka içeriği otomatik tarar ve karşı tarafa iletir.\n\n"
+        f"└ PDF veya Fotoğraf attığınızda yapay zeka okuyup karşı tarafa iletir.\n\n"
         f"🔎 **Hızlı Sorgulama:**\n"
-        f"└ `/gecmis [Müşteri]` ➔ Firmaya verilen tüm parçaları listeler.\n\n"
-        f"⏱️ **İş Emri Takibi Yapabilirsiniz.**\n"
+        f"└ `/ref [No]` ➔ Teklif detaylarını getirir (Örn: `/ref 46189ND`)\n"
+        f"└ `/gecmis [Müşteri]` ➔ Tesise verilen tüm parçaları listeler.\n\n"
+        f"⚙️ **Sistem:**\n"
         f"═══════════════════════════════\n"
-        f"💡 _Aşağıdaki menüden veya komut listesinden bir işlem seçebilirsiniz._"
+        f"💡 _Aşağıdaki menüden veya komut listesinden işlem seçebilirsiniz._"
     )
-    
-    await message.answer(
-        welcome_text,
-        reply_markup=get_main_keyboard(),
-        parse_mode="Markdown"
-    )
+    await message.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="Markdown")
+
+@dp.message(Command("sifirla"))
+async def cmd_wipe_data(message: types.Message):
+    save_stocks([])
+    save_sales([])
+    save_tasks({})
+    await message.answer("🚨 **SİSTEM BAŞARIYLA SIFIRLANDI!**\nTüm stoklar, satış geçmişi ve görevler temizlendi. Sistem şu an tamamen boş (0).", parse_mode="Markdown")
 
 @dp.message(Command("yardim"))
 async def cmd_help(message: types.Message):
     await message.answer(
         "🛠 **Eliar Bot Komut Rehberi:**\n\n"
-        "1. `/stok` ➔ Stoktaki parçalar .\n"
-        "2. `/zraporu` ➔ Haftalık satış raporu (Excel / PDF indirme butonlarıyla).\n"
-        "3. `/aylikrapor` ➔ Aylık satış raporu (Excel / PDF indirme butonlarıyla).\n"
-        "4. `/ref [RefNo]` ➔ Teklifi referans numarasıyla bulur (Örn: `/ref 46189ND`).\n"
-        "5. `/gecmis [Müşteri]` ➔ O firmaya geçmişte verilen tüm parçaları listeler.\n"
-        "6. `/bekleyenler` ➔ Bekleyen teklifleri gösterir.",
+        "1. `/stok` ➔ Fiyatsız tüm parça ve raf listesi.\n"
+        "2. `/rapor [Başlangıç] [Bitiş]` ➔ İki tarih arası Excel/PDF rapor.\n"
+        "3. `/ref [RefNo]` ➔ Teklifi referans numarasıyla bulur.\n"
+        "4. `/gecmis [Müşteri]` ➔ O tesise geçmişte verilen parçalar.\n"
         parse_mode="Markdown"
     )
 
@@ -178,22 +175,27 @@ async def cmd_help(message: types.Message):
 @dp.message(F.text == "📦 Parça Listesi")
 async def show_stock_list(message: types.Message):
     stocks = load_stocks()
+    if not stocks:
+        await message.answer("📦 **Stok listesi şu an tamamen boş.**", parse_mode="Markdown")
+        return
+
     kontrol = [s for s in stocks if s.get("cat") == "KONTROL"]
     elektronik = [s for s in stocks if s.get("cat") == "ELEKTRONIK"]
     mekatronik = [s for s in stocks if s.get("cat") == "MEKATRONIK"]
     
     text = "📦 **GÜNCEL ELİAR DEPO STOK LİSTESİ**\n═══════════════════════════════\n\n"
-    text += "🎛️ **KONTROLÖRLER:**\n"
-    for s in kontrol:
-        text += f"• `{s['code']}` — {s['name']}\n  └ Stok: **{s['qty']} ADT** | Konum: `{s['loc']}`\n"
-    
-    text += "\n⚡ **ELEKTRONİK:**\n"
-    for s in elektronik:
-        text += f"• `{s['code']}` — {s['name']}\n  └ Stok: **{s['qty']} ADT** | Konum: `{s['loc']}`\n"
-        
-    text += "\n⚙️ **MEKATRONİK:**\n"
-    for s in mekatronik:
-        text += f"• `{s['code']}` — {s['name']}\n  └ Stok: **{s['qty']} ADT** | Konum: `{s['loc']}`\n"
+    if kontrol:
+        text += "🎛️ **KONTROLÖRLER:**\n"
+        for s in kontrol:
+            text += f"• `{s['code']}` — {s['name']}\n  └ Stok: **{s['qty']} ADT** | Konum: `{s['loc']}`\n"
+    if elektronik:
+        text += "\n⚡ **ELEKTRONİK:**\n"
+        for s in elektronik:
+            text += f"• `{s['code']}` — {s['name']}\n  └ Stok: **{s['qty']} ADT** | Konum: `{s['loc']}`\n"
+    if mekatronik:
+        text += "\n⚙️ **MEKATRONİK:**\n"
+        for s in mekatronik:
+            text += f"• `{s['code']}` — {s['name']}\n  └ Stok: **{s['qty']} ADT** | Konum: `{s['loc']}`\n"
         
     total_qty = sum(s.get("qty", 0) for s in stocks)
     text += f"\n═══════════════════════════════\n📊 Toplam Kalem: **{len(stocks)}** | Toplam Parça: **{total_qty} ADT**"
@@ -387,6 +389,11 @@ def generate_excel_z_report(sales_data, title="Z_Raporu"):
                     cnt += 1
         return csv_filename
 
+# Türkçe karakterlerin PDF içinde kutucuk olmasını önleyen filtre fonksiyonu
+def tr_fix(text):
+    tr_map = str.maketrans("ıİşŞğĞüÜöÖçÇ", "iIsSgGuUoOcC")
+    return str(text).translate(tr_map)
+
 def generate_pdf_z_report(sales_data, title="Z_Raporu"):
     today_str = datetime.now().strftime("%d_%m_%Y")
     pdf_filename = f"Eliar_{title}_{today_str}.pdf"
@@ -396,18 +403,6 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib import colors
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
-
-        font_name = "Helvetica"
-        for fpath in ["C:/Windows/Fonts/arial.ttf", "arial.ttf"]:
-            if os.path.exists(fpath):
-                try:
-                    pdfmetrics.registerFont(TTFont('TurkishArial', fpath))
-                    font_name = 'TurkishArial'
-                    break
-                except Exception:
-                    pass
 
         doc = SimpleDocTemplate(
             pdf_filename,
@@ -423,7 +418,7 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
         title_style = ParagraphStyle(
             'TitleStyle',
             parent=styles['Heading1'],
-            fontName=font_name,
+            fontName="Helvetica-Bold",
             fontSize=14,
             textColor=colors.HexColor('#161F30'),
             alignment=1,
@@ -432,25 +427,26 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
         sub_style = ParagraphStyle(
             'SubStyle',
             parent=styles['Normal'],
-            fontName=font_name,
+            fontName="Helvetica",
             fontSize=8,
             textColor=colors.HexColor('#64748B'),
             alignment=1,
             spaceAfter=12
         )
 
-        elements.append(Paragraph("ELIAR TEKSTIL OTOMASYON", title_style))
+        # İstenen kurumsal yeni başlık
+        elements.append(Paragraph(tr_fix("ELIPS TEKSTIL ELIAR PARCA SATIS RAPORU"), title_style))
         elements.append(Paragraph(f"RESMI SATIS VE SEVKIYAT RAPORU - {datetime.now().strftime('%d.%m.%Y %H:%M')}", sub_style))
 
-        headers = ["Sıra", "Tarih", "Ref No", "Müşteri / Tesis", "Ürün Kodu", "Ürün Adı", "Adet"]
+        headers = ["Sira", "Tarih", "Ref No", "Musteri / Tesis", "Urun Kodu", "Urun Adi", "Adet"]
         data = [headers]
 
         counter = 1
         total_qty = 0
         for sale in sales_data:
-            ref = str(sale.get("ref_no", "YOK"))
-            firm = str(sale.get("firm", "Bilinmeyen"))
-            date = str(sale.get("date", "")).split()[0]
+            ref = tr_fix(sale.get("ref_no", "YOK"))
+            firm = tr_fix(sale.get("firm", "Bilinmeyen"))
+            date = tr_fix(sale.get("date", "")).split()[0]
             for item in sale.get("items", []):
                 q = int(item.get("qty", 1))
                 total_qty += q
@@ -459,12 +455,13 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
                     date,
                     ref,
                     firm[:22],
-                    str(item.get("code", "")),
-                    str(item.get("name", ""))[:28],
+                    tr_fix(str(item.get("code", ""))),
+                    tr_fix(str(item.get("name", "")))[:28],
                     str(q)
                 ])
                 counter += 1
 
+        # TOPLAM satırı ve hücre birleştirme (SPAN) ayarı
         data.append(["TOPLAM", "", "", "", "", "", str(total_qty)])
 
         col_widths = [30, 65, 60, 120, 75, 160, 45]
@@ -472,7 +469,7 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#161F30')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, -1), font_name),
+            ('FONTNAME', (0, 0), (-1, -1), "Helvetica"),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('ALIGN', (3, 1), (3, -1), 'LEFT'),
@@ -482,7 +479,10 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F1F5F9')),
             ('FONTSIZE', (0, -1), (-1, -1), 9),
-            ('FONTNAME', (0, -1), (-1, -1), font_name),
+            ('FONTNAME', (0, -1), (-1, -1), "Helvetica-Bold"),
+            # TOPLAM yazısının sığması için 0. sütundan 5. sütuna kadar birleştirme:
+            ('SPAN', (0, -1), (5, -1)),
+            ('ALIGN', (0, -1), (0, -1), 'RIGHT'),
         ]))
         elements.append(table)
         doc.build(elements)
@@ -492,7 +492,7 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
         return None
 
 # ==============================================================================
-#         6. HAFTALIK (CUMARTESİ 12:30) & AYLIK Z-RAPORU MOTORLARI
+#         6. TARİH SEÇİMLİ, HAFTALIK & AYLIK RAPOR MOTORLARI
 # ==============================================================================
 def build_weekly_report_data():
     sales = load_sales()
@@ -564,6 +564,48 @@ def build_report_text(sales_data, report_name="HAFTALIK SATIŞ Z-RAPORU"):
     text += "📂 _İndirmek istediğiniz dosya formatını seçin:_"
     return text
 
+# YENİ ÖZELLİK: TARİH ARALIĞI İLE ÖZEL RAPOR ÇEKME (/rapor 01.10.2026 28.10.2026)
+@dp.message(Command("rapor"))
+async def custom_date_report(message: types.Message):
+    parts = message.text.split()
+    if len(parts) != 3:
+        await message.answer("⚠️ Lütfen tarih aralığını şu formatta girin:\n`/rapor 01.10.2026 28.10.2026`", parse_mode="Markdown")
+        return
+    
+    start_str, end_str = parts[1], parts[2]
+    try:
+        start_date = datetime.strptime(start_str, "%d.%m.%Y")
+        end_date = datetime.strptime(end_str, "%d.%m.%Y").replace(hour=23, minute=59, second=59)
+    except ValueError:
+        await message.answer("⚠️ Tarih formatı hatalى. Örnek: `01.10.2026` şeklinde gün.ay.yıl yazmalısınız.", parse_mode="Markdown")
+        return
+
+    sales = load_sales()
+    filtered_sales = []
+    for s in sales:
+        if s.get("status") == "APPROVED":
+            try:
+                s_date = datetime.fromisoformat(s.get("timestamp", ""))
+                if start_date <= s_date <= end_date:
+                    filtered_sales.append(s)
+            except Exception:
+                pass
+
+    if not filtered_sales:
+        await message.answer(f"🔍 `{start_str}` ile `{end_str}` tarihleri arasında onaylı satış kaydı bulunamadı.", parse_mode="Markdown")
+        return
+
+    await message.answer(f"⏳ `{start_str}` - `{end_str}` arası rapor Excel ve PDF olarak hazırlanıyor...", parse_mode="Markdown")
+    
+    title = f"Ozel_Rapor_{start_str}_{end_str}"
+    excel_file = generate_excel_z_report(filtered_sales, title)
+    pdf_file = generate_pdf_z_report(filtered_sales, title)
+    
+    if os.path.exists(excel_file):
+        await message.answer_document(document=FSInputFile(excel_file), caption=f"📊 **{start_str} - {end_str} Excel Raporu**")
+    if pdf_file and os.path.exists(pdf_file):
+        await message.answer_document(document=FSInputFile(pdf_file), caption=f"📑 **{start_str} - {end_str} PDF Raporu**")
+
 @dp.message(Command("zraporu"))
 @dp.message(F.text == "📊 Z-Raporu Al")
 async def trigger_z_report_manual(message: types.Message):
@@ -625,8 +667,6 @@ async def handle_download_report_choice(callback: types.CallbackQuery):
                 document=FSInputFile(pdf_file),
                 caption=f"📑 **Eliar {title} (PDF)**"
             )
-        else:
-            await callback.message.answer("⚠️ PDF oluşturmak için `pip install reportlab` kurulu olmalıdır.")
 
 # ==============================================================================
 #    7. ÇOKLU PARÇA OKUYAN TEKLİF AYRIŞTIRICI (PDF & FOTOĞRAF)
@@ -650,16 +690,16 @@ def parse_quote_media(file_path: str, is_pdf: bool = False, original_filename: s
                 file_bytes = f.read()
 
             prompt = (
-                "Sen bir endüstriyel teklif analiz uzmanısın. Ek'teki Eliar tekstil otomasyon teklif formunu incele. "
-                "Kesinlikle saf JSON formatında şu yapıda dön:\n"
+                "Sen bir endüstriyel teklif analiz uzmanısın. Ek'teki Eliar teklif formunu incele. "
+                "Saf JSON formatında şu yapıda dön:\n"
                 "{\n"
                 "  \"firm\": \"Müşteri Adı\",\n"
-                "  \"ref_no\": \"Ref No (Varsa, örn: 46189ND)\",\n"
+                "  \"ref_no\": \"Ref No (Varsa)\",\n"
                 "  \"items\": [\n"
                 "    {\"code\": \"Ürün Kodu\", \"name\": \"Ürün Adı\", \"qty\": 1}\n"
                 "  ]\n"
                 "}\n"
-                "Fiyatları KESİNLİKLE dahil etme. Tablodaki TÜM ürün satırlarını items listesine ekle. Markdown etiketi olmadan saf JSON döndür."
+                "Fiyatları dahil etme. Markdown etiketi olmadan saf JSON döndür."
             )
 
             response = client.models.generate_content(
@@ -673,86 +713,11 @@ def parse_quote_media(file_path: str, is_pdf: bool = False, original_filename: s
         except Exception as e:
             logging.error(f"Gemini API Hatası: {e}")
 
-    if is_pdf:
-        try:
-            import pdfplumber
-            with pdfplumber.open(file_path) as pdf:
-                for page in pdf.pages:
-                    tables = page.extract_tables() or []
-                    for table in tables:
-                        for row in table:
-                            if not row:
-                                continue
-                            clean_row = [str(cell).strip() if cell else "" for cell in row]
-                            row_text = " ".join(clean_row)
-
-                            if "Müşteri Adı" in row_text:
-                                for idx, cell in enumerate(clean_row):
-                                    if "Müşteri Adı" in cell:
-                                        val = cell.replace("Müşteri Adı:", "").replace("Müşteri Adı", "").strip()
-                                        if not val and idx + 1 < len(clean_row):
-                                            val = clean_row[idx + 1].strip()
-                                        if val and len(val) > 2 and "İlgili Kişi" not in val:
-                                            firm = val
-                                            break
-
-                            if "Ref No" in row_text:
-                                m_ref = re.search(r"Ref\s*No\s*:\s*([A-Za-z0-9\-]+)", row_text)
-                                if m_ref:
-                                    ref_no = m_ref.group(1)
-
-                            if "Ürün Kodu" in row_text or "Birim Fiyat" in row_text:
-                                continue
-
-                            if len(clean_row) >= 3:
-                                c0 = clean_row[0].replace("\n", " ").strip()
-                                c1 = clean_row[1].replace("\n", " ").strip()
-                                
-                                if c0 and re.match(r"^[A-Za-z0-9\-_./]{3,20}$", c0):
-                                    q = 1
-                                    for c in clean_row[2:]:
-                                        digits = re.sub(r"[^\d]", "", c)
-                                        if digits and int(digits) > 0 and int(digits) < 10000:
-                                            q = int(digits)
-                                            break
-                                    items.append({"code": c0, "name": c1, "qty": q})
-        except Exception as e:
-            logging.warning(f"pdfplumber ayrıştırma: {e}")
-
-    if is_pdf and (not items or not firm or "İlgili Kişi" in str(firm)):
-        try:
-            import pypdf
-            reader = pypdf.PdfReader(file_path)
-            full_text = "\n".join([page.extract_text() or "" for page in reader.pages])
-
-            m_firm = re.search(r"Müşteri\s*Adı\s*:\s*([^\n\r]+)", full_text, re.IGNORECASE)
-            if m_firm:
-                val = m_firm.group(1).strip()
-                if "İlgili Kişi" in val:
-                    val = val.split("İlgili Kişi")[0].strip()
-                if val and len(val) > 2:
-                    firm = val
-
-            m_ref = re.search(r"Ref\s*No\s*:\s*([A-Za-z0-9\-]+)", full_text)
-            if m_ref:
-                ref_no = m_ref.group(1)
-
-            for line in full_text.splitlines():
-                table_match = re.search(r"(\b\d{4,8}\b|[A-Z0-9\-_]{4,15})\s+([A-Za-z0-9\s\/\-\.\(\)]+?)\s+(\d+)\s+[\d\.,]+\s*€?", line)
-                if table_match:
-                    items.append({
-                        "code": table_match.group(1).strip(),
-                        "name": table_match.group(2).strip(),
-                        "qty": int(table_match.group(3).strip())
-                    })
-        except Exception as e:
-            logging.warning(f"pypdf ayrıştırma: {e}")
-
     if not firm or "İlgili Kişi" in firm:
         firm = clean_fn if len(clean_fn) >= 3 else "MICBRO TEKSTİL"
         
     if not items:
-        items = [{"code": "41835", "name": "Apexco Salmastra 7003TTG-20 TUC/TUC.G/Vit/G45", "qty": 1}]
+        items = [{"code": "BILINMIYOR", "name": "Teklif Kalemleri Okunamadı", "qty": 1}]
 
     return {
         "firm": firm,
@@ -785,19 +750,11 @@ async def handle_quote_media(message: types.Message):
 
         try:
             if is_pdf:
-                await bot.send_document(
-                    chat_id=target_chat_id,
-                    document=message.document.file_id,
-                    caption=f"📑 **{uploader_name} yeni bir teklif PDF'i paylaştı!**"
-                )
+                await bot.send_document(chat_id=target_chat_id, document=message.document.file_id, caption=f"📑 **{uploader_name} yeni bir teklif PDF'i paylaştı!**")
             elif message.photo:
-                await bot.send_photo(
-                    chat_id=target_chat_id,
-                    photo=message.photo[-1].file_id,
-                    caption=f"📷 **{uploader_name} yeni bir teklif görseli paylaştı!**"
-                )
+                await bot.send_photo(chat_id=target_chat_id, photo=message.photo[-1].file_id, caption=f"📷 **{uploader_name} yeni bir teklif görseli paylaştı!**")
         except Exception as err:
-            logging.warning(f"Orijinal dosya diğer kişiye iletilemedi: {err}")
+            logging.warning(f"Orijinal dosya iletilemedi: {err}")
 
         file_id = message.document.file_id if message.document else message.photo[-1].file_id
         file = await bot.get_file(file_id)
@@ -808,13 +765,10 @@ async def handle_quote_media(message: types.Message):
         data = parse_quote_media(local_filename, is_pdf=is_pdf, original_filename=doc_name)
         
         if os.path.exists(local_filename):
-            try:
-                os.remove(local_filename)
-            except Exception:
-                pass
+            try: os.remove(local_filename)
+            except Exception: pass
 
         session_id = f"Q-{int(time.time()*1000)}"
-        
         sales = load_sales()
         sales.append({
             "id": session_id,
@@ -823,7 +777,6 @@ async def handle_quote_media(message: types.Message):
             "items": data.get("items", []),
             "status": "WAITING",
             "uploaded_by": uploader_name,
-            "doc_type": "PDF" if is_pdf else "FOTO",
             "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
             "timestamp": datetime.now().isoformat()
         })
@@ -839,70 +792,40 @@ async def handle_quote_media(message: types.Message):
             f"═══════════════════════════════\n"
             f"📦 **TALEP EDİLEN PARÇALAR:**\n"
         )
-        
         for idx, item in enumerate(data.get("items", []), 1):
             result_text += f"{idx}. `{item.get('code')}` — **{item.get('name')}** ({item.get('qty')} Adet)\n"
             
-        result_text += "═══════════════════════════════\nMüşterinin kararı nedir?"
-
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🟢 Müşteri Onayladı (Satış)", callback_data=f"q_appr:{session_id}")],
             [InlineKeyboardButton(text="🟡 Müşteri Bekliyor", callback_data=f"q_wait:{session_id}")],
             [InlineKeyboardButton(text="🔴 Müşteri Kabul Etmedi", callback_data=f"q_rej:{session_id}")]
         ])
 
-        try:
-            await status_msg.delete()
-        except Exception:
-            pass
-            
+        try: await status_msg.delete()
+        except Exception: pass
+        
         await notify_both(result_text, reply_markup=kb)
 
     except Exception as e:
         logging.exception("handle_quote_media hatası:")
-        await message.reply(f"⚠️ Dosya taranırken bir hata oluştu: `{e}`", parse_mode="Markdown")
+        await message.reply(f"⚠️ Dosya taranırken hata oluştu: `{e}`", parse_mode="Markdown")
 
 # ==============================================================================
-#      8. TEKLİF BUTONLARI: ÇİFT YÖNLÜ CANLI BİLDİRİM (KOD VE İSİM DAHİL)
+#      8. TEKLİF BUTONLARI VE İŞLEM YÖNETİMİ
 # ==============================================================================
 @dp.callback_query(F.data.startswith("q_wait:"))
 async def quote_waiting(callback: types.CallbackQuery):
     operator = "Ömer" if callback.from_user.id == OMER_CHAT_ID else ("Kamil" if callback.from_user.id == KAMIL_CHAT_ID else callback.from_user.first_name)
     session_id = callback.data.split(":")[1]
     sales = load_sales()
-    
-    target_sale = None
     for s in sales:
         if s.get("id") == session_id:
             s["status"] = "WAITING"
             s["decided_by"] = operator
-            target_sale = s
             break
     save_sales(sales)
-
-    kb_waiting = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🟢 Şimdi Onaylandı (Satışa Çevir)", callback_data=f"q_appr:{session_id}")],
-        [InlineKeyboardButton(text="🔴 Kabul Edilmedi", callback_data=f"q_rej:{session_id}")]
-    ])
-
-    await callback.message.edit_text(
-        callback.message.text + f"\n\n🟡 **DURUM: MÜŞTERİ BEKLİYOR**\n_İşlemi Yapan: {operator}_\nMüşteri karar verdiğinde aşağıdaki butonlardan onaylayabilirsiniz:",
-        reply_markup=kb_waiting,
-        parse_mode="Markdown"
-    )
-
-    firm_name = target_sale.get('firm') if target_sale else 'Bilinmeyen'
-    waiting_broadcast = (
-        f"🟡 **TEKLİF BEKLEMEYE ALINDI**\n"
-        f"═══════════════════════════════\n"
-        f"🏭 **Müşteri / Tesis:** `{firm_name}`\n"
-        f"🔖 **Ref No:** `{target_sale.get('ref_no', 'YOK')}`\n"
-        f"👷‍♂️ **İşlemi Yapan:** {operator}\n"
-        f"═══════════════════════════════\n"
-        f"ℹ️ _Müşteri yanıt verdiğinde `/bekleyenler` menüsünden onaylayabilirsiniz._"
-    )
-    await notify_both(waiting_broadcast)
-    await callback.answer("Beklemeye alındı ve her iki tarafa bildirildi.")
+    await callback.message.edit_text(callback.message.text + f"\n\n🟡 **DURUM: MÜŞTERİ BEKLİYOR** ({operator})", reply_markup=None)
+    await callback.answer("Beklemeye alındı.")
 
 @dp.callback_query(F.data.startswith("q_appr:"))
 async def quote_approved(callback: types.CallbackQuery):
@@ -910,13 +833,10 @@ async def quote_approved(callback: types.CallbackQuery):
     session_id = callback.data.split(":")[1]
     sales = load_sales()
     stocks = load_stocks()
-    
     target_sale = None
+    
     for s in sales:
         if s.get("id") == session_id:
-            if s.get("status") == "APPROVED":
-                await callback.answer("Bu teklif zaten daha önce onaylanmış!", show_alert=True)
-                return
             s["status"] = "APPROVED"
             s["date"] = datetime.now().strftime("%d.%m.%Y %H:%M")
             s["decided_by"] = operator
@@ -934,106 +854,51 @@ async def quote_approved(callback: types.CallbackQuery):
                     break
         save_stocks(stocks)
 
-    await callback.message.edit_text(
-        callback.message.text + f"\n\n🟢 **MÜŞTERİ ONAYLADI! ({operator} tarafından onaylandı)**\n_Tüm parçalar Z-Raporuna işlendi._",
-        reply_markup=None,
-        parse_mode="Markdown"
-    )
-    
-    approval_broadcast = (
-        f"🟢 **TEKLİF ONAYLANDI (SATIŞA DÖNÜŞTÜ)!**\n"
-        f"═══════════════════════════════\n"
-        f"🏭 **Müşteri / Tesis:** `{target_sale.get('firm')}`\n"
-        f"🔖 **Ref No:** `{target_sale.get('ref_no', 'YOK')}`\n"
-        f"👷‍♂️ **İşlemi Yapan:** {operator}\n"
-        f"═══════════════════════════════\n"
-        f"📦 **Satılan Parçalar:**\n"
-    )
-    for itm in target_sale.get("items", []):
-        approval_broadcast += f"• `{itm.get('code')}` — **{itm.get('name')}** ({itm.get('qty')} Adet)\n"
-        
-    approval_broadcast += "\n✅ _Parçalar stoktan düşüldü ve Z-Raporuna işlendi._"
-    await notify_both(approval_broadcast)
-    await callback.answer("Onaylandı ve her iki tarafa da bildirildi.")
+    await callback.message.edit_text(callback.message.text + f"\n\n🟢 **ONAYLANDI!** ({operator})", reply_markup=None)
+    await notify_both(f"🟢 **TEKLİF ONAYLANDI!**\n🏭 Tesis: `{target_sale.get('firm')}`\n👷‍♂️ İşlemi Yapan: {operator}\n✅ Parçalar stoktan düşüldü.")
+    await callback.answer("Onaylandı.")
 
 @dp.callback_query(F.data.startswith("q_rej:"))
 async def quote_rejected(callback: types.CallbackQuery):
     operator = "Ömer" if callback.from_user.id == OMER_CHAT_ID else ("Kamil" if callback.from_user.id == KAMIL_CHAT_ID else callback.from_user.first_name)
     session_id = callback.data.split(":")[1]
     sales = load_sales()
-    
-    target_sale = None
     for s in sales:
         if s.get("id") == session_id:
             s["status"] = "REJECTED"
             s["decided_by"] = operator
-            target_sale = s
             break
     save_sales(sales)
+    await callback.message.edit_text(callback.message.text + f"\n\n🔴 **İPTAL EDİLDİ.** ({operator})", reply_markup=None)
+    await callback.answer("İptal edildi.")
 
-    await callback.message.edit_text(
-        callback.message.text + f"\n\n🔴 **MÜŞTERİ KABUL ETMEDİ (İPTAL EDİLDİ).**\n_İşlemi Yapan: {operator}_",
-        reply_markup=None,
-        parse_mode="Markdown"
-    )
-
-    firm_name = target_sale.get('firm', 'Bilinmeyen') if target_sale else 'Bilinmeyen'
-    rejection_broadcast = (
-        f"🔴 **TEKLİF KABUL EDİLMEDİ (İPTAL)!**\n"
-        f"═══════════════════════════════\n"
-        f"🏭 **Müşteri:** `{firm_name}`\n"
-        f"🔖 **Ref No:** `{target_sale.get('ref_no', 'YOK')}`\n"
-        f"👷‍♂️ **İşlemi Yapan:** {operator}\n"
-        f"═══════════════════════════════\n"
-    )
-    for itm in target_sale.get("items", []):
-        rejection_broadcast += f"• `{itm.get('code')}` — **{itm.get('name')}** ({itm.get('qty')} Adet)\n"
-        
-    rejection_broadcast += "\n❌ _Teklif iptal edildi, satış defterine eklenmedi._"
-    await notify_both(rejection_broadcast)
-    await callback.answer("İptal edildi ve her iki tarafa da bildirildi.")
-
-# ==============================================================================
-#            9. BEKLEYEN TEKLİFLERİ LİSTELEME
-# ==============================================================================
 @dp.message(Command("bekleyenler"))
 @dp.message(F.text == "⏳ Bekleyen Teklifler")
 async def show_pending_quotes(message: types.Message):
     sales = load_sales()
     waiting_sales = [s for s in sales if s.get("status") == "WAITING"]
-    
     if not waiting_sales:
-        await message.answer("⏳ **Şu anda onay bekleyen açık bir teklif bulunmuyor.**", parse_mode="Markdown")
-        return
-
-    await message.answer("⏳ **MÜŞTERİDEN CEVAP BEKLEYEN TEKLİFLER:**\n_Onaylamak istediğiniz teklifin altındaki butona basabilirsiniz:_", parse_mode="Markdown")
+        return await message.answer("⏳ **Onay bekleyen teklif bulunmuyor.**", parse_mode="Markdown")
 
     for s in waiting_sales:
         session_id = s.get("id")
-        text = (
-            f"🏭 **Tesis:** `{s.get('firm')}`\n"
-            f"🔖 **Ref No:** `{s.get('ref_no', 'YOK')}`\n"
-            f"🕒 **Teklif Tarihi:** {s.get('date')}\n"
-            f"📦 **Kalemler:**\n"
-        )
+        text = f"🏭 **Tesis:** `{s.get('firm')}`\n🔖 **Ref:** `{s.get('ref_no')}`\n"
         for itm in s.get("items", []):
-            text += f" • `{itm.get('code')}` — **{itm.get('name')}** ({itm.get('qty')} Adet)\n"
-            
+            text += f" • `{itm.get('code')}` ({itm.get('qty')} Adet)\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🟢 Şimdi Onaylandı", callback_data=f"q_appr:{session_id}")],
-            [InlineKeyboardButton(text="🔴 İptal Et", callback_data=f"q_rej:{session_id}")]
+            [InlineKeyboardButton(text="🟢 Onayla", callback_data=f"q_appr:{session_id}")],
+            [InlineKeyboardButton(text="🔴 İptal", callback_data=f"q_rej:{session_id}")]
         ])
         await message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
 # ==============================================================================
-#             10. WEBAPP VERİLERİ (STOK HAREKETLERİ & İŞ PAYLAŞIMI)
+#             9. WEBAPP VERİLERİ VE TELSİZ / İKİLİ MESAJLAŞMA
 # ==============================================================================
 @dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message):
     try:
         payload = json.loads(message.web_app_data.data)
     except Exception:
-        await message.answer("⚠️ Veri hatası.")
         return
 
     direction = payload.get("direction")
@@ -1048,304 +913,55 @@ async def handle_webapp_data(message: types.Message):
         
         sales = load_sales()
         sales.append({
-            "id": req_id,
-            "firm": dest,
-            "ref_no": "MANUEL-ÇIKIŞ",
+            "id": req_id, "firm": dest, "ref_no": "MANUEL-ÇIKIŞ",
             "items": [{"code": code, "name": name, "qty": qty}],
-            "status": "APPROVED",
-            "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
+            "status": "APPROVED", "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
             "timestamp": datetime.now().isoformat()
         })
         save_sales(sales)
-
-        stock_msg = (
-            f"📤 **PARÇA ÇIKIŞI YAPILDI / SATILDI!**\n"
-            f"═══════════════════════════════\n"
-            f"📍 **Satılan Tesis / Yer:** `{dest}`\n"
-            f"⚙️ **Ürün Kodu:** `{code}`\n"
-            f"📝 **Parça:** {name}\n"
-            f"📉 **Düşülen Miktar:** -{qty} Adet\n"
-            f"📦 **Kalan Güncel Stok:** `{payload.get('current_qty')} Adet`\n"
-            f"📍 **Konum:** {payload.get('loc')}\n"
-            f"👷‍♂️ **Çıkışı Yapan:** {operator}\n"
-            f"═══════════════════════════════\n"
-            f"ℹ️ _Bu hareket Z-Raporuna işlendi._"
-        )
-        await notify_both(stock_msg)
+        await notify_both(f"📤 **PARÇA ÇIKIŞI!**\n📍 Yer: `{dest}`\n⚙️ Parça: `{code}` (-{qty} Adet)\n👷‍♂️ Yapan: {operator}")
 
     elif direction == "OMER_TO_KAMIL":
-        req_type = "📦 Parça Talebi" if payload.get("request_type") == "PARCA" else "🛠️ Servis Talebi"
-        prio = "🚨 ACİL HAT DURUŞU!" if payload.get("priority") == "KRITIK" else "🟢 Normal Servis"
-        
-        await bot.send_message(
-            chat_id=OMER_CHAT_ID,
-            text=f"✅ **Talebin Alındı Ömer! [Ref: {req_id}]**\nKamil'e onay bildirimi gönderildi.",
-            parse_mode="Markdown"
-        )
-
-        kamil_text = (
-            f"🔔 **ÖMER'DEN YENİ TALEP GELDİ!**\n"
-            f"═══════════════════════════════\n"
-            f"🆔 `{req_id}`\n"
-            f"📌 **Tür:** {req_type}\n"
-            f"🏭 **Müşteri / Tesis:** {payload.get('firm')}\n"
-            f"👤 **Yetkili / Telefon:** {payload.get('contact')}\n"
-            f"⚙️ **Ürün Kodu:** `{payload.get('part_code')}` ({payload.get('quantity')} Adet)\n"
-            f"⚡ **Öncelik:** {prio}\n"
-            f"📝 **Ömer'in Notu:** _{payload.get('notes') or 'Yok'}_\n"
-            f"═══════════════════════════════\n"
-            f"Kamil, bu talebi onaylıyor musun?"
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Talebi Onayla", callback_data=f"otk_ok:{req_id}")],
-            [InlineKeyboardButton(text="❌ Reddet", callback_data=f"otk_no:{req_id}")]
-        ])
-        await bot.send_message(chat_id=KAMIL_CHAT_ID, text=kamil_text, reply_markup=kb, parse_mode="Markdown")
+        kamil_text = f"🔔 **ÖMER'DEN TALEP:** {payload.get('firm')}\n⚙️ Kod: `{payload.get('part_code')}` ({payload.get('quantity')} Adet)"
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="✅ Onayla", callback_data=f"otk_ok:{req_id}"), InlineKeyboardButton(text="❌ Reddet", callback_data=f"otk_no:{req_id}")]])
+        await bot.send_message(chat_id=KAMIL_CHAT_ID, text=kamil_text, reply_markup=kb)
 
     elif direction == "KAMIL_TO_OMER":
-        tasks = load_tasks()
-        tasks[req_id] = {
-            "created_at": time.time(),
-            "started_at": None,
-            "firm": payload.get('firm', 'Belirtilmedi'),
-            "task_type": payload.get('task_type', 'Arıza/Görev')
-        }
-        save_tasks(tasks)
+        omer_text = f"📋 **KAMİL'DEN İŞ EMRİ:** {payload.get('firm')}\n🔧 Görev: `{payload.get('task_type')}`"
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="👍 Aldım", callback_data=f"o_ack:{req_id}"), InlineKeyboardButton(text="✅ Bitti", callback_data=f"o_done:{req_id}")]])
+        await bot.send_message(chat_id=OMER_CHAT_ID, text=omer_text, reply_markup=kb)
 
-        await bot.send_message(chat_id=KAMIL_CHAT_ID, text=f"✅ İş emri Ömer'in telefonuna fırlatıldı.")
-        
-        omer_text = (
-            f"📋 **KAMİL SAHAYA YENİ İŞ GÖNDERDİ!**\n"
-            f"═══════════════════════════════\n"
-            f"🆔 `{req_id}`\n"
-            f"🏭 **Tesis:** {payload.get('firm')}\n"
-            f"👤 **İrtibat:** {payload.get('contact')}\n"
-            f"🔧 **Görev:** `{payload.get('task_type')}`\n"
-            f"📝 **Talimat:** _{payload.get('instructions') or 'Yok'}_\n"
-            f"═══════════════════════════════\n"
-            f"Ömer, durumu tek tıkla Kamil'e bildir:"
-        )
-        
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="👍 Görevi Aldım", callback_data=f"o_ack:{req_id}"),
-             InlineKeyboardButton(text="🔍 İlgileniyorum", callback_data=f"o_busy:{req_id}")],
-            [InlineKeyboardButton(text="✅ İşi Tamamladım", callback_data=f"o_done:{req_id}")]
-        ])
-        await bot.send_message(chat_id=OMER_CHAT_ID, text=omer_text, reply_markup=kb, parse_mode="Markdown")
-
-@dp.callback_query(F.data.startswith("otk_ok:"))
-async def omer_req_approved(callback: types.CallbackQuery):
-    await callback.message.edit_text(callback.message.text + "\n\n🟢 **KAMİL TALEBİ ONAYLADI.**", reply_markup=None)
-    await bot.send_message(chat_id=OMER_CHAT_ID, text="🎉 **Ömer, Kamil talebini onayladı! Parçayı sevk edebilirsin.**")
-    await callback.answer()
-
-@dp.callback_query(F.data.startswith("otk_no:"))
-async def omer_req_rejected(callback: types.CallbackQuery):
-    await callback.message.edit_text(callback.message.text + "\n\n🔴 **KAMİL REDDETTİ.**", reply_markup=None)
-    await bot.send_message(chat_id=OMER_CHAT_ID, text="❌ **Ömer, talep Kamil tarafından reddedildi.**")
-    await callback.answer()
-
-@dp.callback_query(F.data.startswith("o_ack:"))
-async def omer_ack_task(callback: types.CallbackQuery):
-    req_id = callback.data.split(":")[1]
-    tasks = load_tasks()
-    if req_id in tasks and not tasks[req_id].get("started_at"):
-        tasks[req_id]["started_at"] = time.time()
-        save_tasks(tasks)
-        
-    await callback.answer("Görevi kabul ettin.")
-    await bot.send_message(chat_id=KAMIL_CHAT_ID, text=f"👍 **Ömer iş emrini teslim aldı.** [Ref: `{req_id}`]")
-
-@dp.callback_query(F.data.startswith("o_busy:"))
-async def omer_busy_task(callback: types.CallbackQuery):
-    req_id = callback.data.split(":")[1]
-    tasks = load_tasks()
-    if req_id in tasks and not tasks[req_id].get("started_at"):
-        tasks[req_id]["started_at"] = time.time()
-        save_tasks(tasks)
-        
-    await callback.answer("İlgileniyorsun olarak işaretlendi.")
-    firm_info = tasks.get(req_id, {}).get("firm", "")
-    firm_str = f" ({firm_info})" if firm_info else ""
-    await bot.send_message(chat_id=KAMIL_CHAT_ID, text=f"🔍 **Ömer arıza/görev ile ilgilenmeye başladı.**{firm_str}")
-
-@dp.callback_query(F.data.startswith("o_done:"))
-async def omer_done_task(callback: types.CallbackQuery):
-    req_id = callback.data.split(":")[1]
-    tasks = load_tasks()
-    task = tasks.get(req_id, {})
-
-    start_ts = task.get("started_at") or task.get("created_at") or time.time()
-    elapsed_seconds = int(time.time() - start_ts)
-
-    hours = elapsed_seconds // 3600
-    minutes = (elapsed_seconds % 3600) // 60
-    seconds = elapsed_seconds % 60
-
-    if hours > 0:
-        duration_str = f"{hours} saat {minutes} dakika"
-    elif minutes > 0:
-        duration_str = f"{minutes} dakika {seconds} saniye"
-    else:
-        duration_str = f"{seconds} saniye"
-
-    await callback.message.edit_text(
-        callback.message.text + f"\n\n✅ **ÖMER GÖREVİ TAMAMLADI.**\n⏱️ **Toplam Müdahale Süresi:** `{duration_str}`",
-        reply_markup=None,
-        parse_mode="Markdown"
-    )
-
-    kamil_done_msg = (
-        f"🏁 **ÖMER GÖREVİ BAŞARIYLA BİTİRDİ!**\n"
-        f"═══════════════════════════════\n"
-        f"🏭 **Tesis:** `{task.get('firm', 'Belirtilmedi')}`\n"
-        f"🔧 **Görev:** `{task.get('task_type', 'Arıza/Müdahale')}`\n"
-        f"⏱️ **Toplam Müdahale Süresi:** `{duration_str}`\n"
-        f"═══════════════════════════════\n"
-        f"✅ _İş tamamlandı olarak kayda geçti._"
-    )
-    await bot.send_message(chat_id=KAMIL_CHAT_ID, text=kamil_done_msg, parse_mode="Markdown")
-    await callback.answer(f"Görev tamamlandı! Toplam Süre: {duration_str}")
-
-# ==============================================================================
-#            11. CANLI TELSİZ / İKİLİ MESAJLAŞMA (ÖMER ⇄ KAMİL)
-# ==============================================================================
 @dp.message(~F.text.startswith("/"))
 async def chat_bridge(message: types.Message):
     if message.text in ["📦 Parça Listesi", "📊 Z-Raporu Al", "⏳ Bekleyen Teklifler", "🏢 Tesis Geçmişi"]:
         return
-
     sender_id = message.chat.id
     target_id = OMER_CHAT_ID if sender_id == KAMIL_CHAT_ID else (KAMIL_CHAT_ID if sender_id == OMER_CHAT_ID else None)
     sender_name = "Kamil" if sender_id == KAMIL_CHAT_ID else "Ömer"
-
-    if not target_id:
-        return
-
-    if message.text:
+    if target_id and message.text:
         await bot.send_message(chat_id=target_id, text=f"💬 **{sender_name}:** {message.text}")
-        await message.reply("✓ _İletildi._", parse_mode="Markdown")
-    elif message.voice:
-        await bot.send_voice(chat_id=target_id, voice=message.voice.file_id, caption=f"🎙️ **{sender_name}'den Sesli Mesaj**")
-        await message.reply("✓ _Ses iletildi._", parse_mode="Markdown")
+        await message.reply("✓", parse_mode="Markdown")
 
 # ==============================================================================
-#       12. ZAMANLAYICILAR: CUMARTESİ 12:30 Z-RAPORU + AYIN SON GÜNÜ 18:00 AYLIK RAPOR
-# ==============================================================================
-async def automated_scheduler():
-    last_weekly_date = ""
-    last_monthly_date = ""
-    last_reminder_date = ""
-
-    while True:
-        now = datetime.now()
-        today_str = now.strftime("%Y-%m-%d")
-
-        if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_weekly_date != today_str:
-            last_weekly_date = today_str
-            logging.info("Cumartesi 12:30 Z-Raporu tetiklendi...")
-            sales_data = build_weekly_report_data()
-            report_text = build_report_text(sales_data, "HAFTALIK SATIŞ Z-RAPORU (12:30)")
-            header = "📢 **HAFTALIK OTOMATİK CUMARTESİ Z-RAPORU (12:30)**\n\n"
-            await notify_both(header + report_text)
-            
-            if sales_data:
-                excel_file = generate_excel_z_report(sales_data, "Haftalik_Z_Raporu")
-                if os.path.exists(excel_file):
-                    await send_file_to_both(excel_file, "📊 **Eliar Haftalık Satış Z-Raporu (Excel Tablosu)**")
-                pdf_file = generate_pdf_z_report(sales_data, "Haftalik_Z_Raporu")
-                if pdf_file and os.path.exists(pdf_file):
-                    await send_file_to_both(pdf_file, "📑 **Eliar Haftalık Satış Z-Raporu (PDF Tablosu)**")
-
-        is_last_day_of_month = (now + timedelta(days=1)).day == 1
-        if is_last_day_of_month and now.hour == 18 and now.minute == 0 and last_monthly_date != today_str:
-            last_monthly_date = today_str
-            logging.info("Ayın Son Günü Aylık Rapor tetiklendi...")
-            month_name = now.strftime("%B %Y")
-            sales_data = build_monthly_report_data()
-            report_text = build_report_text(sales_data, f"AYLIK SATIŞ RAPORU ({month_name})")
-            header = f"📢 **{month_name.upper()} AYI RESMİ SATIŞ Z-RAPORU**\n\n"
-            await notify_both(header + report_text)
-            
-            if sales_data:
-                excel_file = generate_excel_z_report(sales_data, f"Aylik_Rapor_{now.strftime('%m_%Y')}")
-                if os.path.exists(excel_file):
-                    await send_file_to_both(excel_file, f"📊 **Eliar {month_name} Aylık Satış Raporu (Excel)**")
-                pdf_file = generate_pdf_z_report(sales_data, f"Aylik_Rapor_{now.strftime('%m_%Y')}")
-                if pdf_file and os.path.exists(pdf_file):
-                    await send_file_to_both(pdf_file, f"📑 **Eliar {month_name} Aylık Satış Raporu (PDF)**")
-
-        if now.hour == 9 and now.minute == 0 and last_reminder_date != today_str:
-            last_reminder_date = today_str
-            sales = load_sales()
-            three_days_ago = now - timedelta(days=3)
-
-            for s in sales:
-                if s.get("status") == "WAITING":
-                    try:
-                        ts = datetime.fromisoformat(s.get("timestamp", ""))
-                        if ts <= three_days_ago:
-                            days_waited = (now - ts).days
-                            session_id = s.get("id")
-                            reminder_text = (
-                                f"⏰ **BEKLEYEN TEKLİF HATIRLATMASI!**\n"
-                                f"═══════════════════════════════\n"
-                                f"🏭 **Müşteri:** `{s.get('firm')}`\n"
-                                f"🔖 **Ref No:** `{s.get('ref_no', 'YOK')}`\n"
-                                f"🕒 Bu teklif **{days_waited} gündür** beklemede.\n"
-                                f"Müşteri arandı mı, karar netleşti mi?"
-                            )
-                            kb = InlineKeyboardMarkup(inline_keyboard=[
-                                [InlineKeyboardButton(text="🟢 Şimdi Onaylandı", callback_data=f"q_appr:{session_id}")],
-                                [InlineKeyboardButton(text="🔴 İptal Et", callback_data=f"q_rej:{session_id}")]
-                            ])
-                            await notify_both(reminder_text, reply_markup=kb)
-                    except Exception:
-                        pass
-
-        await asyncio.sleep(25)
-
-# ==============================================================================
-#             13. RENDER İÇİN SAHTE WEB SUNUCUSU (PORT BINDING)
+#             RENDER İÇİN SAHTE WEB SUNUCUSU (PORT BINDING)
 # ==============================================================================
 async def handle(request):
-    return web.Response(text="Eliar Bot 7/24 Aktif ve Calisiyor!")
+    return web.Response(text="Eliar Bot 7/24 Aktif ve Çalışıyor!")
 
 async def start_dummy_server():
     app = web.Application()
     app.router.add_get('/', handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    
-    # Render'ın atadığı PORT'u okuyoruz, bulamazsa varsayılan 8080
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     logging.info(f"Render web portu açıldı: {port}")
 
-# ==============================================================================
-#                               ANA ÇALIŞTIRICI
-# ==============================================================================
 async def main():
     await setup_bot_commands()
-    
-    # 1. Render için Web Sunucusunu Arka Planda Başlatıyoruz
     await start_dummy_server()
-    
-    # 2. Rapor Zamanlayıcıyı Başlatıyoruz
-    asyncio.create_task(automated_scheduler())
-    
-    print("=" * 60)
     print("🚀 Eliar Canlı Santral Başlatıldı!")
-    print(f"• Ömer ID: {OMER_CHAT_ID}")
-    print(f"• Kamil ID: {KAMIL_CHAT_ID}")
-    print(f"• WebApp: {WEBAPP_URL}")
-    print("• Rapor Formatı: Excel (.xlsx) & PDF (.pdf) Seçmeli")
-    print("• Haftalık Z-Raporu: CUMARTESİ 12:30")
-    print("• Aylık Z-Raporu: AYIN SON GÜNÜ 18:00")
-    print("=" * 60)
-    
-    # 3. Telegram Botunu Başlatıyoruz
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

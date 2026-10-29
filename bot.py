@@ -47,9 +47,9 @@ ai_client = None
 if HAS_GENAI and GEMINI_API_KEY:
     try:
         ai_client = genai.Client(api_key=GEMINI_API_KEY)
-        logging.info("✅ Google GenAI istemcisi başarıyla bağlandı.")
+        logging.info("✅ Google GenAI istemcisi bağlandı.")
     except Exception as e:
-        logging.warning(f"⚠️ Gemini bağlantı uyarısı: {e}")
+        logging.warning(f"⚠️ Gemini uyarısı: {e}")
 
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
@@ -267,6 +267,7 @@ INITIAL_REAL_SALES = [
     {"id": "SL-29", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "21.10.2026", "timestamp": "2026-10-21", "status": "APPROVED", "items": [{"code": "90879", "name": "DST CEKVALF O-RINGI", "qty": 2}, {"code": "90881", "name": "DST CEKVALF YAYI", "qty": 2}, {"code": "91284", "name": "BONESSI VALF:P00112200", "qty": 2}]}
 ]
 
+# FSM DURUMLARI (YENİ AKIŞ İÇİN waiting_origin_choice EKLENDİ)
 class ClientHistoryState(StatesGroup):
     waiting_client_name = State()
 
@@ -276,6 +277,7 @@ class CustomReportState(StatesGroup):
 class QuoteBuilderState(StatesGroup):
     waiting_firm = State()
     waiting_item_query = State()
+    waiting_origin_choice = State() # UZ Depo mu, TR mi?
     waiting_custom_tr = State()
     waiting_qty = State()
     confirm_more = State()
@@ -423,7 +425,7 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
         '  ]\n'
         "}\n\n"
         "Kurallar:\n"
-        "- Müşteri firma adını bul (Örn: ZELAL TEKSTIL, TERRY JAR, ASAKA TEKSTIL vb.). Eğer satıcı Eliar ise teklif verilen muhatap firmayı al.\n"
+        "- Müşteri firma adını bul (Örn: ZELAL TEKSTIL, TERRY JAR, ASAKA TEKSTIL vb.).\n"
         "- Her bir ürün kaleminin kodunu (varsa), adını, adedini (tam sayı) ve fiyatını çıkar.\n"
         "- Para birimini ve genel toplamı bul."
     )
@@ -690,51 +692,8 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n"
         f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91463</code>, <code>90880</code>)\n"
         f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>adaptör</code>, <code>diyafram</code>)\n"
-        f"• Katalogda/stokta yoksa aşağıdaki <b>Eliar TR</b> butonuna tıklayın:",
+        f"• Parça yerel depoda yoksa doğrudan aşağıdaki <b>Eliar TR</b> butonuna basın:",
         reply_markup=kb,
-        parse_mode="HTML"
-    )
-
-@dp.callback_query(F.data == "qb_custom_tr")
-async def on_quote_custom_tr_start(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state(QuoteBuilderState.waiting_custom_tr)
-    await callback.message.edit_text(
-        "🇹🇷 <b>Eliar TR (Türkiye Deposu) İçin Parça Ekleme</b>\n\n"
-        "Lütfen parçanın <b>ismini</b> ve biliyorsanız <b>kodunu</b> yazın:\n\n"
-        "<i>Örnek:</i> <code>91999 - Dozaj Pompası Diyaframı</code>\n"
-        "<i>Veya:</i> <code>Sıcaklık Transmiteri 4-20mA</code>",
-        parse_mode="HTML"
-    )
-    await callback.answer()
-
-@dp.message(QuoteBuilderState.waiting_custom_tr)
-async def process_quote_custom_tr(message: types.Message, state: FSMContext):
-    text = message.text.strip()
-    if not text:
-        await message.answer("⚠️ Lütfen geçerli bir parça bilgisi yazın.")
-        return
-
-    parts = re.split(r"[-–—:]", text, maxsplit=1)
-    if len(parts) == 2 and (parts[0].strip().isalnum() or len(parts[0].strip()) <= 10):
-        code = parts[0].strip().upper()
-        name = f"{parts[1].strip()} (Eliar TR)"
-    else:
-        if text.replace(" ", "").isalnum() and len(text) <= 8 and any(c.isdigit() for c in text):
-            code = text.upper()
-            name = f"Yedek Parça [{code}] (Eliar TR)"
-        else:
-            code = "TR-STOK"
-            name = f"{text} (Eliar TR)"
-
-    selected_part = {"code": code, "name": name, "qty": 0, "is_tr": True}
-    await state.update_data(selected_part=selected_part)
-    await state.set_state(QuoteBuilderState.waiting_qty)
-
-    await message.answer(
-        f"🎯 <b>Eliar TR Parçası Eklendi:</b>\n"
-        f"• Kod: <code>[{code}]</code>\n"
-        f"• Tanım: <b>{html.escape(name)}</b>\n\n"
-        f"🔢 Kaç <b>adet</b> teklif istenecek?",
         parse_mode="HTML"
     )
 
@@ -746,6 +705,38 @@ async def cb_send_catalog_in_quote(callback: types.CallbackQuery):
     else:
         await callback.answer("Katalog dosyası bulunamadı.", show_alert=True)
     await callback.answer()
+
+# PARÇA ARAMA İŞLEMCİSİ (YENİ İKİ AŞAMALI MANTIK)
+@dp.message(QuoteBuilderState.waiting_item_query)
+async def process_quote_search(message: types.Message, state: FSMContext):
+    query = message.text.strip()
+    matches = find_best_matches(query)
+
+    # 1. DURUM: PARÇA ELİMİZDE / KATALOGDA YOKSA
+    if not matches:
+        await state.update_data(pending_query=query)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🇹🇷 Evet, Eliar TR'den İstenecek", callback_data="qb_confirm_tr_direct")],
+            [InlineKeyboardButton(text="🔍 Tekrar Ara", callback_data="qb_retry_search")]
+        ])
+        await message.answer(
+            f"⚠️ <code>{html.escape(query)}</code> yerel depomuzda veya katalogda bulunamadı.\n\n"
+            f"🇹🇷 <b>Bu parça Eliar Türkiye (TR) deposundan mı istenecek?</b>",
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+        return
+
+    top_part, score = matches[0]
+    # Doğrudan tam eşleşme varsa kaynağı sor
+    if normalize_tr(query) == normalize_tr(top_part['code']) or score >= 0.95:
+        await prompt_part_origin(message, top_part, state)
+        return
+
+    # Birden fazla eşleşme varsa listelet
+    await state.update_data(search_matches=matches, search_query=query)
+    text, kb = render_search_results_page(matches, 0, query)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 def render_search_results_page(matches, page_idx, query):
     page_size = 5
@@ -770,42 +761,6 @@ def render_search_results_page(matches, page_idx, query):
     text = f"🔍 <b>Arama:</b> <code>{html.escape(query)}</code> (Bulunan: {len(matches)} | Sayfa: {page_idx + 1}/{total_pages})\nSeçmek istediğiniz parçaya tıklayın:"
     return text, InlineKeyboardMarkup(inline_keyboard=buttons)
 
-@dp.message(QuoteBuilderState.waiting_item_query)
-async def process_quote_search(message: types.Message, state: FSMContext):
-    query = message.text.strip()
-    matches = find_best_matches(query)
-
-    if not matches:
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🇹🇷 Eliar TR'den İstenecek (Manuel Ekle)", callback_data="qb_custom_tr")],
-            [InlineKeyboardButton(text="📖 Kataloğu Gönder", callback_data="qb_get_catalog")]
-        ])
-        await message.answer(
-            f"⚠️ <code>{html.escape(query)}</code> yerel depoda veya katalogda bulunamadı.\n\n"
-            f"Bu parçayı doğrudan <b>Eliar Türkiye (TR)</b> deposundan istemek için aşağıdaki butona tıklayın:",
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-        return
-
-    top_part, score = matches[0]
-    if normalize_tr(query) == normalize_tr(top_part['code']) or score >= 0.95:
-        await state.update_data(selected_part=top_part)
-        await state.set_state(QuoteBuilderState.waiting_qty)
-
-        img_bytes = extract_part_image_from_pdf(top_part["code"], top_part.get("name", ""))
-        if img_bytes:
-            photo = BufferedInputFile(img_bytes, filename=f"{top_part['code']}.png")
-            await message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{top_part['code']}]</code> — {html.escape(top_part['name'])}", parse_mode="HTML")
-
-        stock_text = f"Depo: {top_part.get('qty', 0)} ADT" if top_part.get('qty', 0) > 0 else "Stokta Yok (0 ADT)"
-        await message.answer(f"🎯 <b>Seçilen:</b> <code>[{top_part['code']}]</code> {html.escape(top_part['name'])}\n📊 Durum: <b>{stock_text}</b>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
-        return
-
-    await state.update_data(search_matches=matches, search_query=query)
-    text, kb = render_search_results_page(matches, 0, query)
-    await message.answer(text, reply_markup=kb, parse_mode="HTML")
-
 @dp.callback_query(F.data.startswith("qbpage:"))
 async def on_quote_page_navigate(callback: types.CallbackQuery, state: FSMContext):
     page_idx = int(callback.data.split(":")[1])
@@ -820,6 +775,37 @@ async def on_quote_retry(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text("🔍 Lütfen parça ismini veya kodunu tekrar yazın:")
     await callback.answer()
 
+# 2. DURUM: PARÇA SEÇİLDİĞİNDE KAYNAK SORMA (ÖZBEKİSTAN MI, TR Mİ?)
+async def prompt_part_origin(target, part: dict, state: FSMContext):
+    await state.update_data(selected_part=part)
+    await state.set_state(QuoteBuilderState.waiting_origin_choice)
+
+    # Varsa katalog görselini gönder
+    img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
+    if img_bytes:
+        photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
+        if isinstance(target, types.CallbackQuery):
+            await target.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
+        else:
+            await target.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
+
+    stock_text = f"Elips Depo: {part.get('qty', 0)} ADT" if part.get('qty', 0) > 0 else "Elips Depoda Yok (0 ADT)"
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🇺🇿 Elips Özbekistan Depodan", callback_data="qborigin:UZ")],
+        [InlineKeyboardButton(text="🇹🇷 Eliar Türkiye (TR) Depodan", callback_data="qborigin:TR")]
+    ])
+
+    msg_text = (
+        f"🎯 <b>Seçilen Parça:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n"
+        f"📊 {stock_text}\n\n"
+        f"❓ <b>Bu parça nereden tedarik edilip müşteriye teklif edilecek?</b>"
+    )
+    if isinstance(target, types.CallbackQuery):
+        await target.message.answer(msg_text, reply_markup=kb, parse_mode="HTML")
+    else:
+        await target.answer(msg_text, reply_markup=kb, parse_mode="HTML")
+
 @dp.callback_query(F.data.startswith("qbsel:"))
 async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMContext):
     code = callback.data.split(":")[1]
@@ -828,18 +814,92 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     if not part:
         await callback.answer("Parça bulunamadı.", show_alert=True)
         return
+    await prompt_part_origin(callback, part, state)
+    await callback.answer()
 
+# TEDARİK KAYNAĞI SEÇİLDİĞİNDE (UZ veya TR)
+@dp.callback_query(F.data.startswith("qborigin:"))
+async def on_origin_selected(callback: types.CallbackQuery, state: FSMContext):
+    origin_type = callback.data.split(":")[1]
+    data = await state.get_data()
+    part = data.get("selected_part", {})
+
+    origin_label = "Elips Özbekistan Depo" if origin_type == "UZ" else "Eliar TR"
+    part["origin"] = origin_label
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_qty)
 
-    img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
-    if img_bytes:
-        photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
-        await callback.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
-
-    stock_text = f"Depo: {part.get('qty', 0)} ADT" if part.get('qty', 0) > 0 else "Stokta Yok (0 ADT)"
-    await callback.message.answer(f"🎯 <b>Seçilen:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n📊 Durum: <b>{stock_text}</b>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
+    await callback.message.edit_text(
+        f"📍 <b>Tedarik Kaynağı:</b> <b>{origin_label}</b>\n"
+        f"⚙️ <code>[{part.get('code')}]</code> {html.escape(part.get('name'))}\n\n"
+        f"🔢 Kaç <b>adet</b> teklif istenecek?",
+        parse_mode="HTML"
+    )
     await callback.answer()
+
+# BULUNAMAYAN PARÇAYI DİREKT TR OLARAK ONAYLAMA
+@dp.callback_query(F.data == "qb_confirm_tr_direct")
+async def on_confirm_tr_direct(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    q_text = data.get("pending_query", "Yedek Parça")
+
+    part = {
+        "code": "TR-STOK",
+        "name": q_text,
+        "qty": 0,
+        "origin": "Eliar TR"
+    }
+    await state.update_data(selected_part=part)
+    await state.set_state(QuoteBuilderState.waiting_qty)
+
+    await callback.message.edit_text(
+        f"🇹🇷 <b>Eliar TR Parçası:</b> <code>{html.escape(q_text)}</code>\n\n"
+        f"🔢 Kaç <b>adet</b> teklif istenecek?",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+# TR'DEN MANUEL PARÇA YAZMA
+@dp.callback_query(F.data == "qb_custom_tr")
+async def on_quote_custom_tr_start(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(QuoteBuilderState.waiting_custom_tr)
+    await callback.message.edit_text(
+        "🇹🇷 <b>Eliar TR (Türkiye Deposu) İçin Parça Ekleme</b>\n\n"
+        "Lütfen parçanın <b>ismini</b> ve biliyorsanız <b>kodunu</b> yazın:\n\n"
+        "<i>Örnek:</i> <code>91999 - Dozaj Pompası Diyaframı</code>\n"
+        "<i>Veya:</i> <code>Sıcaklık Transmiteri 4-20mA</code>",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.message(QuoteBuilderState.waiting_custom_tr)
+async def process_quote_custom_tr(message: types.Message, state: FSMContext):
+    text = message.text.strip()
+    if not text:
+        await message.answer("⚠️ Lütfen geçerli bir parça bilgisi yazın.")
+        return
+
+    parts = re.split(r"[-–—:]", text, maxsplit=1)
+    if len(parts) == 2 and (parts[0].strip().isalnum() or len(parts[0].strip()) <= 10):
+        code = parts[0].strip().upper()
+        name = parts[1].strip()
+    else:
+        if text.replace(" ", "").isalnum() and len(text) <= 8 and any(c.isdigit() for c in text):
+            code = text.upper()
+            name = f"Yedek Parça [{code}]"
+        else:
+            code = "TR-STOK"
+            name = text
+
+    selected_part = {"code": code, "name": name, "qty": 0, "origin": "Eliar TR"}
+    await state.update_data(selected_part=selected_part)
+    await state.set_state(QuoteBuilderState.waiting_qty)
+
+    await message.answer(
+        f"🎯 <b>Eliar TR Parçası:</b> <code>[{code}]</code> {html.escape(name)}\n\n"
+        f"🔢 Kaç <b>adet</b> teklif istenecek?",
+        parse_mode="HTML"
+    )
 
 @dp.message(QuoteBuilderState.waiting_qty)
 async def process_quote_quantity(message: types.Message, state: FSMContext):
@@ -851,18 +911,29 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
         return
 
     data = await state.get_data()
-    part = data.get("selected_part")
+    part = data.get("selected_part", {})
     items = data.get("quote_items", [])
-    items.append({"code": part["code"], "name": part["name"], "qty": qty})
+
+    origin = part.get("origin", "Elips Özbekistan Depo")
+    items.append({
+        "code": part.get("code", "KODSUZ"),
+        "name": part.get("name", "Ürün"),
+        "origin": origin,
+        "qty": qty
+    })
     await state.update_data(quote_items=items)
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Yerel Depodan Ekle", callback_data="qb_more_local"),
+        [InlineKeyboardButton(text="➕ Başka Parça Ekle", callback_data="qb_more_local"),
          InlineKeyboardButton(text="🇹🇷 Eliar TR'den Ekle", callback_data="qb_custom_tr")],
         [InlineKeyboardButton(text="🏁 Teklifi Bitir", callback_data="qb_done")]
     ])
     await state.set_state(QuoteBuilderState.confirm_more)
-    await message.answer(f"✅ <b>{qty} Adet</b> <code>[{part['code']}]</code> eklendi!\nNe yapmak istersiniz?", reply_markup=kb, parse_mode="HTML")
+    await message.answer(
+        f"✅ <b>{qty} Adet</b> <code>[{part.get('code')}]</code> ({origin}) eklendi!\nNe yapmak istersiniz?",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
 
 @dp.callback_query(F.data == "qb_more_local")
 async def on_quote_add_another_local(callback: types.CallbackQuery, state: FSMContext):
@@ -886,7 +957,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         f"{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
     )
     for itm in items:
-        formatted_quote += f"• {itm['code']} - {itm['name']} - {itm['qty']} Adet\n"
+        formatted_quote += f"• {itm['code']} - {itm['name']} ({itm.get('origin', 'Depo')}) - {itm['qty']} Adet\n"
     formatted_quote += "\nİyi çalışmalar."
 
     quotes = load_quotes()
@@ -911,7 +982,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         f"👤 <b>Hazırlayan:</b> {sender_name}\n"
         f"🏢 <b>Firma:</b> {firm}\n"
         f"📦 <b>Ürünler:</b>\n" +
-        "\n".join([f"• [{i['code']}] {i['name']} ({i['qty']} Adet)" for i in items])
+        "\n".join([f"• [{i['code']}] {i['name']} ({i.get('origin')}) - {i['qty']} Adet" for i in items])
     )
     await notify_both(notify_text)
     await state.clear()
@@ -1139,7 +1210,7 @@ async def on_quote_view_details(callback: types.CallbackQuery):
         "📦 <b>Parçalar:</b>"
     ]
     for idx, itm in enumerate(q.get("items", []), 1):
-        lines.append(f"{idx}. <code>[{itm.get('code')}]</code> {itm.get('name')} — {itm.get('qty')} Adet")
+        lines.append(f"{idx}. <code>[{itm.get('code')}]</code> {itm.get('name')} ({itm.get('origin', 'Depo')}) — {itm.get('qty')} Adet")
 
     buttons = [
         [InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),

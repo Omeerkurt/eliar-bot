@@ -48,9 +48,9 @@ ai_client = None
 if HAS_GENAI and GEMINI_API_KEY:
     try:
         ai_client = genai.Client(api_key=GEMINI_API_KEY)
-        logging.info("✅ Google GenAI (Gemini) istemcisi başarıyla bağlandı.")
+        logging.info("✅ Google GenAI (Gemini) istemcisi bağlandı.")
     except Exception as e:
-        logging.warning(f"⚠️ Gemini bağlantı uyarısı: {e}")
+        logging.warning(f"⚠️ Gemini uyarısı: {e}")
 
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
@@ -68,15 +68,15 @@ QUOTES_FILE = "submitted_quotes.json"
 PDF_STORAGE_DIR = "stored_quotes_pdf"
 os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
-# ----------------- GERÇEK VE %100 DOĞRULANMIŞ DEPO STOK LİSTESİ -----------------
+# ----------------- GERÇEK VE %100 DOĞRULANMIŞ ELİPS DEPO ENVANTERİ -----------------
 REAL_WAREHOUSE_STOCKS = [
-    # KONTROL & ELEKTRONİK MODÜLLERİ
+    # KONTROL & ELEKTRONİK
     {"code": "Pd320", "name": "Pd320 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "PD330", "name": "PD330 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "Aim8-A", "name": "Aim8-A Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "Aim8-B", "name": "Aim8-B Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "Dim32", "name": "Dim32 Dijital Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "Dom16-PLC", "name": "Dom16-PLC Dijital Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "Dom16-PLC", "name": "Dom16-PLC Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
     {"code": "P44", "name": "P44 Panel Kartı", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "Pd300", "name": "Pd300 Kontrol Cihazı", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "Pd340", "name": "Pd340 Kontrol Cihazı", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
@@ -98,7 +98,7 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "T7700", "name": "T7700 Cihazı", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "P43", "name": "P43 Panel Kartı", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "AOM8", "name": "AOM8 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 7, "loc": "ELIPS-DEPO"},
-    {"code": "T7701 EX G", "name": "T7701 EX G Kontrol Cihazı", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "T7701 EX G", "name": "T7701 EX G Cihazı", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "T7RACK 6 PLC", "name": "T7RACK 6 PLC Ünitesi", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "T7RACK 10 PLC", "name": "T7RACK 10 PLC Ünitesi", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-POWER 30", "name": "T7PAC-POWER 30 Güç Kaynağı", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
@@ -107,44 +107,44 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "T7PAC-DOM32V5", "name": "T7PAC-DOM32V5 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-DIM16V5", "name": "T7PAC-DIM16V5 Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-AIO88SV1", "name": "T7PAC-AIO88SV1 Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "T7PAC-AI8SV1", "name": "T7PAC-AI8SV1 Analog Giriş", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "T7PAC-AO8SV1", "name": "T7PAC-AO8SV1 Analog Çıkış", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "PANELSET-T7701 ex", "name": "PANELSET-T7701 ex Ön Panel", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "PANELSET-T7700", "name": "PANELSET-T7700 Ön Panel", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AI8SV1", "name": "T7PAC-AI8SV1 Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AO8SV1", "name": "T7PAC-AO8SV1 Analog Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "PANELSET-T7701 ex", "name": "PANELSET-T7701 ex Ön Panel Seti", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "PANELSET-T7700", "name": "PANELSET-T7700 Ön Panel Seti", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-T7CPURIO", "name": "T7PAC-T7CPURIO İşlemci Modülü", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-DOM16V5", "name": "T7PAC-DOM16V5 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "40025", "name": "PLC CPU: DVP12SA211R: 8DI 4DO", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "SP-01", "name": "Saha panosu (SPU su yok)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "RA032DA", "name": "RA032DA09036000 aktuator", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
 
-    # MEKATRONİK, VANA, SENSÖR VE DİĞER PARÇALAR
+    # MEKATRONİK & PARÇALAR
     {"code": "1013", "name": "Vana TORK (ko'k) 3/4\" 3 yollu + aktuator", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "1015", "name": "SLD Kanal Vanası Full 3/4\" TORK 2 yollu + aktuatorlu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "1015", "name": "SLD Kanal Vanası Full 3/4\" TORK 2 yollu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "5022", "name": "Salmastra (Geylani ile geldi)", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "30010", "name": "EBARA 15MM SIL/SIL/VITON SALMASTRA", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "30076", "name": "SANTOPRENE DIAPHRAGM POMKAR PK10", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "40597", "name": "BES005M BALLUFF Sensör", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "40634", "name": "BES0057: Balluff M12MI-NSC40B-BV03", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "40647", "name": "Smc CJPB15-10H6 Tek Etkili Silindir", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "41300", "name": "RD96 - MU CAMBAZ PISTONU POLIETILEN (YESIL) TAKOZ", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41300", "name": "RD96 - MU CAMBAZ PISTONU POLIETILEN (YESIL)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "41316", "name": "Lab120 encoder", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-    {"code": "41396", "name": "12'li Hareketli Kablo (X3-X4 Pistonu Valf Kablosu)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41396", "name": "12'li Hareketli Kablo (X3-X4 Pistonu)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "42184", "name": "PIPETLEME SIRINGA UCU", "cat": "MEKATRONIK", "qty": 200, "loc": "ELIPS-DEPO"},
     {"code": "50014", "name": "SUSTURUCU: AN15-02: 1/4\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "50018", "name": "VALF: SY5140-5YO-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "50090", "name": "Tork çift etkili aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50138", "name": "PNOMATIK RAKOR: KQ2L04-M5A: M5-4MM DIRSEK", "cat": "MEKATRONIK", "qty": 11, "loc": "ELIPS-DEPO"},
-    {"code": "50156", "name": "T RAKOR: KQ2T06-22A: 6MM", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "50227", "name": "KISICILI RAKOR: AS2201F-01-04SA: 1/8\"-4MM DIRSEK", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50138", "name": "PNOMATIK RAKOR: KQ2L04-M5A 4MM DIRSEK", "cat": "MEKATRONIK", "qty": 11, "loc": "ELIPS-DEPO"},
+    {"code": "50156", "name": "T RAKOR: KQ2T06-22A 6MM", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "50227", "name": "KISICILI RAKOR: AS2201F-01-04SA 1/8\"-4MM", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "50238", "name": "SUSTURUCU: AN 120-M5 (SMC)", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "50242", "name": "KISICILI RAKOR: AS2002F-06: 6MM HAT TIPI", "cat": "MEKATRONIK", "qty": 7, "loc": "ELIPS-DEPO"},
-    {"code": "50257", "name": "TEK ETLKILI PNOMATIK SILINDIR CD75E32-80-B-XC6B", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50242", "name": "KISICILI RAKOR: AS2002F-06 6MM HAT TIPI", "cat": "MEKATRONIK", "qty": 7, "loc": "ELIPS-DEPO"},
+    {"code": "50257", "name": "TEK ETLKILI PNOMATIK SILINDIR CD75E32", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "50258", "name": "SILINDIR CD85N16-100-B (SMC)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "50259", "name": "SILINDIR CD85N16-200-B (SMC)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "50260", "name": "PISTON CD85N16-50-B", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "50261", "name": "PISTON CD85N16-80-B", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "50269", "name": "Manifold: SS3Y1-S41-02-M5-Q: 2'li Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50270", "name": "Manifold: SS3Y1-S41-04-M5-Q: 4'lü Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50269", "name": "Manifold: SS3Y1-S41-02-M5-Q 2'li", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50270", "name": "Manifold: SS3Y1-S41-04-M5-Q 4'lü", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "50287", "name": "VALF: SY114-5LOU-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "50289", "name": "VALF: SY3220-5LOU-M5-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "50291", "name": "VALF: SYJ3143-5LOU-Q", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
@@ -152,9 +152,9 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "50293", "name": "VALF: SYJ3243-5LOU-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "50294", "name": "VALF: SYJ7120-5DZ-01F-Q", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "50295", "name": "VALF: SYJ7220-5DZ-01F-Q", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "52156", "name": "PNOMATIK T RAKOR: KQ2T06-00A: 6MM", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "52156", "name": "PNOMATIK T RAKOR: KQ2T06-00A 6MM", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "54626", "name": "A03/0-24VDC B00123525: 5W 22mm", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "54654", "name": "LOP POMPA FILTRE ORINGI 30*3 MM EPDM", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "54654", "name": "LOP POMPA FILTRE ORINGI 30*3 MM", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
     {"code": "90416", "name": "SOLENOID VALF: 00125317 24VDC", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "90501", "name": "SMC C76-32PS PISTON KECESI", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "90715", "name": "REGULATOR: AR10-M5H: 0-8 BAR", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
@@ -177,7 +177,7 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "91037", "name": "Omal küresel vana conta tamir takımı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "91043", "name": "VALF KABLOSU", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "91045", "name": "SMC KURESEL MAFSAL: KJ6D M6*1", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "91064", "name": "PNOMATIK RAKOR: KQ2H04-M5A: 4MM DUZ", "cat": "MEKATRONIK", "qty": 13, "loc": "ELIPS-DEPO"},
+    {"code": "91064", "name": "PNOMATIK RAKOR: KQ2H04-M5A 4MM DUZ", "cat": "MEKATRONIK", "qty": 13, "loc": "ELIPS-DEPO"},
     {"code": "91071", "name": "1/8\"-4MM DIRSEK RAKOR KQ2L04-01NS", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "91074", "name": "PNOMATIK RAKOR: KQ2L6M5N 6MM DIRSEK", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
     {"code": "91086", "name": "PNOMATIK T RAKOR: KQ2T04-M5A 4MM", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
@@ -210,7 +210,7 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "90567", "name": "66 Mm Teflon Takviyeli Diyafram", "cat": "MEKATRONIK", "qty": 9, "loc": "ELIPS-DEPO"},
     {"code": "90620", "name": "PH Sensörü: SPH-1-DJ-6M Ph Sensör - 6mt Kablosu", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
 
-    # KATALOGDAKİ VE ARAMALARDA ÇIKMASI İÇİN TÜM DİĞER KODLAR (MİKTARI: 0 ADT)
+    # KATALOG PARÇALARI
     {"code": "91410", "name": "Wat 3 faz Motor (Q2E112M6C) 2,2 kW 3 HP", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "91411", "name": "WAT Motor Ayağı (Q2E112M6C)", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "41436", "name": "Rd96 SLR1-40 Pompa Çıkış Bağlantı Rakor ve Dirsekleri", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
@@ -241,14 +241,12 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "41405", "name": "RD96-MU33 Paslanmaz Çelik Tabla", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"}
 ]
 
-# ----------------- GERÇEK GEÇMİŞ SATIŞLAR LİSTESİ -----------------
 INITIAL_REAL_SALES = [
-    # Parça Satışları
     {"id": "SL-1", "firm": "INDIGO", "ref_no": "SATIS", "date": "17.03.2025", "timestamp": "2025-03-17", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 5}]},
     {"id": "SL-2", "firm": "WBM ANDIJON", "ref_no": "GARANTI", "date": "02.06.2025", "timestamp": "2025-06-02", "status": "APPROVED", "items": [{"code": "90840", "name": "PISTON SENSORU:DC73L", "qty": 1}]},
     {"id": "SL-3", "firm": "SAFF TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90484", "name": "3/4\" KIMYASAL VANA", "qty": 3}]},
     {"id": "SL-4", "firm": "BEST COLOR", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "50289", "name": "VALF:SY3220-5LOU-M5-Q", "qty": 1}]},
-    {"id": "SL-5", "firm": "CHUST TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90620", "name": "PH SENSORU: SPH-1-S-6 PH SENSOR", "qty": 2}]},
+    {"id": "SL-5", "firm": "CHUST TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90620", "name": "PH SENSORU", "qty": 2}]},
     {"id": "SL-6", "firm": "PARVOZ HUMO (HAJJ TEKSTIL)", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 6}]},
     {"id": "SL-7", "firm": "SOF MEGA TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "91332", "name": "FESTO BASINC ANAHTARI", "qty": 1}]},
     {"id": "SL-8", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "07.07.2025", "timestamp": "2025-07-07", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 2}]},
@@ -272,37 +270,7 @@ INITIAL_REAL_SALES = [
     {"id": "SL-26", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "06.07.2026", "timestamp": "2026-07-06", "status": "APPROVED", "items": [{"code": "90840", "name": "PISTON SENSORU:DC73L", "qty": 2}]},
     {"id": "SL-27", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "30.09.2026", "timestamp": "2026-09-30", "status": "APPROVED", "items": [{"code": "50018", "name": "VALF:SY5140-5YO-Q", "qty": 3}]},
     {"id": "SL-28", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "21.10.2026", "timestamp": "2026-10-21", "status": "APPROVED", "items": [{"code": "91594", "name": "VALF:SY5240-5YO-Q", "qty": 3}]},
-    {"id": "SL-29", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "21.10.2026", "timestamp": "2026-10-21", "status": "APPROVED", "items": [{"code": "90879", "name": "DST CEKVALF O-RINGI", "qty": 2}, {"code": "90881", "name": "DST CEKVALF YAYI", "qty": 2}, {"code": "91284", "name": "BONESSI VALF:P00112200", "qty": 2}]},
-
-    # Cihaz & Kontrolör Satışları
-    {"id": "SL-30", "firm": "TASHTIP", "ref_no": "SATIS", "date": "18.04.2025", "timestamp": "2025-04-18", "status": "APPROVED", "items": [{"code": "Edc T7000", "name": "Edc T7000 Kontrolör", "qty": 1}]},
-    {"id": "SL-31", "firm": "GLOBAL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "Aim8-B", "name": "Aim8-B Modül", "qty": 1}]},
-    {"id": "SL-32", "firm": "ELEGANT GARANTI", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "Pd300", "name": "Pd300 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-33", "firm": "AL HAKIM", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "AOM8", "name": "AOM8 Çıkış Modülü", "qty": 1}]},
-    {"id": "SL-34", "firm": "EZOZNUR", "ref_no": "SATIS", "date": "12.06.2025", "timestamp": "2025-06-12", "status": "APPROVED", "items": [{"code": "S400", "name": "S400 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-35", "firm": "UNITEX", "ref_no": "SATIS", "date": "18.06.2025", "timestamp": "2025-06-18", "status": "APPROVED", "items": [{"code": "Edc T710", "name": "Edc T710 Kontrolör", "qty": 1}]},
-    {"id": "SL-36", "firm": "CHUST TEKSTIL", "ref_no": "SATIS", "date": "30.06.2025", "timestamp": "2025-06-30", "status": "APPROVED", "items": [{"code": "PD330", "name": "PD330 Kontrol Cihazı", "qty": 5}]},
-    {"id": "SL-37", "firm": "CHUST TEKSTIL", "ref_no": "SATIS", "date": "02.07.2025", "timestamp": "2025-07-02", "status": "APPROVED", "items": [{"code": "PD330", "name": "PD330 Kontrol Cihazı", "qty": 5}]},
-    {"id": "SL-38", "firm": "AYA GLOBAL TEKSTIL", "ref_no": "SATIS", "date": "18.07.2025", "timestamp": "2025-07-18", "status": "APPROVED", "items": [{"code": "PD330", "name": "PD330 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-39", "firm": "BARKAS TEKSTIL", "ref_no": "SATIS", "date": "23.07.2025", "timestamp": "2025-07-23", "status": "APPROVED", "items": [{"code": "Edc T7700", "name": "Edc T7700 Kontrolör", "qty": 1}]},
-    {"id": "SL-40", "firm": "SAM RAFOAT", "ref_no": "SATIS", "date": "25.07.2025", "timestamp": "2025-07-25", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-41", "firm": "EZOZNUR", "ref_no": "SATIS", "date": "23.10.2025", "timestamp": "2025-10-23", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-42", "firm": "AYA GLOBAL TEKSTIL", "ref_no": "SATIS", "date": "06.11.2025", "timestamp": "2025-11-06", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-43", "firm": "SAMRAFOAT TEKSTIL", "ref_no": "SATIS", "date": "04.12.2025", "timestamp": "2025-12-04", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 2}]},
-    {"id": "SL-44", "firm": "INDIGO TEKSTIL", "ref_no": "SATIS", "date": "17.12.2025", "timestamp": "2025-12-17", "status": "APPROVED", "items": [{"code": "Edc T712", "name": "Edc T712 Kontrolör", "qty": 1}]},
-    {"id": "SL-45", "firm": "EZOZNUR", "ref_no": "SATIS", "date": "09.01.2026", "timestamp": "2026-01-09", "status": "APPROVED", "items": [{"code": "S400", "name": "S400 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-46", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "13.01.2026", "timestamp": "2026-01-13", "status": "APPROVED", "items": [{"code": "T7701", "name": "T7701 Cihazı", "qty": 1}]},
-    {"id": "SL-47", "firm": "BIRYUZA TEKSTIL", "ref_no": "SATIS", "date": "11.02.2026", "timestamp": "2026-02-11", "status": "APPROVED", "items": [{"code": "PD350", "name": "PD350 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-48", "firm": "EZOZNUR TEKSTIL", "ref_no": "SATIS", "date": "16.02.2026", "timestamp": "2026-02-16", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-49", "firm": "EZOZNUR TEKSTIL", "ref_no": "SATIS", "date": "16.03.2026", "timestamp": "2026-03-16", "status": "APPROVED", "items": [{"code": "Dom16-PLC", "name": "Dom16-PLC Çıkış Modülü", "qty": 1}]},
-    {"id": "SL-50", "firm": "SOF MEGA TEKSTIL", "ref_no": "SATIS", "date": "17.03.2026", "timestamp": "2026-03-17", "status": "APPROVED", "items": [{"code": "Pd340", "name": "Pd340 Kontrol Cihazı", "qty": 2}]},
-    {"id": "SL-51", "firm": "ELEGANT TEKSTIL", "ref_no": "SATIS", "date": "24.03.2026", "timestamp": "2026-03-24", "status": "APPROVED", "items": [{"code": "S42", "name": "S42 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-52", "firm": "BO'STON OPTIMAL", "ref_no": "SATIS", "date": "07.05.2026", "timestamp": "2026-05-07", "status": "APPROVED", "items": [{"code": "T7PAC-DOM16V5", "name": "T7PAC-DOM16V5 Çıkış Modülü", "qty": 1}]},
-    {"id": "SL-53", "firm": "AYA GLOBAL TEKSTIL", "ref_no": "SATIS", "date": "05.06.2026", "timestamp": "2026-06-05", "status": "APPROVED", "items": [{"code": "PD350", "name": "PD350 Kontrol Cihazı", "qty": 2}]},
-    {"id": "SL-54", "firm": "CHUST TEKSTIL", "ref_no": "SATIS", "date": "24.06.2026", "timestamp": "2026-06-24", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 2}]},
-    {"id": "SL-55", "firm": "AYA GLOBAL TEKSTIL", "ref_no": "SATIS", "date": "07.07.2026", "timestamp": "2026-07-07", "status": "APPROVED", "items": [{"code": "PD300", "name": "PD300 Kontrol Cihazı", "qty": 1}]},
-    {"id": "SL-56", "firm": "MIC BRO TEKSTIL", "ref_no": "SATIS", "date": "18.09.2026", "timestamp": "2026-09-18", "status": "APPROVED", "items": [{"code": "Umf-ILETISIM20", "name": "Umf-ILETISIM20 kablosu", "qty": 1}]},
-    {"id": "SL-57", "firm": "GLOBAL ELEKTRONIK", "ref_no": "SATIS", "date": "29.09.2026", "timestamp": "2026-09-29", "status": "APPROVED", "items": [{"code": "Pd340", "name": "Pd340 Kontrol Cihazı", "qty": 1}]}
+    {"id": "SL-29", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "21.10.2026", "timestamp": "2026-10-21", "status": "APPROVED", "items": [{"code": "90879", "name": "DST CEKVALF O-RINGI", "qty": 2}, {"code": "90881", "name": "DST CEKVALF YAYI", "qty": 2}, {"code": "91284", "name": "BONESSI VALF:P00112200", "qty": 2}]}
 ]
 
 class ClientHistoryState(StatesGroup):
@@ -353,18 +321,7 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- AKILLI GÖRSEL KIRPMA & YAPAY ZEKA DİNAMİK ALAN MOTORU -----------------
-# Özel sayfa/kutu eşleştirmeleri (4'lü veya özel durumlar)
-SPECIAL_BOX_MAP = {
-    # 96469: Sayfa 4 altında başlığı var, görseli Sayfa 5 sol üsttedir
-    "96469": {"page": 5, "rect": (10, 20, 290, 280)},
-    "60002": {"page": 5, "rect": (300, 20, 580, 280)},
-    "91410": {"page": 4, "rect": (10, 50, 290, 420)},   # Uzun görsel
-    "91411": {"page": 4, "rect": (300, 50, 580, 420)},  # Uzun görsel
-    "41436": {"page": 4, "rect": (10, 470, 290, 750)},
-    "41435": {"page": 4, "rect": (300, 470, 580, 750)},
-}
-
+# ----------------- PARÇA BAŞLIĞINI & GÖRSELİNİ TAM KAPSAYAN AKILLI KIRPICI -----------------
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
@@ -374,76 +331,67 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         import fitz
         doc = fitz.open(pdf_path)
 
-        # 1. Özel Haritadan Doğrudan Alım
-        if code_str in SPECIAL_BOX_MAP:
-            s_info = SPECIAL_BOX_MAP[code_str]
-            p_idx = s_info["page"] - 1
-            if 0 <= p_idx < len(doc):
-                page = doc[p_idx]
-                r = s_info["rect"]
-                clip_rect = fitz.Rect(r[0], r[1], r[2], r[3])
-                pix = page.get_pixmap(clip=clip_rect, dpi=200)
-                return pix.tobytes("png")
-
-        # 2. Dinamik Başlık ve Görsel Alan Tespiti (Akıllı Kırpma)
         for p_idx, page in enumerate(doc):
             pw, ph = page.rect.width, page.rect.height
             rects = page.search_for(code_str) or page.search_for(f"({code_str})")
             if not rects: continue
 
-            # Başlığın konumu
-            title_rect = rects[0]
-            col = 0 if title_rect.x0 < (pw / 2) else 1
+            # Hangi sütunda olduğunu belirle
+            first_match = rects[0]
+            col = 0 if first_match.x0 < (pw / 2) else 1
 
+            # Aynı sütundaki tüm eşleşmeleri filtrele
+            col_rects = [r for r in rects if (r.x0 < pw/2 if col == 0 else r.x0 >= pw/2)]
+            min_code_y = min(r.y0 for r in col_rects)
+
+            # PARÇA BAŞLIĞINI İÇERMEK İÇİN:
+            # Yeşil/Sarı başlık çubuğu "Order Code" satırının tam 24-28 pt yukarısındadır.
+            y0 = max(10, min_code_y - 28)
+
+            # Sütun yatay sınırları
             x0 = 8 if col == 0 else (pw / 2 + 3)
             x1 = (pw / 2 - 3) if col == 0 else (pw - 8)
-            y0 = title_rect.y1 + 2
 
-            # Aynı sütunda aşağıda başka bir parça başlığı var mı?
-            other_codes = page.search_for("Order Code") or page.search_for("Eliar'dan istek kodu")
-            next_y1 = ph - 25  # Varsayılan: sayfa sonuna kadar uzun tut
+            # Alt sınırı tespit et: Aynı sütunda daha aşağıda başlayan başka bir ürün var mı?
+            all_other = page.search_for("Order Code")
+            next_y1 = ph - 15  # Sayfa sonu
 
-            for oc in other_codes:
-                # Aynı sütunda ve daha aşağıda mı?
-                is_same_col = (oc.x0 < (pw / 2)) if col == 0 else (oc.x0 >= (pw / 2))
-                if is_same_col and oc.y0 > (y0 + 40):
-                    if oc.y0 < next_y1:
-                        next_y1 = oc.y0 - 2
+            for oc in all_other:
+                is_same_col = (oc.x0 < pw/2) if col == 0 else (oc.x0 >= pw/2)
+                if is_same_col and oc.y0 > (min_code_y + 45):
+                    # Bir sonraki ürünün başlık çubuğunun hemen üstünde dur
+                    cand_y1 = oc.y0 - 28
+                    if cand_y1 < next_y1:
+                        next_y1 = cand_y1
 
             y1 = next_y1
-            # Minimum yükseklik kontrolü
-            if (y1 - y0) < 60:
-                y1 = min(ph - 15, y0 + 200)
+            if (y1 - y0) < 90:
+                y1 = min(ph - 15, y0 + 260)
 
             clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
             pix = page.get_pixmap(clip=clip_rect, dpi=200)
             img_bytes = pix.tobytes("png")
-            if img_bytes and len(img_bytes) > 2000:
+            if img_bytes and len(img_bytes) > 2500:
                 return img_bytes
 
         return None
     except Exception as e:
-        logging.error(f"Görsel çıkarma hatası: {e}")
+        logging.error(f"Kırpma motoru hatası: {e}")
         return None
 
-# ----------------- PARÇA ARAMA MOTORU (4 KADEMELİ) -----------------
+# ----------------- PARÇA ARAMA MOTORU -----------------
 def calculate_similarity(query: str, part: dict) -> float:
     q_norm = normalize_tr(query.strip())
     name_norm = normalize_tr(part["name"])
     code_norm = normalize_tr(part["code"])
 
-    # 1. Tam Kod Eşleşmesi (Doğrudan 1.0)
     if q_norm == code_norm: return 1.0
-    # 2. Kodun İçinde Geçmesi
-    if q_norm in code_norm: return 0.95
-    # 3. İsimde Aynen Geçmesi
+    if q_norm in code_norm: return 0.96
     if q_norm in name_norm: return 0.90
 
-    # 4. Kelime Bazlı Arama
     q_words, name_words = q_norm.split(), name_norm.split()
     matched_words = sum(1 for qw in q_words if any(qw in nw for nw in name_words))
     word_ratio = matched_words / len(q_words) if q_words else 0.0
-
     seq_ratio = difflib.SequenceMatcher(None, q_norm, name_norm).ratio()
     return max(word_ratio * 0.85, seq_ratio)
 
@@ -452,15 +400,15 @@ def find_best_matches(query: str):
     scored = []
     for p in stocks:
         score = calculate_similarity(query, p)
-        if score > 0.25:
-            scored.append((p, score))
+        if score > 0.25: scored.append((p, score))
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
 
+# KAMİL VE ÖMER'E AYNI ANDA İLETİŞİM
 async def notify_both(text: str, reply_markup=None):
     for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
-        except Exception as e: logging.warning(f"İletilemedi ({cid}): {e}")
+        except Exception as e: logging.warning(f"Bildirim iletilemedi ({cid}): {e}")
 
 # ----------------- GEMINI PDF OKUYUCU -----------------
 async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
@@ -471,51 +419,29 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
         for p in doc: extracted_text += p.get_text() + "\n"
     except Exception: pass
 
-    if not extracted_text:
-        try:
-            import pdfplumber
-            with pdfplumber.open(pdf_path) as pdf:
-                for page in pdf.pages:
-                    extracted_text += (page.extract_text() or "") + "\n"
-        except Exception: pass
-
     prompt = (
-        "Aşağıdaki fiyat teklifi belgesinden şu bilgileri analiz et ve YALNIZCA SAF JSON formatında döndür.\n"
-        "Kurallar:\n"
-        "- Firma adını tespit et (Örn: ZELAL TEKSTIL, INDIGO vb.).\n"
-        "- Her ürün için: kod (code), ürün adı (name), miktar (qty - tam sayı), birim fiyat (unit_price), toplam tutar (total_price)\n"
-        "- Genel toplam tutar (grand_total) ve para birimi (currency - USD, EUR vb.)\n"
-        "- Markdown kullanma, sadece saf JSON ver.\n\n"
-        f"Teklif Metni:\n{extracted_text[:4000]}"
+        "Aşağıdaki teklif metninden firma adını, tarihini, para birimini, ürünleri ve toplam tutarı çıkar.\n"
+        "Saf JSON ver (Markdown etiketi olmasın):\n"
+        '{"firm": "...", "date": "...", "currency": "EUR", "grand_total": "...", "items": [{"code": "...", "name": "...", "qty": 1, "unit_price": "...", "total_price": "..."}]}'
+        f"\n\nMetin:\n{extracted_text[:4000]}"
     )
-
     if ai_client:
         try:
             loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: ai_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt
-                )
-            )
-            raw = response.text.strip()
-            raw = re.sub(r"^```json\s*", "", raw, flags=re.MULTILINE)
+            res = await loop.run_in_executor(None, lambda: ai_client.models.generate_content(model="gemini-2.5-flash", contents=prompt))
+            raw = re.sub(r"^```json\s*", "", res.text.strip(), flags=re.MULTILINE)
             raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
             parsed = json.loads(raw)
-            if parsed.get("firm") and parsed.get("items"):
-                return parsed
-        except Exception as e:
-            logging.error(f"Gemini API parse hatası: {e}")
+            if parsed.get("firm") and parsed.get("items"): return parsed
+        except Exception as e: logging.error(f"Gemini parse hatası: {e}")
 
-    firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Firma Adı|Tesis)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
-    detected_firm = firm_match.group(1).strip() if firm_match else "Belirtilmemiş Firma"
+    firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Tesis)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
     return {
-        "firm": detected_firm[:30].upper(),
+        "firm": (firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA")[:30].upper(),
         "date": datetime.now().strftime("%d.%m.%Y"),
         "currency": "EUR",
-        "grand_total": "Belirtilmedi",
-        "items": [{"code": "GENEL", "name": "PDF Teklif Kalemleri", "qty": 1, "unit_price": "-", "total_price": "-"}]
+        "grand_total": "-",
+        "items": [{"code": "GENEL", "name": "Teklif Kalemleri", "qty": 1, "unit_price": "-", "total_price": "-"}]
     }
 
 # ----------------- RAPOR MOTORU -----------------
@@ -563,10 +489,10 @@ def generate_pdf_z_report(sales_data, title="Z_Raporu"):
         t_style = ParagraphStyle('T', parent=styles['Heading1'], fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor('#161F30'), alignment=1, spaceAfter=4)
         s_style = ParagraphStyle('S', parent=styles['Normal'], fontName="Helvetica", fontSize=8, textColor=colors.HexColor('#64748B'), alignment=1, spaceAfter=12)
         elements = [
-            Paragraph("ELIPS DEPO PARCA SATIS RAPORU", t_style),
-            Paragraph(f"DOKUM TARIHI: {datetime.now().strftime('%d.%m.%Y %H:%M')}", s_style)
+            Paragraph("ELİPS DEPO PARÇA SATIŞ RAPORU", t_style),
+            Paragraph(f"DÖKÜM TARİHİ: {datetime.now().strftime('%d.%m.%Y %H:%M')}", s_style)
         ]
-        data = [["Sira", "Tarih", "Ref No", "Musteri / Tesis", "Urun Kodu", "Urun Adi", "Adet"]]
+        data = [["Sıra", "Tarih", "Ref No", "Müşteri / Tesis", "Ürün Kodu", "Ürün Adı", "Adet"]]
         cnt, total = 1, 0
         for sale in sales_data:
             ref = str(sale.get("ref_no", "YOK"))
@@ -635,25 +561,22 @@ def get_client_history_text(firm_query: str):
         if q_norm in f_norm or ratio > 0.40:
             scored.append((s, ratio))
 
-    if not scored:
-        return f"🔍 <code>{html.escape(firm_query)}</code> için geçmiş onaylı kayıt bulunamadı."
-
+    if not scored: return f"🔍 <code>{html.escape(firm_query)}</code> için onaylı geçmiş hareket bulunamadı."
     scored.sort(key=lambda x: x[1], reverse=True)
     best_firm = scored[0][0].get("firm")
     firm_records = [s for s, _ in scored if s.get("firm") == best_firm]
 
     text = f"🏢 <b>{html.escape(best_firm)} — PARÇA GEÇMİŞİ</b>\n═══════════════════════════════\n\n"
     for item in firm_records:
-        ref_str = f" [Ref: {item.get('ref_no')}]" if item.get('ref_no') and item.get('ref_no') != 'YOK' else ""
         for itm in item.get("items", []):
-            text += f"• 📅 <code>{item.get('date', '')}</code> ➔ <b>{itm.get('qty')}x</b> <code>[{itm.get('code')}]</code> ({html.escape(itm.get('name', ''))}){ref_str}\n"
+            text += f"• 📅 <code>{item.get('date', '')}</code> ➔ <b>{itm.get('qty')}x</b> <code>[{itm.get('code')}]</code> ({html.escape(itm.get('name', ''))})\n"
     text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(firm_records)} Sevkiyat / Hareket</b>"
     return text
 
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [KeyboardButton(text="⚡ Elips Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
             [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
             [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
             [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="📂 Verilen Teklifler")],
@@ -690,7 +613,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.\n\n"
         f"• Katalog PDF: {pdf_info}\n"
         f"• Güncel Depo Kalem: {len(stocks)} Çeşit\n"
-        f"• <b>İpucu:</b> Fiyat teklifi PDF'ini direkt buraya atabilirsiniz, sistem yapay zeka ile otomatik okuyacaktır."
+        f"• <b>İpucu:</b> Fiyat teklifi PDF'ini direkt buraya gönderebilirsiniz, yapay zeka ile otomatik taranacaktır."
     )
     await message.answer(msg_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
 
@@ -718,13 +641,11 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
     await state.update_data(firm_name=firm)
     await state.set_state(QuoteBuilderState.waiting_item_query)
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📖 Parça Kataloğunu İncele (PDF)", callback_data="qb_get_catalog")]
-    ])
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📖 Parça Kataloğunu İncele (PDF)", callback_data="qb_get_catalog")]])
     await message.answer(
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n"
-        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91661</code>, <code>90880</code>, <code>96469</code>, <code>91410</code>)\n"
-        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>sürücü</code>, <code>diyafram</code>, <code>motor</code>, <code>conta</code>):",
+        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91463</code>, <code>90880</code>, <code>91410</code>)\n"
+        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>adaptör</code>, <code>diyafram</code>, <code>valf</code>):",
         reply_markup=kb,
         parse_mode="HTML"
     )
@@ -745,7 +666,6 @@ def render_search_results_page(matches, page_idx, query):
     current_items = matches[page_idx * page_size : (page_idx + 1) * page_size]
 
     buttons = [[InlineKeyboardButton(text=f"👉 [{p['code']}] {p['name'][:30]} ({p.get('qty',0)} ADT)", callback_data=f"qbsel:{p['code']}")] for p, _ in current_items]
-
     nav_row = []
     if page_idx > 0: nav_row.append(InlineKeyboardButton(text="⬅️ Önceki", callback_data=f"qbpage:{page_idx-1}"))
     if page_idx < total_pages - 1: nav_row.append(InlineKeyboardButton(text="Sonraki ➡️", callback_data=f"qbpage:{page_idx+1}"))
@@ -770,7 +690,6 @@ async def process_quote_search(message: types.Message, state: FSMContext):
         return
 
     top_part, score = matches[0]
-    # Eğer doğrudan kod yazılmışsa (örneğin 91410 veya 96469) doğrudan onu seç
     if normalize_tr(query) == normalize_tr(top_part['code']) or score >= 0.95:
         await state.update_data(selected_part=top_part)
         await state.set_state(QuoteBuilderState.waiting_qty)
@@ -808,8 +727,7 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     stocks = load_stocks()
     part = next((p for p in stocks if p["code"].lower() == code.lower()), None)
     if not part:
-        await callback.answer("Parça bulunamadı.", show_alert=True)
-        return
+        await callback.answer("Parça bulunamadı.", show_alert=True); return
 
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_qty)
@@ -817,7 +735,7 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
-        await callback.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
+        await message_photo = callback.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
 
     stock_text = f"Depo: {part.get('qty', 0)} ADT" if part.get('qty', 0) > 0 else "Stokta Yok (0 ADT)"
     await callback.message.answer(f"🎯 <b>Seçilen:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n📊 Durum: <b>{stock_text}</b>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
@@ -861,6 +779,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         await state.clear()
         return
 
+    sender_name = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
     formatted_quote = (
         f"Merhaba Nilay hanim\n\n"
         f"{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
@@ -872,12 +791,8 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     quotes = load_quotes()
     quote_id = f"TK-{int(time.time())}"
     quotes.append({
-        "id": quote_id,
-        "firm": firm,
-        "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
-        "status": "PENDING",
-        "items": items,
-        "pdf_file": None
+        "id": quote_id, "firm": firm, "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
+        "status": "PENDING", "items": items, "pdf_file": None, "creator": sender_name
     })
     save_quotes(quotes)
 
@@ -886,19 +801,242 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         f"═══════════════════════════════\n\n"
         f"{formatted_quote}\n\n"
         f"═══════════════════════════════\n"
-        f"💡 <i>Metne basılı tutarak kopyalayabilirsiniz.</i>"
+        f"💡 <i>Metne basılı tutarak Nilay Hanım'a iletebilirsiniz.</i>"
     )
     await callback.message.edit_text(text, parse_mode="HTML")
 
+    # HEM ÖMER'E HEM KAMİL'E ANINDA BİLDİRİM
     notify_text = (
-        f"📥 <b>YENİ TEKLİF HAZIRLANDI!</b>\n\n"
+        f"📥 <b>YENİ TEKLİF HAZIRLANDI!</b>\n"
+        f"👤 <b>Hazırlayan:</b> {sender_name}\n"
         f"🏢 <b>Firma:</b> {firm}\n"
         f"📦 <b>Ürünler:</b>\n" +
         "\n".join([f"• [{i['code']}] {i['name']} ({i['qty']} Adet)" for i in items])
     )
     await notify_both(notify_text)
     await state.clear()
-    await callback.answer("Teklif kaydedildi!")
+    await callback.answer("Teklif her iki tarafa iletildi!")
+
+# ----------------- PDF YÜKLEME VE TEKLİF YÖNETİMİ -----------------
+@dp.message(F.document)
+async def handle_document_upload(message: types.Message):
+    doc = message.document
+    if not doc.file_name.lower().endswith(".pdf"):
+        await message.answer("⚠️ Lütfen PDF formatında bir teklif dosyası yükleyin.")
+        return
+
+    sender_name = "Ömer" if message.from_user.id == OMER_CHAT_ID else "Kamil"
+    wait_msg = await message.answer("⏳ <i>PDF belgesi analiz ediliyor...</i>", parse_mode="HTML")
+    saved_filename = f"{int(time.time())}_{doc.file_name}"
+    save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
+    await bot.download(doc, destination=save_path)
+
+    parsed_data = await parse_quote_pdf_with_gemini(save_path)
+    firm = parsed_data.get("firm", "BİLİNMEYEN FİRMA").upper()
+    date = parsed_data.get("date", datetime.now().strftime("%d.%m.%Y"))
+    currency = parsed_data.get("currency", "EUR")
+    grand_total = parsed_data.get("grand_total", "-")
+    items = parsed_data.get("items", [])
+
+    quote_id = f"TK-{int(time.time())}"
+    quotes = load_quotes()
+    new_quote = {
+        "id": quote_id, "firm": firm, "date": date, "currency": currency,
+        "grand_total": grand_total, "status": "PENDING", "items": items, "pdf_file": save_path, "creator": sender_name
+    }
+    quotes.append(new_quote)
+    save_quotes(quotes)
+
+    lines = [f"🏢 <b>Firma:</b> {html.escape(firm)}", f"📅 <b>Tarih:</b> {date}", f"👤 <b>Yükleyen:</b> {sender_name}"]
+    lines.append("\n📦 <b>Algılanan Teklif Kalemleri:</b>")
+    for idx, itm in enumerate(items, 1):
+        lines.append(f"<b>{idx}.</b> <code>[{itm.get('code','-')}]</code> {html.escape(itm.get('name','Ürün'))} | Adet: <b>{itm.get('qty',1)}</b>")
+
+    lines.append(f"\n💰 <b>Genel Toplam:</b> <b>{grand_total} {currency}</b>\nLütfen teklifin durumunu seçin:")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
+         InlineKeyboardButton(text="❌ Reddet", callback_data=f"qstat:{quote_id}:REJECTED")],
+        [InlineKeyboardButton(text="🗑️ Teklifi Sil", callback_data=f"qdel:{quote_id}")]
+    ])
+    await wait_msg.delete()
+    await message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+
+    # Diğer kişiye haber ver
+    other_notify = f"📄 <b>Yeni Teklif PDF'i Yüklendi!</b>\n👤 Yükleyen: <b>{sender_name}</b>\n🏢 Firma: <b>{firm}</b>\n💰 Tutar: <b>{grand_total} {currency}</b>"
+    target_id = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else OMER_CHAT_ID
+    try: await bot.send_message(chat_id=target_id, text=other_notify, parse_mode="HTML")
+    except Exception: pass
+
+# ----------------- TEKLİF SİLME (TESTLER İÇİN) -----------------
+@dp.callback_query(F.data.startswith("qdel:"))
+async def on_quote_delete(callback: types.CallbackQuery):
+    quote_id = callback.data.split(":")[1]
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif zaten silinmiş veya bulunamadı.", show_alert=True)
+        return
+
+    # PDF varsa dosyasını da temizle
+    if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
+        try: os.remove(q["pdf_file"])
+        except Exception: pass
+
+    quotes = [x for x in quotes if x["id"] != quote_id]
+    save_quotes(quotes)
+
+    del_by = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
+    await callback.message.edit_text(f"🗑️ <b>{html.escape(q['firm'])}</b> teklifi başarıyla silindi.", parse_mode="HTML")
+    await callback.answer("Teklif silindi.")
+
+    # Diğerine de silindiğini bildir
+    await notify_both(f"🗑️ <b>Bir Teklif Silindi!</b>\n🏢 Firma: <code>{html.escape(q['firm'])}</code>\n👤 Silen: <b>{del_by}</b>")
+
+# ----------------- TEKLİF ONAY & STOK DÜŞÜŞÜ -----------------
+@dp.callback_query(F.data.startswith("qstat:"))
+async def on_quote_status_change(callback: types.CallbackQuery):
+    _, quote_id, new_status = callback.data.split(":")
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True); return
+
+    if new_status == "APPROVED":
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⚠️ Evet, Depo Stoğundan Düş", callback_data=f"qdeduct:{quote_id}:yes")],
+            [InlineKeyboardButton(text="❌ Hayır, Sadece Durumu Onayla", callback_data=f"qdeduct:{quote_id}:no")]
+        ])
+        await callback.message.answer(
+            f"⚠️ <b>{html.escape(q['firm'])}</b> teklifini onaylıyorsunuz.\n\n"
+            f"Bu parçalar <b>Elips Depo</b> stoğundan düşülsün mü?",
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        return
+
+    q["status"] = new_status
+    save_quotes(quotes)
+    st_text = "Reddedildi" if new_status == "REJECTED" else "Beklemede"
+    await callback.message.answer(f"ℹ️ <b>{html.escape(q['firm'])}</b> teklif durumu: <b>{st_text}</b>", parse_mode="HTML")
+    await callback.answer("Durum güncellendi.")
+
+@dp.callback_query(F.data.startswith("qdeduct:"))
+async def on_quote_deduct_confirm(callback: types.CallbackQuery):
+    _, quote_id, choice = callback.data.split(":")
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True); return
+
+    q["status"] = "APPROVED"
+    save_quotes(quotes)
+
+    action_by = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
+
+    if choice == "yes" and q.get("items"):
+        stocks = load_stocks()
+        sales = load_sales()
+        deducted_info = []
+
+        for item in q["items"]:
+            code = item.get("code", "")
+            try: qty = int(item.get("qty", 1))
+            except Exception: qty = 1
+            p = next((s for s in stocks if s["code"].lower() == code.lower()), None)
+            if not p: p = next((s for s in stocks if normalize_tr(s["name"]) in normalize_tr(item.get("name", ""))), None)
+            if p:
+                p["qty"] = max(0, p.get("qty", 0) - qty)
+                deducted_info.append(f"• <code>[{p['code']}]</code> {p['name']}: <b>-{qty} Adet</b> (Depoda Kalan: {p['qty']})")
+
+        save_stocks(stocks)
+        sales.append({
+            "id": f"SLS-{int(time.time())}", "firm": q["firm"], "ref_no": "TEKLIF-ONAY",
+            "items": q["items"], "status": "APPROVED",
+            "date": datetime.now().strftime("%d.%m.%Y"), "timestamp": datetime.now().isoformat()
+        })
+        save_sales(sales)
+
+        msg = (
+            f"📦 <b>ELİPS DEPO - STOKTAN DÜŞÜM YAPILDI!</b>\n"
+            f"👤 Onaylayan: <b>{action_by}</b>\n"
+            f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n\n" +
+            ("\n".join(deducted_info) if deducted_info else "ℹ️ Stok adedi bulunamadı.")
+        )
+        await notify_both(msg)
+        await callback.message.edit_text("✅ <b>Teklif Onaylandı ve Elips Depo Stoğundan Düşüldü!</b>", parse_mode="HTML")
+    else:
+        await callback.message.edit_text("✅ <b>Teklif Onaylandı (Stoklar değiştirilmedi).</b>", parse_mode="HTML")
+        await notify_both(f"✅ <b>Teklif Onaylandı</b>\n🏢 Firma: <b>{html.escape(q['firm'])}</b>\n👤 İşlem Yapan: <b>{action_by}</b>")
+    await callback.answer()
+
+# ----------------- BEKLEYEN VE VERİLEN TEKLİFLER LİSTESİ -----------------
+@dp.message(Command("bekleyenler"))
+@dp.message(F.text == "⏳ Bekleyen Teklifler")
+async def show_pending_quotes(message: types.Message):
+    quotes = load_quotes()
+    pending = [q for q in quotes if q.get("status") == "PENDING"]
+    if not pending:
+        await message.answer("ℹ️ Şu anda bekleyen bir teklif bulunmamaktadır.", parse_mode="HTML")
+        return
+    buttons = []
+    for q in pending[-10:]:
+        buttons.append([
+            InlineKeyboardButton(text=f"⏳ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}"),
+            InlineKeyboardButton(text="🗑️", callback_data=f"qdel:{q['id']}")
+        ])
+    await message.answer("⏳ <b>BEKLEYEN TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+@dp.message(Command("verilenler"))
+@dp.message(F.text == "📂 Verilen Teklifler")
+async def show_submitted_quotes(message: types.Message):
+    quotes = load_quotes()
+    if not quotes:
+        await message.answer("ℹ️ Henüz kayıtlı bir teklif bulunmamaktadır.", parse_mode="HTML")
+        return
+    buttons = []
+    for q in reversed(quotes[-12:]):
+        st_icon = "🟢" if q.get("status") == "APPROVED" else ("🔴" if q.get("status") == "REJECTED" else "⏳")
+        buttons.append([
+            InlineKeyboardButton(text=f"{st_icon} {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}"),
+            InlineKeyboardButton(text="🗑️", callback_data=f"qdel:{q['id']}")
+        ])
+    await message.answer("📂 <b>VERİLEN TEKLİFLER:</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("qview:"))
+async def on_quote_view_details(callback: types.CallbackQuery):
+    quote_id = callback.data.split(":")[1]
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True); return
+
+    st_map = {"PENDING": "⏳ Beklemede", "APPROVED": "✅ Onaylandı", "REJECTED": "❌ Reddedildi"}
+    cur_st = st_map.get(q.get("status"), "Belirsiz")
+    cur = q.get("currency", "EUR")
+
+    lines = [
+        f"📄 <b>Teklif Kartı</b>",
+        f"🏢 Firma: <b>{html.escape(q['firm'])}</b>",
+        f"📅 Tarih: <code>{q.get('date')}</code>",
+        f"📊 Durum: <b>{cur_st}</b>",
+        f"💰 Toplam: <b>{q.get('grand_total', '-')} {cur}</b>\n",
+        "📦 <b>Parçalar:</b>"
+    ]
+    for idx, itm in enumerate(q.get("items", []), 1):
+        lines.append(f"{idx}. <code>[{itm.get('code')}]</code> {itm.get('name')} — {itm.get('qty')} Adet")
+
+    buttons = [
+        [InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
+         InlineKeyboardButton(text="❌ Reddet", callback_data=f"qstat:{quote_id}:REJECTED")],
+        [InlineKeyboardButton(text="🗑️ Bu Teklifi Sil", callback_data=f"qdel:{quote_id}")]
+    ]
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
+        await callback.message.answer_document(FSInputFile(q["pdf_file"]), caption="\n".join(lines), reply_markup=kb, parse_mode="HTML")
+    else:
+        await callback.message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
 
 # ----------------- PARÇA LİSTESİ -----------------
 @dp.message(Command("stok", ignore_mention=True))
@@ -915,11 +1053,10 @@ async def show_stocks(message: types.Message):
     for s in available[:15]:
         text += f"• <code>[{s['code']}]</code> {html.escape(s['name'][:35])}\n  └ Stok: <b>{s['qty']} ADT</b> | {s['loc']}\n"
     if len(available) > 15:
-        text += f"\n<i>...ve {len(available)-15} kalem ürün daha (Mini App'ten görebilirsiniz).</i>"
-
+        text += f"\n<i>...ve {len(available)-15} kalem ürün daha (Mini App'ten inceleyebilirsiniz).</i>"
     await message.answer(text, parse_mode="HTML")
 
-# ----------------- RAPOR İŞLEMLERİ -----------------
+# ----------------- RAPORLAR & TESİS GEÇMİŞİ -----------------
 @dp.message(Command("zraporu", ignore_mention=True))
 @dp.message(F.text == "📊 Z-Raporu Al")
 async def trigger_z_report_manual(message: types.Message):
@@ -947,7 +1084,7 @@ async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMConte
     now = datetime.now()
     if mode == "custom":
         await state.set_state(CustomReportState.waiting_date_range)
-        await callback.message.answer("✍️ Format: <code>GG.AA.YYYY - GG.AA.YYYY</code> (Örn: <code>01.10.2025 - 29.10.2026</code>)", parse_mode="HTML")
+        await callback.message.answer("✍️ Format: <code>GG.AA.YYYY - GG.AA.YYYY</code>", parse_mode="HTML")
         await callback.answer(); return
 
     ranges = {
@@ -1000,7 +1137,6 @@ async def handle_download_report_choice(callback: types.CallbackQuery, state: FS
         f = generate_pdf_z_report(sales, title)
         if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📑 <b>Elips Depo {title} (PDF)</b>", parse_mode="HTML")
 
-# ----------------- TESİS GEÇMİŞİ -----------------
 @dp.message(Command("gecmis", ignore_mention=True))
 async def cmd_history_query(message: types.Message):
     parts = message.text.split(maxsplit=1)
@@ -1019,191 +1155,12 @@ async def process_client_history_input(message: types.Message, state: FSMContext
     await state.clear()
     await message.answer(get_client_history_text(message.text.strip()), parse_mode="HTML")
 
-# ----------------- PDF YÜKLEME VE TEKLİF ONAYI -----------------
-@dp.message(F.document)
-async def handle_document_upload(message: types.Message):
-    doc = message.document
-    if not doc.file_name.lower().endswith(".pdf"):
-        await message.answer("⚠️ Lütfen PDF formatında bir teklif dosyası yükleyin.")
-        return
-
-    wait_msg = await message.answer("⏳ <i>PDF belgesi analiz ediliyor, parça ve fiyat bilgileri taranıyor...</i>", parse_mode="HTML")
-    saved_filename = f"{int(time.time())}_{doc.file_name}"
-    save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
-    await bot.download(doc, destination=save_path)
-
-    parsed_data = await parse_quote_pdf_with_gemini(save_path)
-    firm = parsed_data.get("firm", "BİLİNMEYEN FİRMA").upper()
-    date = parsed_data.get("date", datetime.now().strftime("%d.%m.%Y"))
-    currency = parsed_data.get("currency", "EUR")
-    grand_total = parsed_data.get("grand_total", "-")
-    items = parsed_data.get("items", [])
-
-    quote_id = f"TK-{int(time.time())}"
-    quotes = load_quotes()
-    new_quote = {
-        "id": quote_id, "firm": firm, "date": date, "currency": currency,
-        "grand_total": grand_total, "status": "PENDING", "items": items, "pdf_file": save_path
-    }
-    quotes.append(new_quote)
-    save_quotes(quotes)
-
-    lines = [f"🏢 <b>Firma:</b> {html.escape(firm)}", f"📅 <b>Tarih:</b> {date}"]
-    lines.append("\n📦 <b>Algılanan Teklif Kalemleri:</b>")
-    for idx, itm in enumerate(items, 1):
-        lines.append(f"<b>{idx}.</b> <code>[{itm.get('code','-')}]</code> {html.escape(itm.get('name','Ürün'))} | Adet: <b>{itm.get('qty',1)}</b>")
-
-    lines.append(f"\n💰 <b>Genel Toplam:</b> <b>{grand_total} {currency}</b>\nLütfen teklifin durumunu seçin:")
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
-         InlineKeyboardButton(text="❌ Reddet", callback_data=f"qstat:{quote_id}:REJECTED")],
-        [InlineKeyboardButton(text="⏳ Beklemeye Al", callback_data=f"qstat:{quote_id}:PENDING")]
-    ])
-    await wait_msg.delete()
-    await message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
-
-@dp.callback_query(F.data.startswith("qstat:"))
-async def on_quote_status_change(callback: types.CallbackQuery):
-    _, quote_id, new_status = callback.data.split(":")
-    quotes = load_quotes()
-    q = next((x for x in quotes if x["id"] == quote_id), None)
-    if not q:
-        await callback.answer("Teklif bulunamadı.", show_alert=True)
-        return
-
-    if new_status == "APPROVED":
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="⚠️ Evet, Stoktan Düş", callback_data=f"qdeduct:{quote_id}:yes")],
-            [InlineKeyboardButton(text="❌ Hayır, Sadece Durumu Onayla", callback_data=f"qdeduct:{quote_id}:no")]
-        ])
-        await callback.message.answer(
-            f"⚠️ <b>{html.escape(q['firm'])}</b> teklifini onaylıyorsunuz.\n\n"
-            f"Bu teklifteki parçalar <b>Elips Depo</b> stoğundan düşülsün mü?",
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-        await callback.answer()
-        return
-
-    q["status"] = new_status
-    save_quotes(quotes)
-    st_text = "Beklemeye Alındı" if new_status == "PENDING" else "Reddedildi"
-    await callback.message.answer(f"ℹ️ <b>{html.escape(q['firm'])}</b> teklif durumu: <b>{st_text}</b>", parse_mode="HTML")
-    await callback.answer("Durum güncellendi.")
-
-@dp.callback_query(F.data.startswith("qdeduct:"))
-async def on_quote_deduct_confirm(callback: types.CallbackQuery):
-    _, quote_id, choice = callback.data.split(":")
-    quotes = load_quotes()
-    q = next((x for x in quotes if x["id"] == quote_id), None)
-    if not q:
-        await callback.answer("Teklif bulunamadı.", show_alert=True); return
-
-    q["status"] = "APPROVED"
-    save_quotes(quotes)
-
-    if choice == "yes" and q.get("items"):
-        stocks = load_stocks()
-        sales = load_sales()
-        deducted_info = []
-
-        for item in q["items"]:
-            code = item.get("code", "")
-            try: qty = int(item.get("qty", 1))
-            except Exception: qty = 1
-            p = next((s for s in stocks if s["code"].lower() == code.lower()), None)
-            if not p:
-                p = next((s for s in stocks if normalize_tr(s["name"]) in normalize_tr(item.get("name", ""))), None)
-            if p:
-                p["qty"] = max(0, p.get("qty", 0) - qty)
-                deducted_info.append(f"• <code>[{p['code']}]</code> {p['name']}: <b>-{qty} Adet</b> (Depoda: {p['qty']})")
-
-        save_stocks(stocks)
-        sales.append({
-            "id": f"SLS-{int(time.time())}", "firm": q["firm"], "ref_no": "TEKLIF-ONAY",
-            "items": q["items"], "status": "APPROVED",
-            "date": datetime.now().strftime("%d.%m.%Y"), "timestamp": datetime.now().isoformat()
-        })
-        save_sales(sales)
-
-        msg = (
-            f"📦 <b>ELİPS DEPO - STOK DÜŞÜMÜ GERÇEKLEŞTİ!</b>\n"
-            f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n\n" +
-            ("\n".join(deducted_info) if deducted_info else "ℹ️ Stok adedi düşülemedi.")
-        )
-        await notify_both(msg)
-        await callback.message.edit_text("✅ <b>Teklif Onaylandı ve Depo Stoğundan Düşüldü!</b>", parse_mode="HTML")
-    else:
-        await callback.message.edit_text("✅ <b>Teklif Onaylandı (Stoklar değiştirilmedi).</b>", parse_mode="HTML")
-    await callback.answer()
-
-# ----------------- BEKLEYEN VE VERİLEN TEKLİFLER -----------------
-@dp.message(Command("bekleyenler"))
-@dp.message(F.text == "⏳ Bekleyen Teklifler")
-async def show_pending_quotes(message: types.Message):
-    quotes = load_quotes()
-    pending = [q for q in quotes if q.get("status") == "PENDING"]
-    if not pending:
-        await message.answer("ℹ️ Şu anda bekleyen bir teklif bulunmamaktadır.", parse_mode="HTML")
-        return
-    buttons = [[InlineKeyboardButton(text=f"⏳ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")] for q in pending[-10:]]
-    await message.answer("⏳ <b>BEKLEYEN TEKLİFLER:</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
-
-@dp.message(Command("verilenler"))
-@dp.message(F.text == "📂 Verilen Teklifler")
-async def show_submitted_quotes(message: types.Message):
-    quotes = load_quotes()
-    if not quotes:
-        await message.answer("ℹ️ Henüz kayıtlı bir teklif bulunmamaktadır.", parse_mode="HTML")
-        return
-    buttons = []
-    for q in reversed(quotes[-12:]):
-        st_icon = "🟢" if q.get("status") == "APPROVED" else ("🔴" if q.get("status") == "REJECTED" else "⏳")
-        buttons.append([InlineKeyboardButton(text=f"{st_icon} {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")])
-    await message.answer("📂 <b>VERİLEN TEKLİFLER:</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
-
-@dp.callback_query(F.data.startswith("qview:"))
-async def on_quote_view_details(callback: types.CallbackQuery):
-    quote_id = callback.data.split(":")[1]
-    quotes = load_quotes()
-    q = next((x for x in quotes if x["id"] == quote_id), None)
-    if not q:
-        await callback.answer("Teklif bulunamadı.", show_alert=True); return
-
-    st_map = {"PENDING": "⏳ Beklemede", "APPROVED": "✅ Onaylandı", "REJECTED": "❌ Reddedildi"}
-    cur_st = st_map.get(q.get("status"), "Belirsiz")
-    cur = q.get("currency", "EUR")
-
-    lines = [
-        f"📄 <b>Teklif Kartı</b>",
-        f"🏢 Firma: <b>{html.escape(q['firm'])}</b>",
-        f"📅 Tarih: <code>{q.get('date')}</code>",
-        f"📊 Durum: <b>{cur_st}</b>",
-        f"💰 Toplam: <b>{q.get('grand_total', '-')} {cur}</b>\n",
-        "📦 <b>Parçalar:</b>"
-    ]
-    for idx, itm in enumerate(q.get("items", []), 1):
-        lines.append(f"{idx}. <code>[{itm.get('code')}]</code> {itm.get('name')} — {itm.get('qty')} Adet")
-
-    buttons = [
-        [InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
-         InlineKeyboardButton(text="❌ Reddet", callback_data=f"qstat:{quote_id}:REJECTED")],
-        [InlineKeyboardButton(text="⏳ Beklemeye Al", callback_data=f"qstat:{quote_id}:PENDING")]
-    ]
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-    if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
-        await callback.message.answer_document(FSInputFile(q["pdf_file"]), caption="\n".join(lines), reply_markup=kb, parse_mode="HTML")
-    else:
-        await callback.message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
-    await callback.answer()
-
-# ----------------- WEBAPP VERİ ALICISI -----------------
+# ----------------- WEBAPP VERİ ALICISI & SOHBET KÖPRÜSÜ -----------------
 @dp.message(F.web_app_data)
 async def handle_webapp_payload(message: types.Message):
     try: p = json.loads(message.web_app_data.data)
     except Exception: return
     op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
-    ref_id = f"REF-{message.message_id}"
     dir_type = p.get("direction")
 
     if dir_type == "STOCK_CHANGE" and p.get("action") == "DECREASE":
@@ -1211,15 +1168,35 @@ async def handle_webapp_payload(message: types.Message):
         code, name, qty = p.get("code"), p.get("name"), p.get("delta", 1)
         sales = load_sales()
         sales.append({
-            "id": ref_id, "firm": dest, "ref_no": "MANUEL-ÇIKIŞ",
+            "id": f"REF-{message.message_id}", "firm": dest, "ref_no": "MANUEL-ÇIKIŞ",
             "items": [{"code": code, "name": name, "qty": qty}], "status": "APPROVED",
             "date": datetime.now().strftime("%d.%m.%Y"), "timestamp": datetime.now().isoformat()
         })
         save_sales(sales)
-        msg = f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n🏢 Firma: <code>{html.escape(dest)}</code>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📉 Adet: <b>-{qty}</b> | Kalan: <code>{p.get('current_qty', 0)} ADT</code>\n👷‍♂️ Çıkış Yapan: {op}"
+        msg = f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n🏢 Firma: <code>{html.escape(dest)}</code>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📉 Düşülen: <b>-{qty} Adet</b> (Depoda Kalan: <code>{p.get('current_qty', 0)} ADT</code>)\n👷‍♂️ Çıkış Yapan: {op}"
         await notify_both(msg)
 
-# ----------------- SOHBET KÖPRÜSÜ -----------------
+    elif dir_type == "OMER_TO_KAMIL":
+        msg = (
+            f"🔔 <b>SAHADAN YENİ TALEP GELDİ! (Ömer ➔ Kamil)</b>\n"
+            f"🏢 Firma: <b>{p.get('firm')}</b>\n"
+            f"📞 İlgili Kişi: {p.get('contact')}\n"
+            f"⚙️ Parça: <code>[{p.get('part_code')}]</code> {p.get('part_name')}\n"
+            f"🔢 Adet: <b>{p.get('quantity')}</b> | Öncelik: <b>{p.get('priority')}</b>\n"
+            f"📝 Not: {p.get('notes') or '-'}"
+        )
+        await notify_both(msg)
+
+    elif dir_type == "KAMIL_TO_OMER":
+        msg = (
+            f"🚀 <b>SAHAYA YENİ GÖREV ATANDI! (Kamil ➔ Ömer)</b>\n"
+            f"🏢 Gidilecek Tesis: <b>{p.get('firm')}</b>\n"
+            f"📞 İletişim: {p.get('contact')}\n"
+            f"📋 Görev Başlığı: <b>{p.get('task_type')}</b>\n"
+            f"📌 Talimatlar: {p.get('instructions') or '-'}"
+        )
+        await notify_both(msg)
+
 @dp.message(~F.text.startswith("/"))
 async def chat_bridge(message: types.Message):
     menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
@@ -1260,7 +1237,6 @@ async def start_dummy_server():
 
 async def main():
     try:
-        # İlettiğiniz %100 güncel verileri veritabanı dosyasına doğrudan yaz
         save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
         save_data(SALES_FILE, INITIAL_REAL_SALES)
         await bot.delete_webhook(drop_pending_updates=True)

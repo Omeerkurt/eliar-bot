@@ -1001,6 +1001,8 @@ async def quote_rejected(callback: types.CallbackQuery):
     s_id = callback.data.split(":")[1]
     sales = load_sales()
     sale = next((s for s in sales if s.get("id") == s_id), None)
-    if sale: sale["status"] = "REJECTED"; save_sales(sales)
+    if sale:
+        sale["status"] = "REJECTED"
+        save_sales(sales)
     await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KABUL EDİLMEDİ (İPTAL)</b>", reply_markup=None, parse_mode="HTML")
-    await callback.answer("İptal edildi."
+    await callback.answer("İptal edildi.")

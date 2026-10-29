@@ -316,7 +316,6 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- AKILLI KIRPICI MOTORU -----------------
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
@@ -338,7 +337,6 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
             if not col_rects: col_rects = rects
             min_code_y = min(r.y0 for r in col_rects)
 
-            # Başlık şeridini (Yeşil/Sarı) tam kapsayacak şekilde yukarıdan al
             y0 = max(10, min_code_y - 28)
             x0 = 8 if col == 0 else (pw / 2 + 3)
             x1 = (pw / 2 - 3) if col == 0 else (pw - 8)
@@ -368,7 +366,6 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         logging.error(f"Kırpma motoru hatası: {e}")
         return None
 
-# ----------------- PARÇA ARAMA MOTORU -----------------
 def calculate_similarity(query: str, part: dict) -> float:
     q_norm = normalize_tr(query.strip())
     name_norm = normalize_tr(part["name"])
@@ -393,13 +390,11 @@ def find_best_matches(query: str):
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
 
-# KAMİL VE ÖMER'E AYNI ANDA BİLDİRİM
 async def notify_both(text: str, reply_markup=None):
     for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e: logging.warning(f"Bildirim iletilemedi ({cid}): {e}")
 
-# ----------------- YAPAY ZEKA (GEMINI) PDF OKUYUCU (GÖRSEL VE METİNSEL) -----------------
 async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
     pdf_bytes = b""
     try:
@@ -434,14 +429,12 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
     )
 
     if ai_client and pdf_bytes and HAS_GENAI:
-        # Doğrudan PDF dosyasını bayt olarak Gemini'ye gönder (Görsel OCR destekli)
         try:
             pdf_part = genai_types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
             contents_payload = [pdf_part, prompt]
         except Exception:
             contents_payload = [f"{prompt}\n\nTeklif Metni:\n{extracted_text[:5000]}"]
 
-        # Modelleri sırayla dene
         for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
             try:
                 loop = asyncio.get_event_loop()
@@ -462,7 +455,6 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
             except Exception as e:
                 logging.warning(f"Gemini {model_name} denemesi: {e}")
 
-    # Fallback: Regex ile Metin Analizi
     firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Tesis|Sayin|Company)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
     detected_firm = firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA"
 
@@ -492,7 +484,6 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
         "items": detected_items[:15]
     }
 
-# ----------------- RAPOR MOTORU -----------------
 def generate_excel_z_report(sales_data, title="Z_Raporu"):
     fn = f"Elips_{title}_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
     try:
@@ -627,9 +618,9 @@ def get_main_keyboard():
             [KeyboardButton(text="⚡ Elips Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
             [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
             [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
-            [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="📂 Verilen Teklifler")],
             [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="✅ Tamamlanmış Teklifler")],
-            [KeyboardButton(text="🏢 Tesis Geçmişi"), KeyboardButton(text="📖 Kataloğu Gönder")]
+            [KeyboardButton(text="📂 Verilen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")],
+            [KeyboardButton(text="📖 Kataloğu Gönder")]
         ],
         resize_keyboard=True
     )
@@ -640,6 +631,7 @@ async def setup_bot_commands():
         BotCommand(command="teklif", description="Nilay Hanım'a Teklif Hazırla"),
         BotCommand(command="stok", description="Parça Listesi"),
         BotCommand(command="bekleyenler", description="Bekleyen Teklifler"),
+        BotCommand(command="tamamlananlar", description="Tamamlanmış Teklifler"),
         BotCommand(command="verilenler", description="Verilen Teklifler"),
         BotCommand(command="zraporu", description="Haftalık Z-Raporu"),
         BotCommand(command="gecmis", description="Tesis Geçmişi"),
@@ -703,7 +695,6 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
         parse_mode="HTML"
     )
 
-# 🇹🇷 ELİAR TR'DEN MANUEL PARÇA GİRİŞİ BAŞLANGICI
 @dp.callback_query(F.data == "qb_custom_tr")
 async def on_quote_custom_tr_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_custom_tr)
@@ -723,7 +714,6 @@ async def process_quote_custom_tr(message: types.Message, state: FSMContext):
         await message.answer("⚠️ Lütfen geçerli bir parça bilgisi yazın.")
         return
 
-    # Kod ve isim ayrıştırma (Örn: "91234 - Parça Adı")
     parts = re.split(r"[-–—:]", text, maxsplit=1)
     if len(parts) == 2 and (parts[0].strip().isalnum() or len(parts[0].strip()) <= 10):
         code = parts[0].strip().upper()
@@ -1078,7 +1068,7 @@ async def on_quote_deduct_confirm(callback: types.CallbackQuery):
         await notify_both(f"✅ <b>Teklif Onaylandı</b>\n🏢 Firma: <b>{html.escape(q['firm'])}</b>\n👤 İşlem Yapan: <b>{action_by}</b>")
     await callback.answer()
 
-# ----------------- BEKLEYEN VE VERİLEN TEKLİFLER -----------------
+# ----------------- BEKLEYEN, TAMAMLANMIŞ VE VERİLEN TEKLİFLER -----------------
 @dp.message(Command("bekleyenler"))
 @dp.message(F.text == "⏳ Bekleyen Teklifler")
 async def show_pending_quotes(message: types.Message):
@@ -1095,9 +1085,6 @@ async def show_pending_quotes(message: types.Message):
         ])
     await message.answer("⏳ <b>BEKLEYEN TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
-@dp.message(Command("verilenler"))
-@dp.message(F.text == "📂 Verilen Teklifler")
-async def show_submitted_quotes(message: types.Message):
 @dp.message(Command("tamamlananlar"))
 @dp.message(F.text == "✅ Tamamlanmış Teklifler")
 async def show_approved_quotes(message: types.Message):
@@ -1106,16 +1093,17 @@ async def show_approved_quotes(message: types.Message):
     if not approved:
         await message.answer("ℹ️ Henüz tamamlanmış (onaylı) bir teklif bulunmamaktadır.", parse_mode="HTML")
         return
-    buttons = [
-        [InlineKeyboardButton(text=f"✅ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}"),
-         InlineKeyboardButton(text="🗑️", callback_data=f"qdel:{q['id']}")]
-        for q in reversed(approved[-12:])
-    ]
+    buttons = []
+    for q in reversed(approved[-12:]):
+        buttons.append([
+            InlineKeyboardButton(text=f"✅ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}"),
+            InlineKeyboardButton(text="🗑️", callback_data=f"qdel:{q['id']}")
+        ])
     await message.answer("✅ <b>TAMAMLANMIŞ (ONAYLI) TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
-
-@dp.callback_query(F.data.startswith("qview:"))
-async def on_quote_view_details(callback: types.CallbackQuery):
+@dp.message(Command("verilenler"))
+@dp.message(F.text == "📂 Verilen Teklifler")
+async def show_submitted_quotes(message: types.Message):
     quotes = load_quotes()
     if not quotes:
         await message.answer("ℹ️ Henüz kayıtlı bir teklif bulunmamaktadır.", parse_mode="HTML")
@@ -1127,7 +1115,7 @@ async def on_quote_view_details(callback: types.CallbackQuery):
             InlineKeyboardButton(text=f"{st_icon} {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}"),
             InlineKeyboardButton(text="🗑️", callback_data=f"qdel:{q['id']}")
         ])
-    await message.answer("📂 <b>VERİLEN TEKLİFLER:</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+    await message.answer("📂 <b>TÜM VERİLEN TEKLİFLER:</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("qview:"))
 async def on_quote_view_details(callback: types.CallbackQuery):
@@ -1328,7 +1316,7 @@ async def handle_webapp_payload(message: types.Message):
 
 @dp.message(~F.text.startswith("/"))
 async def chat_bridge(message: types.Message):
-    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
+    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanmış Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
     if message.text in menu_buttons: return
     tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
     sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"

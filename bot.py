@@ -126,7 +126,7 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "40597", "name": "BES005M BALLUFF Sensör", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "40634", "name": "BES0057: Balluff M12MI-NSC40B-BV03", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "40647", "name": "Smc CJPB15-10H6 Tek Etkili Silindir", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "41300", "name": "RD96 - MU CAMBAZ PISTONU POLIETILEN (YESIL)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41300", "name": "RD96 - MU CAMBAZ PISTONU POLIETILEN (YESIL) TAKOZ", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "41316", "name": "Lab120 encoder", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "41396", "name": "12'li Hareketli Kablo (X3-X4 Pistonu)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "42184", "name": "PIPETLEME SIRINGA UCU", "cat": "MEKATRONIK", "qty": 200, "loc": "ELIPS-DEPO"},
@@ -321,7 +321,7 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- PARÇA BAŞLIĞINI & GÖRSELİNİ TAM KAPSAYAN AKILLI KIRPICI -----------------
+# ----------------- PARÇA BAŞLIĞINI VE RESMİNİ TAM KAPSAYAN AKILLI KIRPICI -----------------
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
@@ -336,30 +336,25 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
             rects = page.search_for(code_str) or page.search_for(f"({code_str})")
             if not rects: continue
 
-            # Hangi sütunda olduğunu belirle
             first_match = rects[0]
             col = 0 if first_match.x0 < (pw / 2) else 1
 
-            # Aynı sütundaki tüm eşleşmeleri filtrele
             col_rects = [r for r in rects if (r.x0 < pw/2 if col == 0 else r.x0 >= pw/2)]
+            if not col_rects: col_rects = rects
             min_code_y = min(r.y0 for r in col_rects)
 
-            # PARÇA BAŞLIĞINI İÇERMEK İÇİN:
-            # Yeşil/Sarı başlık çubuğu "Order Code" satırının tam 24-28 pt yukarısındadır.
+            # Başlık şeridini (Yeşil/Sarı) yukarıdan tam kapsayacak şekilde al
             y0 = max(10, min_code_y - 28)
-
-            # Sütun yatay sınırları
             x0 = 8 if col == 0 else (pw / 2 + 3)
             x1 = (pw / 2 - 3) if col == 0 else (pw - 8)
 
-            # Alt sınırı tespit et: Aynı sütunda daha aşağıda başlayan başka bir ürün var mı?
+            # Alt sınırı tespit et
             all_other = page.search_for("Order Code")
-            next_y1 = ph - 15  # Sayfa sonu
+            next_y1 = ph - 15
 
             for oc in all_other:
                 is_same_col = (oc.x0 < pw/2) if col == 0 else (oc.x0 >= pw/2)
                 if is_same_col and oc.y0 > (min_code_y + 45):
-                    # Bir sonraki ürünün başlık çubuğunun hemen üstünde dur
                     cand_y1 = oc.y0 - 28
                     if cand_y1 < next_y1:
                         next_y1 = cand_y1
@@ -727,7 +722,8 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     stocks = load_stocks()
     part = next((p for p in stocks if p["code"].lower() == code.lower()), None)
     if not part:
-        await callback.answer("Parça bulunamadı.", show_alert=True); return
+        await callback.answer("Parça bulunamadı.", show_alert=True)
+        return
 
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_qty)
@@ -735,7 +731,8 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
-        await message_photo = callback.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
+        # HATA DÜZELTİLDİ: await message_photo = ... kaldırıldı
+        await callback.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
 
     stock_text = f"Depo: {part.get('qty', 0)} ADT" if part.get('qty', 0) > 0 else "Stokta Yok (0 ADT)"
     await callback.message.answer(f"🎯 <b>Seçilen:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n📊 Durum: <b>{stock_text}</b>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
@@ -805,7 +802,6 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     )
     await callback.message.edit_text(text, parse_mode="HTML")
 
-    # HEM ÖMER'E HEM KAMİL'E ANINDA BİLDİRİM
     notify_text = (
         f"📥 <b>YENİ TEKLİF HAZIRLANDI!</b>\n"
         f"👤 <b>Hazırlayan:</b> {sender_name}\n"
@@ -861,7 +857,6 @@ async def handle_document_upload(message: types.Message):
     await wait_msg.delete()
     await message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
 
-    # Diğer kişiye haber ver
     other_notify = f"📄 <b>Yeni Teklif PDF'i Yüklendi!</b>\n👤 Yükleyen: <b>{sender_name}</b>\n🏢 Firma: <b>{firm}</b>\n💰 Tutar: <b>{grand_total} {currency}</b>"
     target_id = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else OMER_CHAT_ID
     try: await bot.send_message(chat_id=target_id, text=other_notify, parse_mode="HTML")
@@ -877,7 +872,6 @@ async def on_quote_delete(callback: types.CallbackQuery):
         await callback.answer("Teklif zaten silinmiş veya bulunamadı.", show_alert=True)
         return
 
-    # PDF varsa dosyasını da temizle
     if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
         try: os.remove(q["pdf_file"])
         except Exception: pass
@@ -888,8 +882,6 @@ async def on_quote_delete(callback: types.CallbackQuery):
     del_by = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
     await callback.message.edit_text(f"🗑️ <b>{html.escape(q['firm'])}</b> teklifi başarıyla silindi.", parse_mode="HTML")
     await callback.answer("Teklif silindi.")
-
-    # Diğerine de silindiğini bildir
     await notify_both(f"🗑️ <b>Bir Teklif Silindi!</b>\n🏢 Firma: <code>{html.escape(q['firm'])}</code>\n👤 Silen: <b>{del_by}</b>")
 
 # ----------------- TEKLİF ONAY & STOK DÜŞÜŞÜ -----------------
@@ -899,7 +891,8 @@ async def on_quote_status_change(callback: types.CallbackQuery):
     quotes = load_quotes()
     q = next((x for x in quotes if x["id"] == quote_id), None)
     if not q:
-        await callback.answer("Teklif bulunamadı.", show_alert=True); return
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
 
     if new_status == "APPROVED":
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -927,7 +920,8 @@ async def on_quote_deduct_confirm(callback: types.CallbackQuery):
     quotes = load_quotes()
     q = next((x for x in quotes if x["id"] == quote_id), None)
     if not q:
-        await callback.answer("Teklif bulunamadı.", show_alert=True); return
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
 
     q["status"] = "APPROVED"
     save_quotes(quotes)
@@ -970,7 +964,7 @@ async def on_quote_deduct_confirm(callback: types.CallbackQuery):
         await notify_both(f"✅ <b>Teklif Onaylandı</b>\n🏢 Firma: <b>{html.escape(q['firm'])}</b>\n👤 İşlem Yapan: <b>{action_by}</b>")
     await callback.answer()
 
-# ----------------- BEKLEYEN VE VERİLEN TEKLİFLER LİSTESİ -----------------
+# ----------------- BEKLEYEN VE VERİLEN TEKLİFLER -----------------
 @dp.message(Command("bekleyenler"))
 @dp.message(F.text == "⏳ Bekleyen Teklifler")
 async def show_pending_quotes(message: types.Message):
@@ -1009,7 +1003,8 @@ async def on_quote_view_details(callback: types.CallbackQuery):
     quotes = load_quotes()
     q = next((x for x in quotes if x["id"] == quote_id), None)
     if not q:
-        await callback.answer("Teklif bulunamadı.", show_alert=True); return
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
 
     st_map = {"PENDING": "⏳ Beklemede", "APPROVED": "✅ Onaylandı", "REJECTED": "❌ Reddedildi"}
     cur_st = st_map.get(q.get("status"), "Belirsiz")
@@ -1085,7 +1080,8 @@ async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMConte
     if mode == "custom":
         await state.set_state(CustomReportState.waiting_date_range)
         await callback.message.answer("✍️ Format: <code>GG.AA.YYYY - GG.AA.YYYY</code>", parse_mode="HTML")
-        await callback.answer(); return
+        await callback.answer()
+        return
 
     ranges = {
         "today": (datetime(now.year, now.month, now.day), datetime(now.year, now.month, now.day, 23, 59, 59), "GÜNLÜK RAPOR", "Gunluk"),
@@ -1128,7 +1124,8 @@ async def handle_download_report_choice(callback: types.CallbackQuery, state: FS
         st_data = await state.get_data()
         sales, title = st_data.get("last_filtered_sales", []), st_data.get("report_title", "Ozel_Rapor")
     if not sales:
-        await callback.answer("Onaylı satış kaydı yok.", show_alert=True); return
+        await callback.answer("Onaylı satış kaydı yok.", show_alert=True)
+        return
     await callback.answer("Hazırlanıyor...")
     if fmt in ["excel", "both"]:
         f = generate_excel_z_report(sales, title)
@@ -1207,7 +1204,7 @@ async def chat_bridge(message: types.Message):
         await bot.send_message(tid, f"💬 <b>{sender}:</b> {html.escape(message.text)}", parse_mode="HTML")
         await message.reply("✓ <i>İletildi.</i>", parse_mode="HTML")
 
-# ----------------- ZAMANLAYICI & SERVER -----------------
+# ----------------- ZAMANLAYICI & SERVER (RENDER İÇİN PORT BINDING) -----------------
 async def automated_scheduler():
     last_week = ""
     while True:
@@ -1231,14 +1228,23 @@ async def start_dummy_server():
         runner = web.AppRunner(app)
         await runner.setup()
         port = int(os.environ.get("PORT", 8080))
-        await web.TCPSite(runner, '0.0.0.0', port).start()
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        logging.info(f"✅ Render web server {port} portunda baslatildi.")
     except Exception as e:
-        logging.warning(f"Server başlatılamadı: {e}")
+        logging.warning(f"Server baslatilamadi: {e}")
 
 async def main():
     try:
-        save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
-        save_data(SALES_FILE, INITIAL_REAL_SALES)
+        # Canlı verilerin güvenliği için Render ilk açılışta dosyaları yükler
+        init_flag = ".init_done_v9"
+        if not os.path.exists(init_flag):
+            save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
+            save_data(SALES_FILE, INITIAL_REAL_SALES)
+            try:
+                with open(init_flag, "w") as f: f.write("ok")
+            except Exception: pass
+
         await bot.delete_webhook(drop_pending_updates=True)
         await setup_bot_commands()
         await start_dummy_server()

@@ -60,6 +60,23 @@ class LoggingMiddleware(BaseMiddleware):
 
 dp.message.outer_middleware(LoggingMiddleware())
 
+# ----------------- 1. TÜM FSM DURUMLARI (EN TEPEDE TANIMLANDI) -----------------
+class ClientHistoryState(StatesGroup):
+    waiting_client_name = State()
+
+class CustomReportState(StatesGroup):
+    waiting_date_range = State()
+
+class QuoteBuilderState(StatesGroup):
+    waiting_firm = State()
+    waiting_item_query = State()
+    waiting_custom_manual = State()
+    waiting_ask_technic_input = State()
+    waiting_supply_source = State()
+    waiting_qty = State()
+    confirm_more = State()
+
+# ----------------- 2. TEMEL YARDIMCI VE DOSYA FONKSİYONLARI -----------------
 STOCKS_FILE = "stocks_db.json"
 SALES_FILE = "weekly_sales.json"
 TASKS_FILE = "active_tasks.json"
@@ -67,7 +84,6 @@ QUOTES_FILE = "submitted_quotes.json"
 PDF_STORAGE_DIR = "stored_quotes_pdf"
 os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
-# ----------------- TEMEL DOSYA KAYIT VE YÜKLEME FONKSİYONLARI -----------------
 def save_data(file_path, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -87,7 +103,7 @@ def normalize_tr(text: str) -> str:
     for k, v in m.items(): res = res.replace(k, v)
     return res
 
-# ----------------- 64 SAYFALIK KATALOG KOORDİNAT HARİTASI -----------------
+# ----------------- 3. 64 SAYFALIK KATALOG IZGARA HARİTASI -----------------
 CATALOG_GRID_MAP = {
     "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
     "41370": (3, 3), "41381": (3, 5), "91514": (3, 6),
@@ -147,7 +163,7 @@ CATALOG_GRID_MAP = {
     "50054": (62, 3), "15005": (63, 3)
 }
 
-# ----------------- GERÇEK ELİPS DEPO & KATALOG ENVANTERİ -----------------
+# ----------------- 4. GERÇEK ELİPS DEPO ENVANTERİ -----------------
 REAL_WAREHOUSE_STOCKS = [
     {"code": "Pd320", "name": "Pd320 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "PD330", "name": "PD330 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
@@ -354,6 +370,7 @@ save_sales = lambda d: save_data(SALES_FILE, d)
 load_quotes = lambda: load_data(QUOTES_FILE, [])
 save_quotes = lambda d: save_data(QUOTES_FILE, d)
 
+# ----------------- PDF & GÖRSEL TARAMA MOTORU -----------------
 def get_catalog_pdf_file():
     for name in ["Katalog.pdf", "katalog.pdf", "CATALOG.PDF", "catalog.pdf", "rd96.pdf", "RD96.pdf"]:
         if os.path.exists(name): return name
@@ -696,7 +713,35 @@ async def setup_bot_commands():
     ]
     await bot.set_my_commands(commands)
 
-# ----------------- NİLAY HANIM'A TEKLİF SİHİRBAZI -----------------
+# ----------------- 5. TÜM İŞLEYİCİLER (HANDLERS) -----------------
+@dp.message(CommandStart())
+@dp.message(F.text.lower().in_(["/start", "start", "başlat", "baslat"]))
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()
+    user_id = message.chat.id
+    sender_name = html.escape(message.from_user.first_name if message.from_user else "Kullanıcı")
+    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else sender_name)
+    pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
+    stocks = load_stocks()
+
+    msg_text = (
+        f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.\n\n"
+        f"• Katalog PDF: {pdf_info}\n"
+        f"• Güncel Depo & Katalog Kalem: {len(stocks)} Çeşit\n"
+        f"• <b>İpucu:</b> Fiyat teklifi PDF'ini direkt buraya gönderebilirsiniz, yapay zeka ile otomatik taranacaktır."
+    )
+    await message.answer(msg_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
+
+@dp.message(Command("katalog"))
+@dp.message(F.text == "📖 Kataloğu Gönder")
+async def send_catalog_pdf(message: types.Message):
+    cat_path = get_catalog_pdf_file()
+    if cat_path and os.path.exists(cat_path):
+        await message.answer_document(FSInputFile(cat_path), caption="📖 <b>Elips Depo - Yedek Parça Kataloğu</b>", parse_mode="HTML")
+    else:
+        await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
+
+# TEKLİF SİHİRBAZI BAŞLANGICI
 @dp.message(Command("teklif", ignore_mention=True))
 @dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla")
 async def start_quote_wizard(message: types.Message, state: FSMContext):
@@ -1493,7 +1538,7 @@ async def chat_bridge(message: types.Message):
         await bot.send_message(tid, f"💬 <b>{sender}:</b> {html.escape(message.text)}", parse_mode="HTML")
         await message.reply("✓ <i>İletildi.</i>", parse_mode="HTML")
 
-# ----------------- ZAMANLAYICI & SERVER (RENDER İÇİN PORT BINDING) -----------------
+# ----------------- 6. SERVER & BAŞLANGIÇ ÇALIŞTIRICISI -----------------
 async def automated_scheduler():
     last_week = ""
     while True:
@@ -1525,7 +1570,7 @@ async def start_dummy_server():
 
 async def main():
     try:
-        init_flag = ".init_done_v13"
+        init_flag = ".init_done_v14"
         if not os.path.exists(init_flag):
             save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
             save_data(SALES_FILE, INITIAL_REAL_SALES)

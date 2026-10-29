@@ -574,22 +574,18 @@ async def setup_bot_commands():
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.chat.id
-    sender_name = html.escape(message.from_user.first_name if message.from_user and message.from_user.first_name else "Kullanıcı")
-    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else sender_name)
+    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else (message.from_user.first_name or "Kullanıcı"))
     pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
     
     msg_text = (
-        f"👋 <b>Selam {name}! Eliar Depo & Teklif Robotu Aktif.</b>\n\n"
-        f"• Katalog PDF: <code>{pdf_info}</code>\n"
-        f"• Toplam Parça: <b>{len(RD96_CATALOG)} Kalem</b>\n"
-        f"• Nilay Hanım'a teklif hazırlamak için aşağıdaki menüden işlem yapabilirsiniz."
+        f"👋 Selam {name}! Eliar Depo & Teklif Robotu Aktif.\n\n"
+        f"• Katalog PDF: {pdf_info}\n"
+        f"• Toplam Parça: {len(RD96_CATALOG)} Kalem\n"
+        f"• Nilay Hanım'a teklif hazırlamak için menü butonlarını kullanabilirsiniz."
     )
     
-    try:
-        await message.answer(msg_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
-    except Exception as e:
-        logging.error(f"Klavye gönderme hatası, sade metin atılıyor: {e}")
-        await message.answer(msg_text, parse_mode="HTML")
+    sent_msg = await message.answer(msg_text, reply_markup=get_main_keyboard())
+    logging.info(f">>> CEVAP TELEGRAM'A İLETİLDİ! Mesaj No: {sent_msg.message_id} | Kime: {name} ({user_id}) <<<")
 
 # ---------------- NİLAY HANIM'A TEKLİF SİHİRBAZI ----------------
 @dp.message(Command("teklif", ignore_mention=True))

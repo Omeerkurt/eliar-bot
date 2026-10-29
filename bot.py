@@ -60,7 +60,7 @@ class LoggingMiddleware(BaseMiddleware):
 
 dp.message.outer_middleware(LoggingMiddleware())
 
-# ----------------- 1. TÜM FSM DURUMLARI (EN BAŞTA) -----------------
+# ----------------- 1. TÜM FSM DURUMLARI -----------------
 class ClientHistoryState(StatesGroup):
     waiting_client_name = State()
 
@@ -103,7 +103,7 @@ def normalize_tr(text: str) -> str:
     for k, v in m.items(): res = res.replace(k, v)
     return res
 
-# ----------------- 3. 64 SAYFALIK KATALOG IZGARA HARİTASI -----------------
+# ----------------- 3. 64 SAYFALIK KATALOG SAYFA HARİTASI -----------------
 CATALOG_GRID_MAP = {
     "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
     "41370": (3, 3), "41381": (3, 5), "91514": (3, 6),
@@ -370,7 +370,7 @@ save_sales = lambda d: save_data(SALES_FILE, d)
 load_quotes = lambda: load_data(QUOTES_FILE, [])
 save_quotes = lambda d: save_data(QUOTES_FILE, d)
 
-# ----------------- 5. GÖRSEL VE ARAMA MOTORU -----------------
+# ----------------- 5. DİNAMİK VE HATASIZ GÖRSEL KIRPICI -----------------
 def get_catalog_pdf_file():
     for name in ["Katalog.pdf", "katalog.pdf", "CATALOG.PDF", "catalog.pdf", "rd96.pdf", "RD96.pdf"]:
         if os.path.exists(name): return name
@@ -381,30 +381,6 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-def crop_slot_from_page(page, slot: int) -> bytes:
-    pw, ph = page.rect.width, page.rect.height
-    col = 0 if slot in [1, 3, 5] else 1
-    row = 0 if slot in [1, 2] else (1 if slot in [3, 4] else 2)
-
-    x0 = 8 if col == 0 else (pw / 2 + 1)
-    x1 = (pw / 2 - 1) if col == 0 else (pw - 8)
-    top_offset = 12
-    bottom_offset = 24
-    avail_h = ph - top_offset - bottom_offset
-    row_h = avail_h / 3.0
-
-    y0 = max(0, top_offset + row * row_h - 4)
-    y1 = min(ph, y0 + row_h + 8)
-
-    try:
-        import fitz
-        clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
-        pix = page.get_pixmap(clip=clip_rect, dpi=200)
-        return pix.tobytes("png")
-    except Exception as e:
-        logging.error(f"Kırpma hatası: {e}")
-        return None
-
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
@@ -414,23 +390,53 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         import fitz
         doc = fitz.open(pdf_path)
 
+        target_page = None
+        target_rect = None
+
+        # Sayfa haritasında varsa direkt o sayfaya bak
         if code_str in CATALOG_GRID_MAP:
-            page_no, slot = CATALOG_GRID_MAP[code_str]
-            p_idx = page_no - 1
+            p_idx = CATALOG_GRID_MAP[code_str][0] - 1
             if 0 <= p_idx < len(doc):
-                img = crop_slot_from_page(doc[p_idx], slot)
-                if img: return img
+                p = doc[p_idx]
+                r = p.search_for(f"({code_str})") or p.search_for(code_str)
+                if r:
+                    target_page = p
+                    target_rect = r[0]
 
-        for p_idx, page in enumerate(doc):
-            rects = page.search_for(code_str) or page.search_for(f"({code_str})")
-            if rects:
-                r = rects[0]
-                pw, ph = page.rect.width, page.rect.height
-                col = 0 if r.x0 < (pw / 2) else 1
-                row = 0 if r.y0 < (ph / 3) else (1 if r.y0 < (2 * ph / 3) else 2)
-                return crop_slot_from_page(page, (row * 2) + col + 1)
+        # Haritada yoksa veya o sayfada bulamadıysa tüm sayfalarda ara
+        if not target_rect:
+            for p in doc:
+                r = p.search_for(f"({code_str})") or p.search_for(code_str)
+                if r:
+                    target_page = p
+                    target_rect = r[0]
+                    break
 
-        return None
+        if not target_page or not target_rect:
+            return None
+
+        pw, ph = target_page.rect.width, target_page.rect.height
+        col = 0 if target_rect.x0 < (pw / 2) else 1
+        x0 = 8 if col == 0 else (pw / 2 + 2)
+        x1 = (pw / 2 - 2) if col == 0 else (pw - 8)
+
+        # Başlık kutusunu tam içine alacak şekilde yukarı pay bırak
+        y0 = max(10, target_rect.y0 - 32)
+
+        # KODUN VE YAZININ TAM ALTINDAKİ GÖRÜNTÜYÜ ALACAK ŞEKİLDE ALT SINIRI BELİRLE
+        all_headers = target_page.search_for("Order Code") + target_page.search_for("Eliar'dan")
+        same_col_below = [h for h in all_headers if (h.x0 < pw/2 if col == 0 else h.x0 >= pw/2) and h.y0 > (target_rect.y1 + 45)]
+
+        if same_col_below:
+            next_header_y = min(h.y0 for h in same_col_below)
+            y1 = max(y0 + 120, next_header_y - 28)
+        else:
+            y1 = ph - 25  # Sayfa sonuna kadar resim kutusunu boydan boya al
+
+        clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
+        pix = target_page.get_pixmap(clip=clip_rect, dpi=200)
+        return pix.tobytes("png")
+
     except Exception as e:
         logging.error(f"Görsel çıkarma hatası: {e}")
         return None
@@ -524,7 +530,6 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
                 raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
                 parsed = json.loads(raw)
                 if parsed.get("firm") and parsed.get("items"):
-                    logging.info(f"✅ Gemini ({model_name}) ile PDF okundu: {parsed.get('firm')}")
                     return parsed
             except Exception as e:
                 logging.warning(f"Gemini {model_name} denemesi: {e}")
@@ -708,7 +713,7 @@ async def start_quote_wizard(message: types.Message, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_firm)
     await message.answer("🏢 <b>Teklif hangi müşteri / fabrika için hazırlanacak?</b>\n(Örnek: <code>MARK FORMELLE</code>, <code>TERRY JAR</code>)", parse_mode="HTML")
 
-# ADIM 1: FİRMA ALINDI, SADECE PARÇA SORULUR (BUTON KALABALIĞI YOK)
+# ADIM 1: FİRMA ALINDI, SADECE PARÇA ADI/KODU SORULUR (BUTON KALABALIĞI YOK)
 @dp.message(QuoteBuilderState.waiting_firm)
 async def process_quote_firm(message: types.Message, state: FSMContext):
     firm = message.text.strip().upper()
@@ -718,23 +723,23 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
     await message.answer(
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n\n"
         f"Lütfen parçanın <b>kodunu</b> veya <b>ismini</b> yazın:\n"
-        f"<i>(Örn: 90880, diyafram, motor, teflon...)</i>",
+        f"<i>(Örn: 90567, 90880, diyafram, motor, teflon...)</i>",
         parse_mode="HTML"
     )
 
-# ADIM 2: KULLANICI YAZINCA DEPO & KATALOGDA ARAMA
+# ADIM 2: PARÇA ARAMA (DEPO + 64 SAYFA KATALOG)
 @dp.message(QuoteBuilderState.waiting_item_query)
 async def process_quote_search(message: types.Message, state: FSMContext):
     query = message.text.strip()
     matches = find_best_matches(query)
 
-    # PARÇA BULUNAMADIYSA: İŞTE O ZAMAN SEÇENEKLER ÇIKAR!
+    # PARÇA BULUNAMAZSA: İŞTE O ZAMAN SEÇENEKLER ÇIKAR!
     if not matches:
         await state.update_data(pending_query=query)
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="✍️ Kodu ve İsmi Biliyorum (Kendim Yazacağım)", callback_data="qb_manual")],
             [InlineKeyboardButton(text="❓ Bilmiyorum (Tekniğe Sor & Fotoğraf Gönder)", callback_data="qb_ask_tech")],
-            [InlineKeyboardButton(text="🔍 Tekrar Ara", callback_data="qb_retry_search")]
+            [InlineKeyboardButton(text="🔍 Tekrar Kelime Ara", callback_data="qb_retry_search")]
         ])
         await message.answer(
             f"⚠️ <code>{html.escape(query)}</code> yerel depomuzda veya katalogda bulunamadı.\n\n"
@@ -745,12 +750,10 @@ async def process_quote_search(message: types.Message, state: FSMContext):
         return
 
     top_part, score = matches[0]
-    # Tam kod eşleşmesi varsa direkt görselle kaynağı sor
     if normalize_tr(query) == normalize_tr(top_part['code']) or score >= 0.94:
         await prompt_part_selection(message, top_part, state)
         return
 
-    # Eşleşenleri listele
     await state.update_data(search_matches=matches, search_query=query)
     text, kb = render_search_results_page(matches, 0, query)
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
@@ -798,6 +801,7 @@ async def prompt_part_selection(target, part: dict, state: FSMContext):
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_supply_source)
 
+    # DİNAMİK VE DOĞRU ORTALANMIŞ GÖRSELİ GÖNDER
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
@@ -1068,7 +1072,373 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer("Teklif kaydedildi!")
 
-# ----------------- 7. SERVER VE MAIN ÇALIŞTIRICISI -----------------
+# ----------------- 7. TEKLİF YÖNETİMİ (BEKLEYENLER / TAMAMLANANLAR / VERİLENLER) -----------------
+@dp.message(Command("bekleyenler"))
+@dp.message(F.text == "⏳ Bekleyen Teklifler")
+async def show_pending_quotes(message: types.Message):
+    quotes = load_quotes()
+    pending = [q for q in quotes if q.get("status") == "PENDING"]
+    if not pending:
+        await message.answer("ℹ️ Şu anda onay bekleyen bir teklif bulunmamaktadır.", parse_mode="HTML")
+        return
+    buttons = []
+    for q in reversed(pending[-15:]):
+        buttons.append([InlineKeyboardButton(text=f"⏳ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")])
+    await message.answer("⏳ <b>BEKLEYEN TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+@dp.message(Command("tamamlananlar"))
+@dp.message(F.text == "✅ Tamamlanmış Teklifler")
+async def show_approved_quotes(message: types.Message):
+    quotes = load_quotes()
+    approved = [q for q in quotes if q.get("status") == "APPROVED"]
+    if not approved:
+        await message.answer("ℹ️ Henüz tamamlanmış (onaylı) bir teklif bulunmamaktadır.", parse_mode="HTML")
+        return
+    buttons = []
+    for q in reversed(approved[-15:]):
+        buttons.append([InlineKeyboardButton(text=f"✅ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")])
+    await message.answer("✅ <b>TAMAMLANMIŞ (ONAYLI) TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+@dp.message(Command("verilenler"))
+@dp.message(F.text == "📂 Verilen Teklifler")
+async def show_submitted_quotes(message: types.Message):
+    quotes = load_quotes()
+    if not quotes:
+        await message.answer("ℹ️ Henüz kayıtlı bir teklif bulunmamaktadır.", parse_mode="HTML")
+        return
+    buttons = []
+    for q in reversed(quotes[-15:]):
+        st_icon = "🟢" if q.get("status") == "APPROVED" else ("🔴" if q.get("status") == "REJECTED" else "⏳")
+        buttons.append([InlineKeyboardButton(text=f"{st_icon} {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")])
+    await message.answer("📂 <b>TÜM VERİLEN TEKLİFLER:</b>", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+# DETAY KARTI GÖRÜNTÜLEME
+@dp.callback_query(F.data.startswith("qview:"))
+async def on_quote_view_details(callback: types.CallbackQuery):
+    quote_id = callback.data.split(":")[1]
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
+
+    st = q.get("status", "PENDING")
+    st_map = {"PENDING": "⏳ Beklemede", "APPROVED": "✅ Tamamlandı / Onaylandı", "REJECTED": "❌ Reddedildi"}
+    cur = q.get("currency", "EUR")
+
+    lines = [
+        f"📄 <b>Teklif Kartı</b> [<code>{q['id']}</code>]",
+        f"🏢 Firma: <b>{html.escape(q['firm'])}</b>",
+        f"📅 Tarih: <code>{q.get('date')}</code>",
+        f"📊 Durum: <b>{st_map.get(st, 'Belirsiz')}</b>",
+        f"💰 Toplam: <b>{q.get('grand_total', '-')} {cur}</b>\n",
+        "📦 <b>Parçalar:</b>"
+    ]
+    for idx, itm in enumerate(q.get("items", []), 1):
+        source_badge = "Elips Depodan" if itm.get('supply_source') == "ELIPS" else "TR'den"
+        lines.append(f"{idx}. <code>[{itm.get('code')}]</code> {itm.get('name')} — {itm.get('qty')} Adet (<i>{source_badge}</i>)")
+
+    buttons = []
+    # Beklemede ise Onayla / Reddet butonları çıkar
+    if st == "PENDING":
+        buttons.append([
+            InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
+            InlineKeyboardButton(text="❌ Reddet", callback_data=f"qstat:{quote_id}:REJECTED")
+        ])
+    elif st == "REJECTED":
+        buttons.append([InlineKeyboardButton(text="⏳ Tekrar Beklemeye Al", callback_data=f"qstat:{quote_id}:PENDING")])
+
+    buttons.append([InlineKeyboardButton(text="🗑️ Bu Teklifi Sil", callback_data=f"qdel:{quote_id}")])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
+        await callback.message.answer_document(FSInputFile(q["pdf_file"]), caption="\n".join(lines), reply_markup=kb, parse_mode="HTML")
+    else:
+        await callback.message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
+
+# TEKLİF SİLME İŞLEMİ
+@dp.callback_query(F.data.startswith("qdel:"))
+async def on_quote_delete(callback: types.CallbackQuery):
+    quote_id = callback.data.split(":")[1]
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif zaten silinmiş.", show_alert=True)
+        return
+
+    if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
+        try: os.remove(q["pdf_file"])
+        except Exception: pass
+
+    quotes = [x for x in quotes if x["id"] != quote_id]
+    save_quotes(quotes)
+
+    del_by = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
+    await callback.message.edit_text(f"🗑️ <b>{html.escape(q['firm'])}</b> teklifi kalıcı olarak silindi.", parse_mode="HTML")
+    await callback.answer("Teklif silindi.")
+    await notify_both(f"🗑️ <b>Bir Teklif Silindi!</b>\n🏢 Firma: <code>{html.escape(q['firm'])}</code>\n👤 Silen: <b>{del_by}</b>")
+
+# ONNAY & AKILLI STOK DÜŞÜŞÜ (SADECE ELİPS DEPO)
+@dp.callback_query(F.data.startswith("qstat:"))
+async def on_quote_status_change(callback: types.CallbackQuery):
+    _, quote_id, new_status = callback.data.split(":")
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
+
+    if new_status == "APPROVED":
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⚠️ Evet, Elips Depodan Düş", callback_data=f"qdeduct:{quote_id}:yes")],
+            [InlineKeyboardButton(text="❌ Hayır, Sadece Durumu Onayla", callback_data=f"qdeduct:{quote_id}:no")]
+        ])
+        await callback.message.answer(
+            f"⚠️ <b>{html.escape(q['firm'])}</b> teklifini onaylıyorsunuz.\n\n"
+            f"Bu teklifteki <b>Elips Depo</b> etiketli parçalar depodan düşülsün mü?\n"
+            f"<i>(TR'den gelecek parçaların stoğu korunur)</i>",
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        return
+
+    q["status"] = new_status
+    save_quotes(quotes)
+    st_text = "Reddedildi" if new_status == "REJECTED" else "Beklemeye Alındı"
+    await callback.message.answer(f"ℹ️ <b>{html.escape(q['firm'])}</b> teklif durumu: <b>{st_text}</b>", parse_mode="HTML")
+    await callback.answer("Durum güncellendi.")
+
+@dp.callback_query(F.data.startswith("qdeduct:"))
+async def on_quote_deduct_confirm(callback: types.CallbackQuery):
+    _, quote_id, choice = callback.data.split(":")
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
+
+    q["status"] = "APPROVED"
+    save_quotes(quotes)
+    action_by = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
+
+    if choice == "yes" and q.get("items"):
+        stocks = load_stocks()
+        sales = load_sales()
+        deducted_info = []
+
+        for item in q["items"]:
+            source = item.get("supply_source", "ELIPS")
+            code = item.get("code", "")
+            try: qty = int(item.get("qty", 1))
+            except Exception: qty = 1
+
+            if source == "TR":
+                deducted_info.append(f"• <code>[{code}]</code> {item.get('name')}: <b>🇹🇷 TR'den sevk edilecek (Depo stoğuna dokunulmadı)</b>")
+                continue
+
+            p = next((s for s in stocks if s["code"].lower() == code.lower()), None)
+            if not p: p = next((s for s in stocks if normalize_tr(s["name"]) in normalize_tr(item.get("name", ""))), None)
+            if p:
+                p["qty"] = max(0, p.get("qty", 0) - qty)
+                deducted_info.append(f"• <code>[{p['code']}]</code> {p['name']}: <b>-{qty} Adet</b> (Elips Depoda Kalan: {p['qty']})")
+            else:
+                deducted_info.append(f"• <code>[{code}]</code> {item.get('name')}: <b>Elips Depo kaydı yok (-{qty} Adet)</b>")
+
+        save_stocks(stocks)
+        sales.append({
+            "id": f"SLS-{int(time.time())}", "firm": q["firm"], "ref_no": "TEKLIF-ONAY",
+            "items": q["items"], "status": "APPROVED",
+            "date": datetime.now().strftime("%d.%m.%Y"), "timestamp": datetime.now().isoformat()
+        })
+        save_sales(sales)
+
+        msg = (
+            f"📦 <b>ELİPS DEPO - STOK DÜŞÜMÜ GERÇEKLEŞTİ!</b>\n"
+            f"👤 Onaylayan: <b>{action_by}</b>\n"
+            f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n\n" +
+            ("\n".join(deducted_info) if deducted_info else "ℹ️ Stok adedi bulunamadı.")
+        )
+        await notify_both(msg)
+        await callback.message.edit_text("✅ <b>Teklif Onaylandı ve Elips Depo Stoğundan Düşüldü!</b>", parse_mode="HTML")
+    else:
+        await callback.message.edit_text("✅ <b>Teklif Onaylandı (Stoklar değiştirilmedi).</b>", parse_mode="HTML")
+        await notify_both(f"✅ <b>Teklif Onaylandı</b>\n🏢 Firma: <b>{html.escape(q['firm'])}</b>\n👤 İşlem Yapan: <b>{action_by}</b>")
+    await callback.answer()
+
+# ----------------- PARÇA LİSTESİ -----------------
+@dp.message(Command("stok", ignore_mention=True))
+@dp.message(F.text == "📦 Parça Listesi")
+async def show_stocks(message: types.Message):
+    stocks = load_stocks()
+    available = [s for s in stocks if s.get("qty", 0) > 0]
+    out_of_stock = [s for s in stocks if s.get("qty", 0) == 0]
+
+    text = f"📦 <b>GÜNCEL ELİPS DEPO STOKLARI</b>\n"
+    text += f"📊 Toplam Kalem: <b>{len(stocks)}</b> | Stokta: <b>{len(available)}</b> | Tükendi: <b>{len(out_of_stock)}</b>\n"
+    text += "═══════════════════════════════\n\n"
+
+    for s in available[:15]:
+        text += f"• <code>[{s['code']}]</code> {html.escape(s['name'][:35])}\n  └ Stok: <b>{s['qty']} ADT</b> | {s['loc']}\n"
+    if len(available) > 15:
+        text += f"\n<i>...ve {len(available)-15} kalem ürün daha (Mini App'ten inceleyebilirsiniz).</i>"
+    await message.answer(text, parse_mode="HTML")
+
+# ----------------- RAPORLAR & TESİS GEÇMİŞİ -----------------
+@dp.message(Command("zraporu", ignore_mention=True))
+@dp.message(F.text == "📊 Z-Raporu Al")
+async def trigger_z_report_manual(message: types.Message):
+    sales = filter_sales_by_range(datetime.now() - timedelta(days=7), datetime.now())
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Excel", callback_data="dl_rep:excel:weekly"), InlineKeyboardButton(text="📑 PDF", callback_data="dl_rep:pdf:weekly")],
+        [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:weekly")]
+    ])
+    await message.answer(build_report_text(sales, "HAFTALIK Z-RAPORU"), reply_markup=kb, parse_mode="HTML")
+
+@dp.message(Command("tarihraporu", ignore_mention=True))
+@dp.message(F.text == "📅 Tarihli Rapor Al")
+async def trigger_custom_date_report(message: types.Message):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🟢 Bugün", callback_data="date_filter:today"),
+         InlineKeyboardButton(text="📅 Son 7 Gün", callback_data="date_filter:7days"),
+         InlineKeyboardButton(text="🗓️ Bu Ay", callback_data="date_filter:this_month")],
+        [InlineKeyboardButton(text="✍️ Özel Tarih Aralığı", callback_data="date_filter:custom")]
+    ])
+    await message.answer("📅 <b>Hangi aralığın raporunu almak istersiniz?</b>", reply_markup=kb, parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("date_filter:"))
+async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMContext):
+    mode = callback.data.split(":")[1]
+    now = datetime.now()
+    if mode == "custom":
+        await state.set_state(CustomReportState.waiting_date_range)
+        await callback.message.answer("✍️ Format: <code>GG.AA.YYYY - GG.AA.YYYY</code>", parse_mode="HTML")
+        await callback.answer()
+        return
+
+    ranges = {
+        "today": (datetime(now.year, now.month, now.day), datetime(now.year, now.month, now.day, 23, 59, 59), "GÜNLÜK RAPOR", "Gunluk"),
+        "7days": (now - timedelta(days=7), now, "SON 7 GÜN RAPORU", "Son_7_Gun"),
+        "this_month": (datetime(now.year, now.month, 1), now, "BU AY RAPORU", "Bu_Ay")
+    }
+    s_dt, e_dt, title_label, file_label = ranges[mode]
+    sales = filter_sales_by_range(s_dt, e_dt)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Excel", callback_data="dl_rep:excel:custom"), InlineKeyboardButton(text="📑 PDF", callback_data="dl_rep:pdf:custom")],
+        [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:custom")]
+    ])
+    await state.update_data(last_filtered_sales=sales, report_title=file_label)
+    await callback.message.edit_text(build_report_text(sales, title_label), reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
+
+@dp.message(CustomReportState.waiting_date_range)
+async def process_custom_date_range(message: types.Message, state: FSMContext):
+    try:
+        s_str, e_str = [p.strip() for p in message.text.split("-")]
+        s_dt = datetime.strptime(s_str, "%d.%m.%Y")
+        e_dt = datetime.strptime(e_str, "%d.%m.%Y").replace(hour=23, minute=59, second=59)
+        sales = filter_sales_by_range(s_dt, e_dt)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📊 Excel", callback_data="dl_rep:excel:custom"), InlineKeyboardButton(text="📑 PDF", callback_data="dl_rep:pdf:custom")],
+            [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:custom")]
+        ])
+        await state.update_data(last_filtered_sales=sales, report_title=f"Rapor_{s_str}_{e_str}")
+        await message.answer(build_report_text(sales, f"ÖZEL RAPOR ({s_str} - {e_str})"), reply_markup=kb, parse_mode="HTML")
+    except Exception:
+        await message.answer("⚠️ Format hatalı! Örnek: <code>01.10.2025 - 29.10.2026</code>", parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("dl_rep:"))
+async def handle_download_report_choice(callback: types.CallbackQuery, state: FSMContext):
+    _, fmt, scope = callback.data.split(":")
+    now = datetime.now()
+    if scope == "weekly": sales, title = filter_sales_by_range(now - timedelta(days=7), now), "Haftalik_Z_Raporu"
+    elif scope == "monthly": sales, title = filter_sales_by_range(datetime(now.year, now.month, 1), now), "Aylik_Satis_Raporu"
+    else:
+        st_data = await state.get_data()
+        sales, title = st_data.get("last_filtered_sales", []), st_data.get("report_title", "Ozel_Rapor")
+    if not sales:
+        await callback.answer("Onaylı satış kaydı yok.", show_alert=True)
+        return
+    await callback.answer("Hazırlanıyor...")
+    if fmt in ["excel", "both"]:
+        f = generate_excel_z_report(sales, title)
+        if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📊 <b>Elips Depo {title} (Excel)</b>", parse_mode="HTML")
+    if fmt in ["pdf", "both"]:
+        f = generate_pdf_z_report(sales, title)
+        if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📑 <b>Elips Depo {title} (PDF)</b>", parse_mode="HTML")
+
+@dp.message(Command("gecmis", ignore_mention=True))
+async def cmd_history_query(message: types.Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("⚠️ Tesis adı belirtin. (Örn: <code>/gecmis TERRY JAR</code>)", parse_mode="HTML")
+        return
+    await message.answer(get_client_history_text(parts[1]), parse_mode="HTML")
+
+@dp.message(F.text == "🏢 Tesis Geçmişi")
+async def btn_client_history(message: types.Message, state: FSMContext):
+    await state.set_state(ClientHistoryState.waiting_client_name)
+    await message.answer("🔍 Geçmişini aradığınız <b>Fabrika Adını</b> yazın (Örn: Terry, Zelal, Asaka):", parse_mode="HTML")
+
+@dp.message(ClientHistoryState.waiting_client_name)
+async def process_client_history_input(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer(get_client_history_text(message.text.strip()), parse_mode="HTML")
+
+# ----------------- WEBAPP VERİ ALICISI & SOHBET KÖPRÜSÜ -----------------
+@dp.message(F.web_app_data)
+async def handle_webapp_payload(message: types.Message):
+    try: p = json.loads(message.web_app_data.data)
+    except Exception: return
+    op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
+    dir_type = p.get("direction")
+
+    if dir_type == "STOCK_CHANGE" and p.get("action") == "DECREASE":
+        dest = p.get("destination", "Bilinmeyen")
+        code, name, qty = p.get("code"), p.get("name"), p.get("delta", 1)
+        sales = load_sales()
+        sales.append({
+            "id": f"REF-{message.message_id}", "firm": dest, "ref_no": "MANUEL-ÇIKIŞ",
+            "items": [{"code": code, "name": name, "qty": qty}], "status": "APPROVED",
+            "date": datetime.now().strftime("%d.%m.%Y"), "timestamp": datetime.now().isoformat()
+        })
+        save_sales(sales)
+        msg = f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n🏢 Firma: <code>{html.escape(dest)}</code>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📉 Düşülen: <b>-{qty} Adet</b> (Depoda Kalan: <code>{p.get('current_qty', 0)} ADT</code>)\n👷‍♂️ Çıkış Yapan: {op}"
+        await notify_both(msg)
+
+    elif dir_type == "OMER_TO_KAMIL":
+        msg = (
+            f"🔔 <b>SAHADAN YENİ TALEP GELDİ! (Ömer ➔ Kamil)</b>\n"
+            f"🏢 Firma: <b>{p.get('firm')}</b>\n"
+            f"📞 İlgili Kişi: {p.get('contact')}\n"
+            f"⚙️ Parça: <code>[{p.get('part_code')}]</code> {p.get('part_name')}\n"
+            f"🔢 Adet: <b>{p.get('quantity')}</b> | Öncelik: <b>{p.get('priority')}</b>\n"
+            f"📝 Not: {p.get('notes') or '-'}"
+        )
+        await notify_both(msg)
+
+    elif dir_type == "KAMIL_TO_OMER":
+        msg = (
+            f"🚀 <b>SAHAYA YENİ GÖREV ATANDI! (Kamil ➔ Ömer)</b>\n"
+            f"🏢 Gidilecek Tesis: <b>{p.get('firm')}</b>\n"
+            f"📞 İletişim: {p.get('contact')}\n"
+            f"📋 Görev Başlığı: <b>{p.get('task_type')}</b>\n"
+            f"📌 Talimatlar: {p.get('instructions') or '-'}"
+        )
+        await notify_both(msg)
+
+@dp.message(~F.text.startswith("/"))
+async def chat_bridge(message: types.Message):
+    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanmış Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
+    if message.text in menu_buttons: return
+    tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
+    sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
+    if tid and message.text:
+        await bot.send_message(tid, f"💬 <b>{sender}:</b> {html.escape(message.text)}", parse_mode="HTML")
+        await message.reply("✓ <i>İletildi.</i>", parse_mode="HTML")
+
+# ----------------- 8. SUNUCU & MAIN ÇALIŞTIRICISI -----------------
 async def automated_scheduler():
     last_week = ""
     while True:
@@ -1100,7 +1470,7 @@ async def start_dummy_server():
 
 async def main():
     try:
-        init_flag = ".init_done_v16"
+        init_flag = ".init_done_v17"
         if not os.path.exists(init_flag):
             save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
             save_data(SALES_FILE, INITIAL_REAL_SALES)
@@ -1110,7 +1480,6 @@ async def main():
 
         await bot.delete_webhook(drop_pending_updates=True)
 
-        # Doğrudan main içinde kuruluyor, NameError olması imkansız
         await bot.set_my_commands([
             BotCommand(command="start", description="Başlat / Ana Menü"),
             BotCommand(command="teklif", description="Nilay Hanım'a Teklif Hazırla"),

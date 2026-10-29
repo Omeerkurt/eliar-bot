@@ -4,6 +4,7 @@ import asyncio
 import os
 import re
 import time
+import html
 import difflib
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -531,16 +532,27 @@ def get_client_history_text(firm_query: str):
     text += f"\n═══════════════════════════════\n✅ Toplam: **{len(matched)} Sevkiyat / Hareket**"
     return text
 
-def get_main_keyboard():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
-            [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
-            [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")]
-        ],
-        resize_keyboard=True
-    )
+def get_main_keyboard(is_private: bool = True):
+    if is_private:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
+                [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
+                [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
+                [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")]
+            ],
+            resize_keyboard=True
+        )
+    else:
+        # Grupta WebApp butonu Telegram tarafından engellendiği için güvenli grup klavyesi
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
+                [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
+                [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")]
+            ],
+            resize_keyboard=True
+        )
 
 async def setup_bot_commands():
     commands = [
@@ -557,39 +569,42 @@ async def setup_bot_commands():
     ]
     await bot.set_my_commands(commands)
 
-@dp.message(Command("start"))
+# ----------------- ANA MENÜ / START KOMUTU -----------------
+@dp.message(Command("start", ignore_mention=True))
 async def cmd_start(message: types.Message, state: FSMContext):
-    await state.clear()  # Varsa takılı kalmış eski durumları temizler
+    await state.clear()
     user_id = message.chat.id
-    logging.info(f">>> START GELDI! Gönderen: {message.from_user.first_name} (ID: {message.from_user.id}) - Chat ID: {user_id} <<<")
-    
-    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else (message.from_user.first_name or "Kullanıcı"))
+    is_private = (message.chat.type == "private")
+    sender_name = html.escape(message.from_user.first_name if message.from_user and message.from_user.first_name else "Kullanıcı")
+    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else sender_name)
     pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
     
-    await message.answer(
+    logging.info(f">>> START CALISTI! Gönderen: {name} (Chat ID: {user_id}, Tip: {message.chat.type}) <<<")
+
+    msg_text = (
         f"👋 <b>Selam {name}! Eliar Depo & Teklif Robotu Aktif.</b>\n\n"
         f"• Katalog PDF: <code>{pdf_info}</code>\n"
         f"• Toplam Parça: <b>{len(RD96_CATALOG)} Kalem</b>\n"
-        f"• Nilay Hanım'a teklif hazırlamak için aşağıdaki menüden işlem yapabilirsiniz.",
-        reply_markup=get_main_keyboard(),
-        parse_mode="HTML"
+        f"• Nilay Hanım'a teklif hazırlamak için aşağıdaki menüden işlem yapabilirsiniz."
     )
+    
+    await message.answer(msg_text, reply_markup=get_main_keyboard(is_private), parse_mode="HTML")
 
 # ---------------- NİLAY HANIM'A TEKLİF SİHİRBAZI ----------------
-@dp.message(Command("teklif"))
+@dp.message(Command("teklif", ignore_mention=True))
 @dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla")
 async def start_quote_wizard(message: types.Message, state: FSMContext):
     await state.clear()
     await state.update_data(quote_items=[])
     await state.set_state(QuoteBuilderState.waiting_firm)
-    await message.answer("🏢 **Teklif hangi müşteri / fabrika için hazırlanacak?**\n(Örnek: `TERRY JAR`, `MICBRO`, `OSB TEKSTİL`)", parse_mode="Markdown")
+    await message.answer("🏢 <b>Teklif hangi müşteri / fabrika için hazırlanacak?</b>\n(Örnek: <code>TERRY JAR</code>, <code>MICBRO</code>, <code>OSB TEKSTİL</code>)", parse_mode="HTML")
 
 @dp.message(QuoteBuilderState.waiting_firm)
 async def process_quote_firm(message: types.Message, state: FSMContext):
     firm = message.text.strip().upper()
     await state.update_data(firm_name=firm)
     await state.set_state(QuoteBuilderState.waiting_contact)
-    await message.answer(f"👤 **{firm}** için **İlgili Kişi & Telefon** bilgisi nedir?\n(Örnek: `Ahmet Bey 0532...` veya yoksa `-` yazın):", parse_mode="Markdown")
+    await message.answer(f"👤 <b>{html.escape(firm)}</b> için <b>İlgili Kişi & Telefon</b> bilgisi nedir?\n(Örnek: <code>Ahmet Bey 0532...</code> veya yoksa <code>-</code> yazın):", parse_mode="HTML")
 
 @dp.message(QuoteBuilderState.waiting_contact)
 async def process_quote_contact(message: types.Message, state: FSMContext):
@@ -597,10 +612,10 @@ async def process_quote_contact(message: types.Message, state: FSMContext):
     await state.update_data(contact=contact)
     await state.set_state(QuoteBuilderState.waiting_item_query)
     await message.answer(
-        f"🔍 **Hangi parça için teklif istenecek?**\n"
-        f"• Varsa **Sipariş Kodunu** yazın (Örn: `91514`)\n"
-        f"• Bilmiyorsanız **Ürün İsmini** yazın (Örn: `loblu pompa`, `rakor`, `vana`, `aktüatör`, `keçe`):",
-        parse_mode="Markdown"
+        f"🔍 <b>Hangi parça için teklif istenecek?</b>\n"
+        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91514</code>)\n"
+        f"• Bilmiyorsanız <b>Ürün İsmini</b> yazın (Örn: <code>loblu pompa</code>, <code>rakor</code>, <code>vana</code>, <code>aktüatör</code>):",
+        parse_mode="HTML"
     )
 
 @dp.message(QuoteBuilderState.waiting_item_query)
@@ -609,7 +624,7 @@ async def process_quote_search(message: types.Message, state: FSMContext):
     matches = find_best_matches(query)
 
     if not matches:
-        await message.answer(f"⚠️ `{query}` ile eşleşen katalog parçası bulunamadı.\nLütfen başka bir kelime veya kod deneyin:", parse_mode="Markdown")
+        await message.answer(f"⚠️ <code>{html.escape(query)}</code> ile eşleşen katalog parçası bulunamadı.\nLütfen başka bir kelime veya kod deneyin:", parse_mode="HTML")
         return
 
     top_part, top_score = matches[0]
@@ -624,17 +639,17 @@ async def process_quote_search(message: types.Message, state: FSMContext):
     if query.strip().lower() == top_part['code'].lower():
         await state.update_data(selected_part=top_part)
         await state.set_state(QuoteBuilderState.waiting_qty)
-        await message.answer(f"🎯 **Seçilen Parça:**\n📦 `[{top_part['code']}]` **{top_part['name']}**\n\n🔢 Kaç **adet** teklif edilecek?", parse_mode="Markdown")
+        await message.answer(f"🎯 <b>Seçilen Parça:</b>\n📦 <code>[{top_part['code']}]</code> <b>{html.escape(top_part['name'])}</b>\n\n🔢 Kaç <b>adet</b> teklif edilecek?", parse_mode="HTML")
         return
 
     await message.answer(
-        f"🔍 **Bunu mu demek istediniz?**\n\n"
-        f"📦 Kod: `{top_part['code']}`\n"
-        f"⚙️ Parça: **{top_part['name']}**\n"
-        f"📂 Kategori: `{top_part.get('cat', 'MEKATRONIK')}`\n\n"
+        f"🔍 <b>Bunu mu demek istediniz?</b>\n\n"
+        f"📦 Kod: <code>{top_part['code']}</code>\n"
+        f"⚙️ Parça: <b>{html.escape(top_part['name'])}</b>\n"
+        f"📂 Kategori: <code>{top_part.get('cat', 'MEKATRONIK')}</code>\n\n"
         f"Aradığınız parça bu mu?",
         reply_markup=kb,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 @dp.callback_query(F.data == "qb_retry_search")
@@ -653,9 +668,9 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_qty)
     await callback.message.edit_text(
-        f"🎯 **Seçilen Parça:**\n📦 `[{part['code']}]` **{part['name']}**\n\n"
-        f"🔢 Kaç **adet** teklif edilecek? (Örn: `1`, `2`, `5`)", 
-        parse_mode="Markdown"
+        f"🎯 <b>Seçilen Parça:</b>\n📦 <code>[{part['code']}]</code> <b>{html.escape(part['name'])}</b>\n\n"
+        f"🔢 Kaç <b>adet</b> teklif edilecek? (Örn: <code>1</code>, <code>2</code>, <code>5</code>)", 
+        parse_mode="HTML"
     )
     await callback.answer()
 
@@ -665,7 +680,7 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
         qty = int(message.text.strip())
         if qty <= 0: raise ValueError
     except Exception:
-        await message.answer("⚠️ Lütfen sayı girin (Örn: `1`, `2`):", parse_mode="Markdown")
+        await message.answer("⚠️ Lütfen geçerli bir sayı girin (Örn: 1, 2):", parse_mode="HTML")
         return
 
     data = await state.get_data()
@@ -678,7 +693,7 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
     if img_bytes:
         try:
             photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
-            await message.answer_photo(photo, caption=f"📸 **Katalog Görseli:** `[{part['code']}]` — {part['name']}", parse_mode="Markdown")
+            await message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
         except Exception as e:
             logging.warning(f"Resim iletilemedi: {e}")
 
@@ -687,19 +702,19 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="🏁 Teklifi Bitir & Formatı Al", callback_data="qb_done")]
     ])
     await state.set_state(QuoteBuilderState.confirm_more)
-    await message.answer(f"✅ **{qty} Adet** `[{part['code']}]` eklendi!\nNe yapmak istersiniz?", reply_markup=kb, parse_mode="Markdown")
+    await message.answer(f"✅ <b>{qty} Adet</b> <code>[{part['code']}]</code> eklendi!\nNe yapmak istersiniz?", reply_markup=kb, parse_mode="HTML")
 
 @dp.callback_query(F.data == "qb_more")
 async def on_quote_add_another(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_item_query)
-    await callback.message.edit_text("🔍 Yeni parçanın **kodunu** veya **ismini** yazın:")
+    await callback.message.edit_text("🔍 Yeni parçanın <b>kodunu</b> veya <b>ismini</b> yazın:", parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(F.data == "qb_done")
 async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    firm = data.get("firm_name", "MÜŞTERİ")
-    contact = data.get("contact", "")
+    firm = html.escape(data.get("firm_name", "MÜŞTERİ"))
+    contact = html.escape(data.get("contact", ""))
     items = data.get("quote_items", [])
     if not items:
         await callback.message.edit_text("⚠️ Teklifte ürün yok.")
@@ -708,25 +723,25 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
 
     contact_str = f" (İlgili: {contact})" if contact and contact != "-" else ""
     text = (
-        f"📋 **KOPYALAMAYA HAZIR TEKLİF METNİ:**\n"
+        f"📋 <b>KOPYALAMAYA HAZIR TEKLİF METNİ:</b>\n"
         f"═══════════════════════════════\n\n"
         f"Merhaba Nilay hanim\n\n"
         f"{firm}{contact_str} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
     )
     for itm in items:
-        text += f"• `{itm['code']}` - {itm['name']} - **{itm['qty']} Adet**\n"
+        text += f"• <code>{itm['code']}</code> - {html.escape(itm['name'])} - <b>{itm['qty']} Adet</b>\n"
 
     text += (
         f"\nİyi çalışmalar.\n"
         f"═══════════════════════════════\n"
-        f"💡 _Metne basılı tutarak doğrudan WhatsApp veya E-Posta ile Nilay Hanım'a gönderebilirsiniz._"
+        f"💡 <i>Metne basılı tutarak doğrudan WhatsApp veya E-Posta ile Nilay Hanım'a gönderebilirsiniz.</i>"
     )
-    await callback.message.edit_text(text, parse_mode="Markdown")
+    await callback.message.edit_text(text, parse_mode="HTML")
     await state.clear()
     await callback.answer("Teklif tamamlandı!")
 
 # ----------------- RAPOR İŞLEMLERİ -----------------
-@dp.message(Command("zraporu"))
+@dp.message(Command("zraporu", ignore_mention=True))
 @dp.message(F.text == "📊 Z-Raporu Al")
 async def trigger_z_report_manual(message: types.Message):
     sales = filter_sales_by_range(datetime.now() - timedelta(days=7), datetime.now())
@@ -736,7 +751,7 @@ async def trigger_z_report_manual(message: types.Message):
     ])
     await message.answer(build_report_text(sales, "HAFTALIK Z-RAPORU"), reply_markup=kb, parse_mode="Markdown")
 
-@dp.message(Command("aylikrapor"))
+@dp.message(Command("aylikrapor", ignore_mention=True))
 async def trigger_monthly_report_manual(message: types.Message):
     now = datetime.now()
     sales = filter_sales_by_range(datetime(now.year, now.month, 1), now)
@@ -746,7 +761,7 @@ async def trigger_monthly_report_manual(message: types.Message):
     ])
     await message.answer(build_report_text(sales, "AYLIK SATIŞ RAPORU"), reply_markup=kb, parse_mode="Markdown")
 
-@dp.message(Command("tarihraporu"))
+@dp.message(Command("tarihraporu", ignore_mention=True))
 @dp.message(F.text == "📅 Tarihli Rapor Al")
 async def trigger_custom_date_report(message: types.Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -755,7 +770,7 @@ async def trigger_custom_date_report(message: types.Message):
          InlineKeyboardButton(text="🗓️ Bu Ay", callback_data="date_filter:this_month")],
         [InlineKeyboardButton(text="✍️ Özel Tarih Aralığı", callback_data="date_filter:custom")]
     ])
-    await message.answer("📅 **Hangi aralığın raporunu almak istersiniz?**", reply_markup=kb, parse_mode="Markdown")
+    await message.answer("📅 <b>Hangi aralığın raporunu almak istersiniz?</b>", reply_markup=kb, parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("date_filter:"))
 async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMContext):
@@ -763,7 +778,7 @@ async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMConte
     now = datetime.now()
     if mode == "custom":
         await state.set_state(CustomReportState.waiting_date_range)
-        await callback.message.answer("✍️ Format: `GG.AA.YYYY - GG.AA.YYYY` (Örn: `01.10.2026 - 29.10.2026`)", parse_mode="Markdown")
+        await callback.message.answer("✍️ Format: <code>GG.AA.YYYY - GG.AA.YYYY</code> (Örn: <code>01.10.2026 - 29.10.2026</code>)", parse_mode="HTML")
         await callback.answer(); return
 
     ranges = {
@@ -795,7 +810,7 @@ async def process_custom_date_range(message: types.Message, state: FSMContext):
         await state.update_data(last_filtered_sales=sales, report_title=f"Rapor_{s_str}_{e_str}")
         await message.answer(build_report_text(sales, f"ÖZEL RAPOR ({s_str} - {e_str})"), reply_markup=kb, parse_mode="Markdown")
     except Exception:
-        await message.answer("⚠️ Format hatalı! Örnek: `01.10.2026 - 29.10.2026`", parse_mode="Markdown")
+        await message.answer("⚠️ Format hatalı! Örnek: <code>01.10.2026 - 29.10.2026</code>", parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("dl_rep:"))
 async def handle_download_report_choice(callback: types.CallbackQuery, state: FSMContext):
@@ -811,85 +826,85 @@ async def handle_download_report_choice(callback: types.CallbackQuery, state: FS
     await callback.answer("Hazırlanıyor...")
     if fmt in ["excel", "both"]:
         f = generate_excel_z_report(sales, title)
-        if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📊 **Elips Eliar {title} (Excel)**")
+        if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📊 <b>Elips Eliar {title} (Excel)</b>", parse_mode="HTML")
     if fmt in ["pdf", "both"]:
         f = generate_pdf_z_report(sales, title)
-        if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📑 **Elips Eliar {title} (PDF)**")
+        if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📑 <b>Elips Eliar {title} (PDF)</b>", parse_mode="HTML")
 
 # ---------------- SORGULAR, TESİS GEÇMİŞİ & REF ----------------
-@dp.message(Command("ref"))
+@dp.message(Command("ref", ignore_mention=True))
 async def cmd_ref_search(message: types.Message):
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("⚠️ Referans Numarası yazın. (Örn: `/ref 46189ND`)", parse_mode="Markdown")
+        await message.answer("⚠️ Referans Numarası yazın. (Örn: <code>/ref 46189ND</code>)", parse_mode="HTML")
         return
     query = parts[1].strip().upper()
     sales = load_sales()
     quote = next((s for s in sales if query in str(s.get("ref_no", "")).strip().upper()), None)
     if not quote:
-        await message.answer(f"🔍 `{query}` referansına ait kayıt bulunamadı.", parse_mode="Markdown")
+        await message.answer(f"🔍 <code>{html.escape(query)}</code> referansına ait kayıt bulunamadı.", parse_mode="HTML")
         return
     status_str = {"APPROVED": "🟢 ONAYLANDI", "WAITING": "🟡 BEKLİYOR", "REJECTED": "🔴 İPTAL"}.get(quote.get("status"), "Bilinmiyor")
-    text = (f"🔖 **TEKLİF [Ref: {quote.get('ref_no')}]**\n═══════════════════════════════\n"
-            f"🏭 Müşteri: `{quote.get('firm')}`\n👤 İlgili: {quote.get('contact', '-')}\n📌 Durum: {status_str}\n🕒 Tarih: {quote.get('date')}\n\n📦 **Parçalar:**\n")
+    text = (f"🔖 <b>TEKLİF [Ref: {quote.get('ref_no')}]</b>\n═══════════════════════════════\n"
+            f"🏭 Müşteri: <code>{html.escape(quote.get('firm', ''))}</code>\n👤 İlgili: {html.escape(quote.get('contact', '-'))}\n📌 Durum: {status_str}\n🕒 Tarih: {quote.get('date')}\n\n📦 <b>Parçalar:</b>\n")
     for idx, item in enumerate(quote.get("items", []), 1):
-        text += f"{idx}. `[{item.get('code')}]` — {item.get('name')} ({item.get('qty')} Adet)\n"
-    await message.answer(text, parse_mode="Markdown")
+        text += f"{idx}. <code>[{item.get('code')}]</code> — {html.escape(item.get('name', ''))} ({item.get('qty')} Adet)\n"
+    await message.answer(text, parse_mode="HTML")
 
-@dp.message(Command("gecmis"))
+@dp.message(Command("gecmis", ignore_mention=True))
 async def cmd_history_query(message: types.Message):
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("⚠️ Tesis adı belirtin. (Örn: `/gecmis TERRY JAR`)", parse_mode="Markdown")
+        await message.answer("⚠️ Tesis adı belirtin. (Örn: <code>/gecmis TERRY JAR</code>)", parse_mode="HTML")
         return
     await message.answer(get_client_history_text(parts[1]), parse_mode="Markdown")
 
 @dp.message(F.text == "🏢 Tesis Geçmişi")
 async def btn_client_history(message: types.Message, state: FSMContext):
     await state.set_state(ClientHistoryState.waiting_client_name)
-    await message.answer("🔍 Geçmişini aradığınız **Fabrika Adını** yazın:", parse_mode="Markdown")
+    await message.answer("🔍 Geçmişini aradığınız <b>Fabrika Adını</b> yazın:", parse_mode="HTML")
 
 @dp.message(ClientHistoryState.waiting_client_name)
 async def process_client_history_input(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer(get_client_history_text(message.text.strip()), parse_mode="Markdown")
 
-@dp.message(Command("bekleyenler"))
+@dp.message(Command("bekleyenler", ignore_mention=True))
 @dp.message(F.text == "⏳ Bekleyen Teklifler")
 async def show_pending_quotes(message: types.Message):
     waiting = [s for s in load_sales() if s.get("status") == "WAITING"]
     if not waiting:
-        await message.answer("⏳ Bekleyen teklif bulunmuyor.", parse_mode="Markdown")
+        await message.answer("⏳ Bekleyen teklif bulunmuyor.", parse_mode="HTML")
         return
     for s in waiting:
-        txt = f"🏭 `{s.get('firm')}` | Ref: `{s.get('ref_no')}`\n"
+        txt = f"🏭 <code>{html.escape(s.get('firm', ''))}</code> | Ref: <code>{s.get('ref_no')}</code>\n"
         for itm in s.get("items", []):
-            txt += f"• `[{itm.get('code')}]` {itm.get('name')} ({itm.get('qty')} Adet)\n"
+            txt += f"• <code>[{itm.get('code')}]</code> {html.escape(itm.get('name', ''))} ({itm.get('qty')} Adet)\n"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🟢 Onayla", callback_data=f"q_appr:{s.get('id')}"),
              InlineKeyboardButton(text="🔴 İptal", callback_data=f"q_rej:{s.get('id')}")]
         ])
-        await message.answer(txt, reply_markup=kb, parse_mode="Markdown")
+        await message.answer(txt, reply_markup=kb, parse_mode="HTML")
 
 # ----------------- PARÇA LİSTESİ VE SIFIRLAMA -----------------
-@dp.message(Command("stok"))
+@dp.message(Command("stok", ignore_mention=True))
 @dp.message(F.text == "📦 Parça Listesi")
 async def show_stocks(message: types.Message):
     stocks = load_stocks()
     if not stocks:
-        await message.answer("📦 Kayıtlı parça bulunamadı. `/sifirla` komutu ile kataloğu yükleyebilirsiniz.")
+        await message.answer("📦 Kayıtlı parça bulunamadı. <code>/sifirla</code> komutu ile kataloğu yükleyebilirsiniz.", parse_mode="HTML")
         return
-    text = f"📦 **GÜNCEL ELİAR DEPO & RD96 LİSTESİ** (Toplam: {len(stocks)} Kalem)\n═══════════════════════════════\n\n"
+    text = f"📦 <b>GÜNCEL ELİAR DEPO & RD96 LİSTESİ</b> (Toplam: {len(stocks)} Kalem)\n═══════════════════════════════\n\n"
     for s in stocks[:20]:
-        text += f"• `[{s['code']}]` {s['name'][:35]}\n  └ Stok: **{s.get('qty', 0)} ADT** | Konum: `{s.get('loc', 'MERKEZ-DEPO')}`\n"
+        text += f"• <code>[{s['code']}]</code> {html.escape(s['name'][:35])}\n  └ Stok: <b>{s.get('qty', 0)} ADT</b> | Konum: <code>{s.get('loc', 'MERKEZ-DEPO')}</code>\n"
     if len(stocks) > 20:
-        text += f"\n_...ve {len(stocks)-20} kalem parça daha. Tamamı Mini App'te listelenmektedir._"
-    await message.answer(text, parse_mode="Markdown")
+        text += f"\n<i>...ve {len(stocks)-20} kalem parça daha. Tamamı Mini App'te listelenmektedir.</i>"
+    await message.answer(text, parse_mode="HTML")
 
-@dp.message(Command("sifirla"))
+@dp.message(Command("sifirla", ignore_mention=True))
 async def cmd_reset_all(message: types.Message):
     init_stocks_from_catalog()
-    await message.answer(f"✅ **Stoklar sıfırlandı ve {len(RD96_CATALOG)} kalem RD96 parçası başarıyla yüklendi!**", parse_mode="Markdown")
+    await message.answer(f"✅ <b>Stoklar sıfırlandı ve {len(RD96_CATALOG)} kalem RD96 parçası başarıyla yüklendi!</b>", parse_mode="HTML")
 
 # ----------------- MEDYA / TEKLİF FORMU OKUMA (GEMINI) -----------------
 def parse_quote_media(file_path: str, is_pdf: bool = False, original_filename: str = ""):
@@ -922,8 +937,8 @@ async def handle_quote_media(message: types.Message):
     doc_name = message.document.file_name if message.document else ""
 
     try:
-        if is_pdf: await bot.send_document(target_id, doc_id, caption=f"📑 **{op_name} teklif PDF'i paylaştı!**")
-        else: await bot.send_photo(target_id, doc_id, caption=f"📷 **{op_name} teklif görseli paylaştı!**")
+        if is_pdf: await bot.send_document(target_id, doc_id, caption=f"📑 <b>{op_name} teklif PDF'i paylaştı!</b>", parse_mode="HTML")
+        else: await bot.send_photo(target_id, doc_id, caption=f"📷 <b>{op_name} teklif görseli paylaştı!</b>", parse_mode="HTML")
     except Exception: pass
 
     file_obj = await bot.get_file(doc_id)
@@ -941,9 +956,9 @@ async def handle_quote_media(message: types.Message):
     })
     save_sales(sales)
 
-    txt = f"📄 **ELİAR TEKLİF FORMU ALGILANDI!**\n👤 Paylaşan: {op_name}\n🏭 Müşteri: `{data.get('firm')}`\n🔖 Ref No: `{data.get('ref_no')}`\n\n📦 **Parçalar:**\n"
+    txt = f"📄 <b>ELİAR TEKLİF FORMU ALGILANDI!</b>\n👤 Paylaşan: {op_name}\n🏭 Müşteri: <code>{html.escape(data.get('firm', ''))}</code>\n🔖 Ref No: <code>{data.get('ref_no')}</code>\n\n📦 <b>Parçalar:</b>\n"
     for idx, itm in enumerate(data.get("items", []), 1):
-        txt += f"{idx}. `[{itm.get('code')}]` — {itm.get('name')} ({itm.get('qty')} Adet)\n"
+        txt += f"{idx}. <code>[{itm.get('code')}]</code> — {html.escape(itm.get('name', ''))} ({itm.get('qty')} Adet)\n"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🟢 Onayla (Satış)", callback_data=f"q_appr:{s_id}")],
@@ -958,7 +973,7 @@ async def quote_waiting(callback: types.CallbackQuery):
     sales = load_sales()
     sale = next((s for s in sales if s.get("id") == s_id), None)
     if sale: sale["status"] = "WAITING"; save_sales(sales)
-    await callback.message.edit_text(callback.message.text + "\n\n🟡 **BEKLEMEYE ALINDI**", reply_markup=None)
+    await callback.message.edit_text(callback.message.text + "\n\n🟡 <b>BEKLEMEYE ALINDI</b>", reply_markup=None, parse_mode="HTML")
     await callback.answer("Beklemede")
 
 @dp.callback_query(F.data.startswith("q_appr:"))
@@ -976,7 +991,7 @@ async def quote_approved(callback: types.CallbackQuery):
             if st.get("code") == itm.get("code"):
                 st["qty"] = max(0, st["qty"] - int(itm.get("qty", 1))); break
     save_stocks(stocks)
-    await callback.message.edit_text(callback.message.text + "\n\n🟢 **ONAYLANDI (SATIŞ)**", reply_markup=None)
+    await callback.message.edit_text(callback.message.text + "\n\n🟢 <b>ONAYLANDI (SATIŞ)</b>", reply_markup=None, parse_mode="HTML")
     await notify_both(f"🟢 **SATIŞ ONAYLANDI!**\n🏭 `{sale.get('firm')}` — Ref: `{sale.get('ref_no')}`\nStoktan düşüldü ve Z-Raporuna işlendi.")
     await callback.answer("Onaylandı.")
 
@@ -986,7 +1001,7 @@ async def quote_rejected(callback: types.CallbackQuery):
     sales = load_sales()
     sale = next((s for s in sales if s.get("id") == s_id), None)
     if sale: sale["status"] = "REJECTED"; save_sales(sales)
-    await callback.message.edit_text(callback.message.text + "\n\n🔴 **KABUL EDİLMEDİ (İPTAL)**", reply_markup=None)
+    await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KABUL EDİLMEDİ (İPTAL)</b>", reply_markup=None, parse_mode="HTML")
     await callback.answer("İptal edildi.")
 
 # ----------------- WEBAPP & SAHA İŞ EMİRLERİ -----------------
@@ -1035,14 +1050,14 @@ async def handle_webapp_payload(message: types.Message):
 
 @dp.callback_query(F.data.startswith("otk_ok:"))
 async def otk_approved(callback: types.CallbackQuery):
-    await callback.message.edit_text(callback.message.text + "\n\n🟢 **KAMİL ONAYLADI.**")
-    await bot.send_message(OMER_CHAT_ID, "🎉 **Kamil talebini onayladı.**")
+    await callback.message.edit_text(callback.message.text + "\n\n🟢 <b>KAMİL ONAYLADI.</b>", parse_mode="HTML")
+    await bot.send_message(OMER_CHAT_ID, "🎉 <b>Kamil talebini onayladı.</b>", parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("otk_no:"))
 async def otk_rejected(callback: types.CallbackQuery):
-    await callback.message.edit_text(callback.message.text + "\n\n🔴 **KAMİL REDDETTİ.**")
-    await bot.send_message(OMER_CHAT_ID, "❌ **Kamil talebini reddetti.**")
+    await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KAMİL REDDETTİ.</b>", parse_mode="HTML")
+    await bot.send_message(OMER_CHAT_ID, "❌ <b>Kamil talebini reddetti.</b>", parse_mode="HTML")
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("o_done:"))
@@ -1052,8 +1067,8 @@ async def omer_done(callback: types.CallbackQuery):
     t = tasks.get(ref_id, {})
     sec = int(time.time() - (t.get("created_at") or time.time()))
     dur = f"{sec//60} dk {sec%60} sn" if sec >= 60 else f"{sec} sn"
-    await callback.message.edit_text(callback.message.text + f"\n\n✅ **TAMAMLANDI** (Süre: {dur})")
-    await bot.send_message(KAMIL_CHAT_ID, f"🏁 **ÖMER GÖREVİ BİTİRDİ!**\n🏭 `{t.get('firm')}` | ⏱️ {dur}")
+    await callback.message.edit_text(callback.message.text + f"\n\n✅ <b>TAMAMLANDI</b> (Süre: {dur})", parse_mode="HTML")
+    await bot.send_message(KAMIL_CHAT_ID, f"🏁 <b>ÖMER GÖREVİ BİTİRDİ!</b>\n🏢 <code>{t.get('firm')}</code> | ⏱️ {dur}", parse_mode="HTML")
     await callback.answer("İş tamamlandı.")
 
 # ----------------- ÖMER VE KAMİL ARASI MESAJLAŞMA KÖPRÜSÜ -----------------
@@ -1064,8 +1079,8 @@ async def chat_bridge(message: types.Message):
     tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
     sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
     if tid and message.text:
-        await bot.send_message(tid, f"💬 **{sender}:** {message.text}")
-        await message.reply("✓ _İletildi._", parse_mode="Markdown")
+        await bot.send_message(tid, f"💬 <b>{sender}:</b> {html.escape(message.text)}", parse_mode="HTML")
+        await message.reply("✓ <i>İletildi.</i>", parse_mode="HTML")
 
 # ----------------- OTOMATİK ZAMANLAYICI (HAFTALIK / AYLIK) -----------------
 async def automated_scheduler():
@@ -1073,7 +1088,6 @@ async def automated_scheduler():
     while True:
         now = datetime.now()
         today = now.strftime("%Y-%m-%d")
-        # Cumartesi 12:30 Haftalık Z-Raporu
         if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_week != today:
             last_week = today
             sales = filter_sales_by_range(now - timedelta(days=7), now)
@@ -1083,7 +1097,6 @@ async def automated_scheduler():
                 f_pdf = generate_pdf_z_report(sales, "Haftalik")
                 if f_xls: await send_file_to_both(f_xls, "📊 Excel Raporu")
                 if f_pdf: await send_file_to_both(f_pdf, "📑 PDF Raporu")
-        # Ayın 1'i 18:00 Aylık Satış Raporu
         if (now + timedelta(days=1)).day == 1 and now.hour == 18 and now.minute == 0 and last_month != today:
             last_month = today
             sales = filter_sales_by_range(datetime(now.year, now.month, 1), now)
@@ -1095,21 +1108,7 @@ async def automated_scheduler():
                 if f_pdf: await send_file_to_both(f_pdf, "📑 PDF Raporu")
         await asyncio.sleep(25)
 
-async def start_dummy_server():
-    app = web.Application()
-    app.router.add_get('/', lambda r: web.Response(text="Eliar Robot Aktif"))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    await web.TCPSite(runner, '0.0.0.0', int(os.environ.get("PORT", 8080))).start()
-
-async def main():
-    if not os.path.exists(STOCKS_FILE):
-        init_stocks_from_catalog()
-    await setup_bot_commands()
-    await start_dummy_server()
-    asyncio.create_task(automated_scheduler())
-    await dp.start_polling(bot)
-
+# ----------------- DUMMY SERVER (RENDER İÇİN) -----------------
 async def start_dummy_server():
     try:
         app = web.Application()
@@ -1120,14 +1119,14 @@ async def start_dummy_server():
         await web.TCPSite(runner, '0.0.0.0', port).start()
         logging.info(f"Web sunucusu {port} portunda baslatildi.")
     except Exception as e:
-        logging.warning(f"Dummy server baslatilamadi (onemsiz, bot calismaya devam eder): {e}")
+        logging.warning(f"Dummy server baslatilamadi: {e}")
 
+# ----------------- MAIN / BAŞLANGIÇ -----------------
 async def main():
     try:
         if not os.path.exists(STOCKS_FILE):
             init_stocks_from_catalog()
         
-        # Asılı kalan eski webhook ve bağlantıları temizle
         await bot.delete_webhook(drop_pending_updates=True)
         await setup_bot_commands()
         await start_dummy_server()

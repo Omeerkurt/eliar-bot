@@ -67,7 +67,67 @@ QUOTES_FILE = "submitted_quotes.json"
 PDF_STORAGE_DIR = "stored_quotes_pdf"
 os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
-# ----------------- GERÇEK ELİPS DEPO ENVANTERİ -----------------
+# ----------------- 64 SAYFALIK KATALOG KOORDİNAT VE SAYFA HARİTASI -----------------
+CATALOG_GRID_MAP = {
+    "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
+    "41370": (3, 3), "41381": (3, 5), "91514": (3, 6),
+    "91410": (4, 1), "91411": (4, 2), "41436": (4, 3), "41435": (4, 4), "96469": (4, 5), "60002": (4, 6),
+    "90338": (5, 1), "91128": (5, 2), "91516": (5, 4), "41538": (5, 5), "41407": (5, 6),
+    "41420": (6, 1), "93041": (6, 2), "93035": (6, 3), "60020": (6, 4),
+    "91517": (7, 1), "41430": (7, 2), "41408": (7, 3), "41415": (7, 4), "41419": (7, 5), "41414": (7, 6),
+    "41425": (8, 1), "41427": (8, 2), "41426": (8, 3), "93039": (8, 4), "93040": (8, 5),
+    "41413": (9, 2), "41418": (9, 3), "41411": (9, 4), "41428": (9, 5), "41429": (9, 6),
+    "93043": (10, 1), "93042": (10, 2), "93037": (10, 3), "93036": (10, 4),
+    "60044": (11, 1), "41434": (11, 2), "90946": (11, 3), "41432": (11, 4), "41409": (11, 5), "41424": (11, 6),
+    "41433": (12, 1), "41416": (12, 2), "41417": (12, 3), "41533": (12, 4), "96541": (12, 5),
+    "90951": (13, 2), "41384": (13, 5), "41383": (13, 6),
+    "90310": (14, 1), "90952": (14, 2), "90332": (14, 3), "90328": (14, 4),
+    "90949": (15, 1), "90947": (15, 2), "90321": (15, 3), "16073": (15, 4), "90490": (15, 5), "91238": (15, 6),
+    "90333": (16, 1), "90948": (16, 2), "91407": (16, 3), "93008": (16, 4), "90345": (16, 5), "90325": (16, 6),
+    "90320": (17, 1), "90950": (17, 2), "60003": (17, 3), "96112": (17, 4), "90827": (17, 5), "50155": (17, 6),
+    "96467": (18, 1), "91603": (18, 2), "91035": (18, 3), "90547": (18, 4), "20031": (18, 5), "90475": (18, 6),
+    "50160": (19, 1), "91285": (19, 2), "50606": (19, 3), "91472": (19, 4),
+    "50247": (20, 1), "50249": (20, 2), "15401": (20, 3), "41439": (20, 4), "91633": (20, 5), "91448": (20, 6),
+    "42595": (21, 1), "90861": (21, 3), "90817": (21, 6),
+    "96683": (22, 1), "96097": (22, 2), "91598": (22, 4), "91037": (22, 5), "40082": (22, 6),
+    "91386": (23, 1), "91488": (23, 2), "90567": (23, 3), "90965": (23, 4),
+    "40647": (24, 1), "90715": (24, 2), "90828": (24, 5), "90834": (24, 6),
+    "96468": (25, 1), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
+    "90832": (26, 4), "40634": (26, 6),
+    "96412": (27, 1), "90878": (27, 2), "90881": (27, 3), "90880": (27, 4),
+    "90879": (28, 1), "91284": (28, 3), "14574": (28, 4), "14541": (28, 6),
+    "91332": (29, 1), "50219": (29, 2), "54626": (29, 3), "41441": (29, 5), "91447": (29, 6),
+    "50057": (30, 1), "54612": (30, 2), "50098": (30, 3), "50018": (30, 4), "91594": (30, 5),
+    "91590": (31, 3), "15005": (31, 4), "50549": (31, 5), "40085": (31, 6),
+    "91451": (32, 1), "50023": (32, 2), "50273": (32, 3), "50021": (32, 4),
+    "41442": (33, 1), "41404": (33, 2), "96517": (33, 3), "50257": (33, 4), "96501": (33, 5), "90766": (33, 6),
+    "16016": (34, 1), "16039": (34, 2), "16034": (34, 3), "41403": (34, 4), "90767": (34, 5), "91071": (34, 6),
+    "90762": (35, 1), "90840": (35, 2), "41400": (35, 3), "41401": (35, 4), "41300": (35, 5), "41402": (35, 6),
+    "91277": (36, 1), "54516": (36, 2), "90768": (36, 3), "90769": (36, 4),
+    "90782": (37, 1), "16032": (37, 2), "16041": (37, 3), "16035": (37, 4), "50260": (37, 5), "90759": (37, 6),
+    "50138": (38, 2), "91086": (38, 3), "91045": (38, 4), "90770": (38, 5), "16043": (38, 6),
+    "16030": (39, 1), "90765": (39, 4), "11906": (39, 6),
+    "12302": (40, 1), "41444": (40, 2), "91303": (40, 3), "50263": (40, 4),
+    "91044": (41, 1), "54510": (41, 3), "90761": (41, 4), "50262": (41, 6),
+    "41399": (42, 5), "50259": (42, 6), "50258": (43, 6), "50261": (44, 6),
+    "91269": (46, 2), "91270": (46, 3), "50278": (46, 4), "50293": (46, 5), "90725": (46, 6),
+    "50040": (47, 2), "41396": (47, 3), "41398": (47, 5), "54630": (47, 6),
+    "50270": (48, 1), "50287": (48, 2), "91066": (48, 3), "91064": (48, 4), "41457": (48, 5), "50238": (48, 6),
+    "50156": (49, 1), "91043": (49, 2), "50269": (49, 3),
+    "50289": (50, 6), "50291": (52, 1), "90781": (52, 5),
+    "96404": (53, 2), "41406": (53, 3), "41405": (53, 4),
+    "90484": (54, 1), "91490": (54, 2), "91489": (54, 3), "90930": (54, 5), "91495": (54, 6),
+    "54661": (55, 3), "54662": (55, 4), "41437": (55, 5), "90568": (55, 6),
+    "50014": (56, 1), "91782": (56, 2), "91271": (56, 3), "91268": (56, 4), "90793": (56, 5), "90324": (56, 6),
+    "16044": (57, 1), "14847": (57, 2), "41290": (57, 3), "41287": (57, 4), "41288": (57, 5), "41289": (57, 6),
+    "54629": (58, 1), "54628": (58, 2),
+    "50024": (59, 1), "50025": (59, 2), "91586": (59, 3), "50027": (59, 4), "92038": (59, 5), "54620": (59, 6),
+    "14577": (60, 1), "14317": (60, 2), "96449": (60, 3), "91950": (60, 4), "96219": (60, 6),
+    "91453": (61, 1), "50008": (61, 2), "50010": (61, 3), "50046": (61, 4),
+    "50054": (62, 3), "15005": (63, 3)
+}
+
+# ----------------- GERÇEK ELİPS DEPO & KATALOG ENVANTERİ -----------------
 REAL_WAREHOUSE_STOCKS = [
     {"code": "Pd320", "name": "Pd320 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "PD330", "name": "PD330 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
@@ -235,89 +295,31 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "41405", "name": "RD96-MU33 Paslanmaz Çelik Tabla", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"}
 ]
 
-INITIAL_REAL_SALES = [
-    {"id": "SL-1", "firm": "INDIGO", "ref_no": "SATIS", "date": "17.03.2025", "timestamp": "2025-03-17", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 5}]},
-    {"id": "SL-2", "firm": "WBM ANDIJON", "ref_no": "GARANTI", "date": "02.06.2025", "timestamp": "2025-06-02", "status": "APPROVED", "items": [{"code": "90840", "name": "PISTON SENSORU:DC73L", "qty": 1}]},
-    {"id": "SL-3", "firm": "SAFF TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90484", "name": "3/4\" KIMYASAL VANA", "qty": 3}]},
-    {"id": "SL-4", "firm": "BEST COLOR", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "50289", "name": "VALF:SY3220-5LOU-M5-Q", "qty": 1}]},
-    {"id": "SL-5", "firm": "CHUST TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90620", "name": "PH SENSORU", "qty": 2}]},
-    {"id": "SL-6", "firm": "PARVOZ HUMO (HAJJ TEKSTIL)", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 6}]},
-    {"id": "SL-7", "firm": "SOF MEGA TEKSTIL", "ref_no": "SATIS", "date": "11.06.2025", "timestamp": "2025-06-11", "status": "APPROVED", "items": [{"code": "91332", "name": "FESTO BASINC ANAHTARI", "qty": 1}]},
-    {"id": "SL-8", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "07.07.2025", "timestamp": "2025-07-07", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 2}]},
-    {"id": "SL-9", "firm": "ASAKA TEKSTIL", "ref_no": "SATIS", "date": "15.07.2025", "timestamp": "2025-07-15", "status": "APPROVED", "items": [{"code": "50257", "name": "TEK ETLKILI PNOMATIK SILINDIR", "qty": 1}, {"code": "91071", "name": "1/8\"-4MM DIRSEK RAKOR", "qty": 2}]},
-    {"id": "SL-10", "firm": "ASAKA TEKSTIL", "ref_no": "SATIS", "date": "05.10.2025", "timestamp": "2025-10-05", "status": "APPROVED", "items": [{"code": "91071", "name": "1/8\"-4MM DIRSEK RAKOR", "qty": 10}]},
-    {"id": "SL-11", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "07.10.2025", "timestamp": "2025-10-07", "status": "APPROVED", "items": [{"code": "96516", "name": "DST Z Ekseni Polietilen Ağızlık", "qty": 1}]},
-    {"id": "SL-12", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "09.10.2025", "timestamp": "2025-10-09", "status": "APPROVED", "items": [{"code": "90567", "name": "66 Mm Teflon Takviyeli Diyafram", "qty": 5}]},
-    {"id": "SL-13", "firm": "BEST COLOR", "ref_no": "SATIS", "date": "18.10.2025", "timestamp": "2025-10-18", "status": "APPROVED", "items": [{"code": "50260", "name": "PISTON CD85N16-50-B", "qty": 2}]},
-    {"id": "SL-14", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "25.10.2025", "timestamp": "2025-10-25", "status": "APPROVED", "items": [{"code": "90620", "name": "PH Sensörü: SPH-1-DJ-6M Ph Sensör", "qty": 2}]},
-    {"id": "SL-15", "firm": "JIZZAX TEKSTIL", "ref_no": "SATIS", "date": "04.12.2025", "timestamp": "2025-12-04", "status": "APPROVED", "items": [{"code": "90567", "name": "66MM TEFLON TAKVIYELI DIYAFRAM", "qty": 4}]},
-    {"id": "SL-16", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "20.12.2025", "timestamp": "2025-12-20", "status": "APPROVED", "items": [{"code": "91332", "name": "FESTO BASINC ANAHTARI", "qty": 1}]},
-    {"id": "SL-17", "firm": "BIRYUZA TEKSTIL", "ref_no": "SATIS", "date": "09.02.2026", "timestamp": "2026-02-09", "status": "APPROVED", "items": [{"code": "90567", "name": "66 Mm Teflon Takviyeli Diyafram", "qty": 1}]},
-    {"id": "SL-18", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "21.02.2026", "timestamp": "2026-02-21", "status": "APPROVED", "items": [{"code": "96516", "name": "DST Z Ekseni Polietilen Ağızlık", "qty": 1}]},
-    {"id": "SL-19", "firm": "AKPAMUK TEKSTIL", "ref_no": "SATIS", "date": "26.03.2026", "timestamp": "2026-03-26", "status": "APPROVED", "items": [{"code": "5022", "name": "Salmastra", "qty": 1}]},
-    {"id": "SL-20", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "01.04.2026", "timestamp": "2026-04-01", "status": "APPROVED", "items": [{"code": "50293", "name": "VALF:SYJ3243-5LOU-Q", "qty": 1}]},
-    {"id": "SL-21", "firm": "BIRYUZA TEKSTIL", "ref_no": "SATIS", "date": "16.04.2026", "timestamp": "2026-04-16", "status": "APPROVED", "items": [{"code": "50260", "name": "PISTON CD85N16-50-B", "qty": 2}, {"code": "91086", "name": "PNOMATIK T RAKOR", "qty": 2}, {"code": "90765", "name": "RD96 CAMBAZ KOLU", "qty": 1}]},
-    {"id": "SL-22", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "23.04.2026", "timestamp": "2026-04-23", "status": "APPROVED", "items": [{"code": "90881", "name": "DST CEKVALF YAYI", "qty": 2}, {"code": "90879", "name": "DST CEKVALF O-RINGI", "qty": 2}]},
-    {"id": "SL-23", "firm": "ASAKA TEKSTIL", "ref_no": "SATIS", "date": "07.05.2026", "timestamp": "2026-05-07", "status": "APPROVED", "items": [{"code": "91277", "name": "RD96-Mu Polietilen Ağızlık", "qty": 1}, {"code": "50291", "name": "VALF:SYJ3240-5LOU-Q", "qty": 1}, {"code": "50289", "name": "VALF:SY3220-5LOU-M5-Q", "qty": 1}, {"code": "50287", "name": "VALF:SY114-5LOU-Q", "qty": 2}]},
-    {"id": "SL-24", "firm": "AKPAMUK TEKSTIL", "ref_no": "SATIS", "date": "20.05.2026", "timestamp": "2026-05-20", "status": "APPROVED", "items": [{"code": "90567", "name": "66 Mm Teflon Takviyeli Diyafram", "qty": 1}]},
-    {"id": "SL-25", "firm": "DAKA TEKSTIL", "ref_no": "SATIS", "date": "04.07.2026", "timestamp": "2026-07-04", "status": "APPROVED", "items": [{"code": "41316", "name": "Lab120 encoder", "qty": 1}]},
-    {"id": "SL-26", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "06.07.2026", "timestamp": "2026-07-06", "status": "APPROVED", "items": [{"code": "90840", "name": "PISTON SENSORU:DC73L", "qty": 2}]},
-    {"id": "SL-27", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "30.09.2026", "timestamp": "2026-09-30", "status": "APPROVED", "items": [{"code": "50018", "name": "VALF:SY5140-5YO-Q", "qty": 3}]},
-    {"id": "SL-28", "firm": "ZELAL TEKSTIL", "ref_no": "SATIS", "date": "21.10.2026", "timestamp": "2026-10-21", "status": "APPROVED", "items": [{"code": "91594", "name": "VALF:SY5240-5YO-Q", "qty": 3}]},
-    {"id": "SL-29", "firm": "TERRY JAR", "ref_no": "SATIS", "date": "21.10.2026", "timestamp": "2026-10-21", "status": "APPROVED", "items": [{"code": "90879", "name": "DST CEKVALF O-RINGI", "qty": 2}, {"code": "90881", "name": "DST CEKVALF YAYI", "qty": 2}, {"code": "91284", "name": "BONESSI VALF:P00112200", "qty": 2}]}
-]
+# ----------------- PARÇA GÖRSELİ VE BAŞLIĞINI TAM ÇIKARAN MOTOR -----------------
+def crop_slot_from_page(page, slot: int) -> bytes:
+    pw, ph = page.rect.width, page.rect.height
+    col = 0 if slot in [1, 3, 5] else 1
+    row = 0 if slot in [1, 2] else (1 if slot in [3, 4] else 2)
 
-# FSM DURUMLARI
-class ClientHistoryState(StatesGroup):
-    waiting_client_name = State()
+    x0 = 8 if col == 0 else (pw / 2 + 1)
+    x1 = (pw / 2 - 1) if col == 0 else (pw - 8)
+    top_offset = 12
+    bottom_offset = 24
+    avail_h = ph - top_offset - bottom_offset
+    row_h = avail_h / 3.0
 
-class CustomReportState(StatesGroup):
-    waiting_date_range = State()
+    # Üstteki başlık çubuğunu (yeşil-sarı isim şeridini) tam alacak şekilde ayarlandı
+    y0 = max(0, top_offset + row * row_h - 4)
+    y1 = min(ph, y0 + row_h + 8)
 
-class QuoteBuilderState(StatesGroup):
-    waiting_firm = State()
-    waiting_item_query = State()
-    waiting_custom_manual = State()       # Detaylı kodu/ismi biliyor, yazıyor
-    waiting_ask_technic_input = State()    # Bilmiyor, fotoğraf veya açıklama gönderiyor
-    waiting_supply_source = State()        # Elips Depodan mı, TR'den mi gidecek?
-    waiting_qty = State()                  # Adet
-    confirm_more = State()                 # Başka parça ekleme
-
-def normalize_tr(text: str) -> str:
-    if not text: return ""
-    m = {'ı':'i','İ':'i','I':'i','ş':'s','Ş':'s','ğ':'g','Ğ':'g','ü':'u','Ü':'u','ö':'o','Ö':'o','ç':'c','Ç':'c'}
-    res = text.lower()
-    for k, v in m.items(): res = res.replace(k, v)
-    return res
-
-def load_data(file_path, default):
-    if not os.path.exists(file_path):
-        save_data(file_path, default)
-        return default
     try:
-        with open(file_path, "r", encoding="utf-8") as f: return json.load(f)
-    except Exception: return default
-
-def save_data(file_path, data):
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-load_stocks = lambda: load_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
-save_stocks = lambda d: save_data(STOCKS_FILE, d)
-load_sales = lambda: load_data(SALES_FILE, INITIAL_REAL_SALES)
-save_sales = lambda d: save_data(SALES_FILE, d)
-load_quotes = lambda: load_data(QUOTES_FILE, [])
-save_quotes = lambda d: save_data(QUOTES_FILE, d)
-
-def get_catalog_pdf_file():
-    for name in ["Katalog.pdf", "katalog.pdf", "CATALOG.PDF", "catalog.pdf", "rd96.pdf", "RD96.pdf"]:
-        if os.path.exists(name): return name
-    for root, dirs, files in os.walk("."):
-        for fn in files:
-            lower = fn.lower()
-            if lower.endswith(".pdf") and ("katalog" in lower or "catalog" in lower or "rd96" in lower):
-                return os.path.join(root, fn)
-    return None
+        import fitz
+        clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
+        pix = page.get_pixmap(clip=clip_rect, dpi=200)
+        return pix.tobytes("png")
+    except Exception as e:
+        logging.error(f"Kırpma hatası: {e}")
+        return None
 
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
     pdf_path = get_catalog_pdf_file()
@@ -328,45 +330,27 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         import fitz
         doc = fitz.open(pdf_path)
 
+        # 1. Katalog Izgara Haritasında Varsa Koordinattan Kes
+        if code_str in CATALOG_GRID_MAP:
+            page_no, slot = CATALOG_GRID_MAP[code_str]
+            p_idx = page_no - 1
+            if 0 <= p_idx < len(doc):
+                img = crop_slot_from_page(doc[p_idx], slot)
+                if img: return img
+
+        # 2. Haritada Yoksa Sayfalarda Kodu Ara ve Çerçevele
         for p_idx, page in enumerate(doc):
-            pw, ph = page.rect.width, page.rect.height
             rects = page.search_for(code_str) or page.search_for(f"({code_str})")
-            if not rects: continue
-
-            first_match = rects[0]
-            col = 0 if first_match.x0 < (pw / 2) else 1
-
-            col_rects = [r for r in rects if (r.x0 < pw/2 if col == 0 else r.x0 >= pw/2)]
-            if not col_rects: col_rects = rects
-            min_code_y = min(r.y0 for r in col_rects)
-
-            y0 = max(10, min_code_y - 28)
-            x0 = 8 if col == 0 else (pw / 2 + 3)
-            x1 = (pw / 2 - 3) if col == 0 else (pw - 8)
-
-            all_other = page.search_for("Order Code")
-            next_y1 = ph - 15
-
-            for oc in all_other:
-                is_same_col = (oc.x0 < pw/2) if col == 0 else (oc.x0 >= pw/2)
-                if is_same_col and oc.y0 > (min_code_y + 45):
-                    cand_y1 = oc.y0 - 28
-                    if cand_y1 < next_y1:
-                        next_y1 = cand_y1
-
-            y1 = next_y1
-            if (y1 - y0) < 90:
-                y1 = min(ph - 15, y0 + 260)
-
-            clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
-            pix = page.get_pixmap(clip=clip_rect, dpi=200)
-            img_bytes = pix.tobytes("png")
-            if img_bytes and len(img_bytes) > 2500:
-                return img_bytes
+            if rects:
+                r = rects[0]
+                pw, ph = page.rect.width, page.rect.height
+                col = 0 if r.x0 < (pw / 2) else 1
+                row = 0 if r.y0 < (ph / 3) else (1 if r.y0 < (2 * ph / 3) else 2)
+                return crop_slot_from_page(page, (row * 2) + col + 1)
 
         return None
     except Exception as e:
-        logging.error(f"Kırpma motoru hatası: {e}")
+        logging.error(f"Görsel çıkarma hatası: {e}")
         return None
 
 def calculate_similarity(query: str, part: dict) -> float:
@@ -403,250 +387,21 @@ async def notify_both(text: str, reply_markup=None, photo_file=None):
         except Exception as e:
             logging.warning(f"Bildirim iletilemedi ({cid}): {e}")
 
-async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
-    pdf_bytes = b""
-    try:
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-    except Exception as e:
-        logging.error(f"PDF dosya okuma hatası: {e}")
+# ----------------- FSM DURUMLARI -----------------
+class ClientHistoryState(StatesGroup):
+    waiting_client_name = State()
 
-    extracted_text = ""
-    try:
-        import fitz
-        doc = fitz.open(pdf_path)
-        for p in doc: extracted_text += p.get_text() + "\n"
-    except Exception: pass
+class CustomReportState(StatesGroup):
+    waiting_date_range = State()
 
-    prompt = (
-        "Sen profesyonel bir depo ve muhasebe asistanısın. Ekteki fiyat teklifi belgesini analiz et.\n"
-        "Aşağıdaki bilgileri eksiksiz tespit edip YALNIZCA SAF JSON formatında döndür (Markdown ```json etiketi KULLANMA):\n"
-        "{\n"
-        '  "firm": "Müşteri / Fabrika Adı",\n'
-        '  "date": "GG.AA.YYYY",\n'
-        '  "currency": "EUR veya USD veya TL",\n'
-        '  "grand_total": "1250.00",\n'
-        '  "items": [\n'
-        '    {"code": "90880", "name": "Ürün Adı", "qty": 2, "unit_price": "50", "total_price": "100"}\n'
-        '  ]\n'
-        "}\n\n"
-        "Kurallar:\n"
-        "- Müşteri firma adını bul (Örn: ZELAL TEKSTIL, TERRY JAR, ASAKA TEKSTIL vb.). Eğer satıcı Eliar ise teklif verilen muhatap firmayı al.\n"
-        "- Her bir ürün kaleminin kodunu (varsa), adını, adedini (tam sayı) ve fiyatını çıkar.\n"
-        "- Para birimini ve genel toplamı bul."
-    )
-
-    if ai_client and pdf_bytes and HAS_GENAI:
-        try:
-            pdf_part = genai_types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
-            contents_payload = [pdf_part, prompt]
-        except Exception:
-            contents_payload = [f"{prompt}\n\nTeklif Metni:\n{extracted_text[:5000]}"]
-
-        for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
-            try:
-                loop = asyncio.get_event_loop()
-                res = await loop.run_in_executor(
-                    None,
-                    lambda m=model_name: ai_client.models.generate_content(
-                        model=m,
-                        contents=contents_payload
-                    )
-                )
-                raw = res.text.strip()
-                raw = re.sub(r"^```json\s*", "", raw, flags=re.MULTILINE)
-                raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
-                parsed = json.loads(raw)
-                if parsed.get("firm") and parsed.get("items"):
-                    logging.info(f"✅ Gemini ({model_name}) ile PDF başarıyla okundu: {parsed.get('firm')}")
-                    return parsed
-            except Exception as e:
-                logging.warning(f"Gemini {model_name} denemesi: {e}")
-
-    firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Tesis|Sayin|Company)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
-    detected_firm = firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA"
-
-    cur = "EUR"
-    if "USD" in extracted_text or "$" in extracted_text: cur = "USD"
-    elif "TL" in extracted_text or "TRY" in extracted_text: cur = "TL"
-
-    tot_match = re.search(r"(?:Genel Toplam|Grand Total|Toplam|Total)[\s:]*([0-9.,]+)", extracted_text, re.IGNORECASE)
-    grand_total = tot_match.group(1).strip() if tot_match else "-"
-
-    detected_items = []
-    lines = [l.strip() for l in extracted_text.split("\n") if l.strip()]
-    for line in lines:
-        code_match = re.search(r"\b(\d{4,6})\b", line)
-        if code_match:
-            c = code_match.group(1)
-            detected_items.append({"code": c, "name": line[:40], "qty": 1, "unit_price": "-", "total_price": "-"})
-
-    if not detected_items:
-        detected_items = [{"code": "GENEL", "name": "PDF Teklif Kalemleri", "qty": 1, "unit_price": "-", "total_price": "-"}]
-
-    return {
-        "firm": detected_firm[:30].upper(),
-        "date": datetime.now().strftime("%d.%m.%Y"),
-        "currency": cur,
-        "grand_total": grand_total,
-        "items": detected_items[:15]
-    }
-
-# ----------------- RAPOR MOTORU -----------------
-def generate_excel_z_report(sales_data, title="Z_Raporu"):
-    fn = f"Elips_{title}_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Satislar"
-        headers = ["Sıra", "Tarih", "Ref No", "Müşteri / Fabrika", "Ürün Kodu", "Ürün Adı", "Adet"]
-        ws.append(headers)
-        h_fill = PatternFill(start_color="161F30", end_color="161F30", fill_type="solid")
-        h_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-        border = Border(*(Side(style='thin', color='DDDDDD') for _ in range(4)))
-        for c in range(1, len(headers) + 1):
-            cell = ws.cell(row=1, column=c)
-            cell.fill, cell.font = h_fill, h_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-        row, cnt = 2, 1
-        for sale in sales_data:
-            for item in sale.get("items", []):
-                ws.append([cnt, str(sale.get("date", "")), str(sale.get("ref_no", "YOK")), str(sale.get("firm", "")),
-                           item.get("code", ""), item.get("name", ""), item.get("qty", 1)])
-                for c in range(1, len(headers) + 1): ws.cell(row=row, column=c).border = border
-                row += 1; cnt += 1
-        for idx, w in enumerate([8, 18, 14, 25, 16, 40, 10], 1):
-            ws.column_dimensions[openpyxl.utils.get_column_letter(idx)].width = w
-        wb.save(fn)
-        return fn
-    except Exception as e:
-        logging.error(f"Excel hatası: {e}")
-        return None
-
-def generate_pdf_z_report(sales_data, title="Z_Raporu"):
-    fn = f"Elips_{title}_{datetime.now().strftime('%d_%m_%Y')}.pdf"
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        doc = SimpleDocTemplate(fn, pagesize=A4, rightMargin=15, leftMargin=15, topMargin=20, bottomMargin=20)
-        styles = getSampleStyleSheet()
-        t_style = ParagraphStyle('T', parent=styles['Heading1'], fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor('#161F30'), alignment=1, spaceAfter=4)
-        s_style = ParagraphStyle('S', parent=styles['Normal'], fontName="Helvetica", fontSize=8, textColor=colors.HexColor('#64748B'), alignment=1, spaceAfter=12)
-        elements = [
-            Paragraph("ELİPS DEPO PARÇA SATIŞ RAPORU", t_style),
-            Paragraph(f"DÖKÜM TARİHİ: {datetime.now().strftime('%d.%m.%Y %H:%M')}", s_style)
-        ]
-        data = [["Sıra", "Tarih", "Ref No", "Müşteri / Tesis", "Ürün Kodu", "Ürün Adı", "Adet"]]
-        cnt, total = 1, 0
-        for sale in sales_data:
-            ref = str(sale.get("ref_no", "YOK"))
-            firm = str(sale.get("firm", ""))[:22]
-            date = str(sale.get("date", "")).split()[0]
-            for itm in sale.get("items", []):
-                q = int(itm.get("qty", 1))
-                total += q
-                data.append([str(cnt), date, ref, firm, str(itm.get("code", "")), str(itm.get("name", ""))[:28], str(q)])
-                cnt += 1
-        data.append(["TOPLAM", "", "", "", "", "Toplam Adet:", str(total)])
-        table = Table(data, colWidths=[30, 65, 60, 130, 80, 150, 50], repeatRows=1)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#161F30')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2E8F0')),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold')
-        ]))
-        elements.append(table)
-        doc.build(elements)
-        return fn
-    except Exception as e:
-        logging.error(f"PDF hatası: {e}")
-        return None
-
-def filter_sales_by_range(start_dt: datetime, end_dt: datetime):
-    sales = load_sales()
-    res = []
-    for s in sales:
-        if s.get("status") != "APPROVED": continue
-        try:
-            ts = s.get("timestamp")
-            d = datetime.fromisoformat(ts) if ts else datetime.strptime(s.get("date", "").split()[0], "%d.%m.%Y")
-            if start_dt <= d <= end_dt: res.append(s)
-        except Exception: res.append(s)
-    return res
-
-def build_report_text(sales_data, report_name="SATIŞ Z-RAPORU"):
-    now = datetime.now()
-    if not sales_data:
-        return f"📊 <b>ELİPS DEPO {report_name}</b>\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\nℹ️ Kayıt bulunamadı."
-    text = f"📊 <b>ELİPS DEPO {report_name}</b>\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\n\n"
-    total_qty, plants, cnt = 0, set(), 1
-    for sale in sales_data:
-        plants.add(sale.get("firm", ""))
-        for itm in sale.get("items", []):
-            q = int(itm.get("qty", 1))
-            total_qty += q
-            text += f"<b>{cnt}.</b> <code>[{itm.get('code')}]</code> {html.escape(itm.get('name', ''))}\n   └ Miktar: <b>{q} Adet</b> | Tesis: <b>{html.escape(sale.get('firm', ''))}</b>\n\n"
-            cnt += 1
-    text += f"───────────────────────────────\n📦 Toplam Satış: <b>{total_qty} Adet</b> | Tesis: <b>{len(plants)}</b>\n📂 Format seçin:"
-    return text
-
-def get_client_history_text(firm_query: str):
-    sales = load_sales()
-    q_norm = normalize_tr(firm_query.strip())
-    scored = []
-    for s in sales:
-        if s.get("status") != "APPROVED": continue
-        f_norm = normalize_tr(s.get("firm", ""))
-        ratio = difflib.SequenceMatcher(None, q_norm, f_norm).ratio()
-        if q_norm in f_norm or ratio > 0.40:
-            scored.append((s, ratio))
-
-    if not scored: return f"🔍 <code>{html.escape(firm_query)}</code> için onaylı geçmiş hareket bulunamadı."
-    scored.sort(key=lambda x: x[1], reverse=True)
-    best_firm = scored[0][0].get("firm")
-    firm_records = [s for s, _ in scored if s.get("firm") == best_firm]
-
-    text = f"🏢 <b>{html.escape(best_firm)} — PARÇA GEÇMİŞİ</b>\n═══════════════════════════════\n\n"
-    for item in firm_records:
-        for itm in item.get("items", []):
-            text += f"• 📅 <code>{item.get('date', '')}</code> ➔ <b>{itm.get('qty')}x</b> <code>[{itm.get('code')}]</code> ({html.escape(itm.get('name', ''))})\n"
-    text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(firm_records)} Sevkiyat / Hareket</b>"
-    return text
-
-def get_main_keyboard():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⚡ Elips Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
-            [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
-            [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="✅ Tamamlanmış Teklifler")],
-            [KeyboardButton(text="📂 Verilen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")],
-            [KeyboardButton(text="📖 Kataloğu Gönder")]
-        ],
-        resize_keyboard=True
-    )
-
-async def setup_bot_commands():
-    commands = [
-        BotCommand(command="start", description="Başlat / Ana Menü"),
-        BotCommand(command="teklif", description="Nilay Hanım'a Teklif Hazırla"),
-        BotCommand(command="stok", description="Parça Listesi"),
-        BotCommand(command="bekleyenler", description="Bekleyen Teklifler"),
-        BotCommand(command="tamamlananlar", description="Tamamlanmış Teklifler"),
-        BotCommand(command="verilenler", description="Tüm Verilen Teklifler"),
-        BotCommand(command="zraporu", description="Haftalık Z-Raporu"),
-        BotCommand(command="gecmis", description="Tesis Geçmişi"),
-        BotCommand(command="katalog", description="Katalog PDF İndir")
-    ]
-    await bot.set_my_commands(commands)
+class QuoteBuilderState(StatesGroup):
+    waiting_firm = State()
+    waiting_item_query = State()
+    waiting_custom_manual = State()
+    waiting_ask_technic_input = State()
+    waiting_supply_source = State()
+    waiting_qty = State()
+    confirm_more = State()
 
 # ----------------- ANA MENÜ / START -----------------
 @dp.message(CommandStart())
@@ -662,7 +417,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     msg_text = (
         f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.\n\n"
         f"• Katalog PDF: {pdf_info}\n"
-        f"• Güncel Depo Kalem: {len(stocks)} Çeşit\n"
+        f"• Güncel Depo & Katalog Kalem: {len(stocks)} Çeşit\n"
         f"• <b>İpucu:</b> Fiyat teklifi PDF'ini direkt buraya gönderebilirsiniz, yapay zeka ile otomatik taranacaktır."
     )
     await message.answer(msg_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
@@ -676,7 +431,7 @@ async def send_catalog_pdf(message: types.Message):
     else:
         await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
 
-# ----------------- NİLAY HANIM'A TEKLİF SİHİRBAZI (YENİ İŞ MANTIĞI) -----------------
+# ----------------- NİLAY HANIM'A TEKLİF SİHİRBAZI -----------------
 @dp.message(Command("teklif", ignore_mention=True))
 @dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla")
 async def start_quote_wizard(message: types.Message, state: FSMContext):
@@ -692,14 +447,14 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_item_query)
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✍️ Kodu ve İsmi Biliyorum (Kendim Yazacağım)", callback_data="qb_manual")],
-        [InlineKeyboardButton(text="❓ Bilmiyorum (Tekniğe Sor & Fotoğraf Gönder)", callback_data="qb_ask_tech")],
+        [InlineKeyboardButton(text="✍️ Kodu ve İsmi Manuel Yazacağım", callback_data="qb_manual")],
+        [InlineKeyboardButton(text="❓ Bilmiyorum (Tekniğe Sor & Foto Gönder)", callback_data="qb_ask_tech")],
         [InlineKeyboardButton(text="📖 Parça Kataloğunu İncele (PDF)", callback_data="qb_get_catalog")]
     ])
     await message.answer(
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n\n"
         f"• Parçanın <b>Kodunu</b> veya <b>İsmini</b> yazın:\n"
-        f"<i>(Sistem depoda olup olmadığını kontrol edecektir)</i>",
+        f"<i>(Depomuzda ve 64 sayfalık tüm katalogda otomatik aranır, stokta olması şart değildir)</i>",
         reply_markup=kb,
         parse_mode="HTML"
     )
@@ -713,19 +468,19 @@ async def cb_send_catalog_in_quote(callback: types.CallbackQuery):
         await callback.answer("Katalog dosyası bulunamadı.", show_alert=True)
     await callback.answer()
 
-# PARÇA ARAMA İŞLEMCİSİ
+# PARÇA ARAMA İŞLEMCİSİ (DEPO + KATALOG)
 @dp.message(QuoteBuilderState.waiting_item_query)
 async def process_quote_search(message: types.Message, state: FSMContext):
     query = message.text.strip()
     matches = find_best_matches(query)
 
-    # 1. PARÇA YEREL DEPODA VEYA KATALOGDA YOKSA
+    # 1. PARÇA KATALOGDA VEYA DEPODA YOKSA
     if not matches:
         await state.update_data(pending_query=query)
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✍️ Kodu ve İsmi Biliyorum (Manuel Yaz)", callback_data="qb_manual")],
-            [InlineKeyboardButton(text="❓ Bilmiyorum (Tekniğe Sor & Foto Gönder)", callback_data="qb_ask_tech")],
-            [InlineKeyboardButton(text="🔍 Farklı Kelime Ara", callback_data="qb_retry_search")]
+            [InlineKeyboardButton(text="✍️ Kendim Teklif Talebini Oluşturacağım", callback_data="qb_manual")],
+            [InlineKeyboardButton(text="❓ Tekniğe Sor (Fotoğraf Gönder)", callback_data="qb_ask_tech")],
+            [InlineKeyboardButton(text="🔍 Tekrar Kelime Ara", callback_data="qb_retry_search")]
         ])
         await message.answer(
             f"⚠️ <code>{html.escape(query)}</code> yerel depomuzda veya katalogda bulunamadı.\n\n"
@@ -736,12 +491,12 @@ async def process_quote_search(message: types.Message, state: FSMContext):
         return
 
     top_part, score = matches[0]
-    # Tam eşleşme varsa doğrudan kaynak sor
-    if normalize_tr(query) == normalize_tr(top_part['code']) or score >= 0.95:
+    # Tam kod eşleşmesi veya çok yüksek benzerlik
+    if normalize_tr(query) == normalize_tr(top_part['code']) or score >= 0.94:
         await prompt_part_selection(message, top_part, state)
         return
 
-    # Listeden seçtir
+    # Eşleşen parçaları listele
     await state.update_data(search_matches=matches, search_query=query)
     text, kb = render_search_results_page(matches, 0, query)
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
@@ -763,7 +518,7 @@ def render_search_results_page(matches, page_idx, query):
     if nav_row: buttons.append(nav_row)
 
     buttons.append([
-        InlineKeyboardButton(text="✍️ Kod & İsmi Manuel Yaz", callback_data="qb_manual"),
+        InlineKeyboardButton(text="✍️ Aradığım Yok (Manuel Yaz)", callback_data="qb_manual"),
         InlineKeyboardButton(text="❓ Tekniğe Sor (Foto At)", callback_data="qb_ask_tech")
     ])
     buttons.append([
@@ -788,18 +543,20 @@ async def on_quote_retry(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text("🔍 Lütfen parça ismini veya kodunu tekrar yazın:")
     await callback.answer()
 
-# PARÇA SEÇİLDİĞİNDE: RESMİ GÖSTER VE KAYNAK SOR (DEPODAN MI, TR'DEN Mİ?)
+# PARÇA SEÇİLDİĞİNDE: KATALOG GÖRSELİNİ GÖSTER VE TEDARİK KAYNAĞI SOR
 async def prompt_part_selection(target, part: dict, state: FSMContext):
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_supply_source)
 
+    # Katalog görselini çıkar ve başlığıyla birlikte gönder
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
+        cap = f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}"
         if isinstance(target, types.CallbackQuery):
-            await target.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
+            await target.message.answer_photo(photo, caption=cap, parse_mode="HTML")
         else:
-            await target.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
+            await target.answer_photo(photo, caption=cap, parse_mode="HTML")
 
     has_stock = part.get("qty", 0) > 0
     stock_badge = f"🟢 <b>Depoda Var: {part.get('qty', 0)} ADT</b>" if has_stock else "🔴 <b>Depoda Yok: 0 ADT</b>"
@@ -810,10 +567,10 @@ async def prompt_part_selection(target, part: dict, state: FSMContext):
     ])
 
     msg_text = (
-        f"🎯 <b>Seçilen Parça:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n"
+        f"🎯 <b>Seçilen:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n"
         f"📊 Durum: {stock_badge}\n\n"
-        f"❓ <b>Bu parça müşteriye nereden gidecek?</b>\n"
-        f"<i>(Elips depodan gidecekse teklif onaylanınca stoktan otomatik düşülür)</i>"
+        f"❓ <b>Bu parça nereden tedarik edilecek?</b>\n"
+        f"<i>(Elips Depodan derseniz onaylanınca depodan düşer; TR derseniz depo stoğuna dokunulmaz)</i>"
     )
     if isinstance(target, types.CallbackQuery):
         await target.message.answer(msg_text, reply_markup=kb, parse_mode="HTML")
@@ -831,12 +588,12 @@ async def on_quote_part_selected(callback: types.CallbackQuery, state: FSMContex
     await prompt_part_selection(callback, part, state)
     await callback.answer()
 
-# MANUEL KOD VE İSİM GİRİŞİ
+# MANUEL KOD VE İSİM YAZMA
 @dp.callback_query(F.data == "qb_manual")
 async def on_quote_manual_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_custom_manual)
     await callback.message.edit_text(
-        "✍️ <b>Parça Kodunu ve İsmini Yazın:</b>\n\n"
+        "✍️ <b>Parçanın Kodunu ve İsmini Yazın:</b>\n\n"
         "<i>Örnek:</i> <code>91999 - Dozaj Pompası Diyaframı</code>\n"
         "<i>Veya:</i> <code>Sıcaklık Sensörü 0-100C</code>\n\n"
         "<i>(Katalogda olmadığı için resmi olmayacaktır)</i>",
@@ -884,7 +641,7 @@ async def on_quote_ask_tech_start(callback: types.CallbackQuery, state: FSMConte
     await state.set_state(QuoteBuilderState.waiting_ask_technic_input)
     await callback.message.edit_text(
         "❓ <b>Tekniğe Sor & Fotoğraf Gönder</b>\n\n"
-        "📸 Parçanın <b>fotoğrafını çekip buraya atın</b> veya parçanın detayını / makine modelini yazın:",
+        "📸 Parçanın <b>fotoğrafını çekip gönderin</b> veya parça/makine açıklamasını yazın:",
         parse_mode="HTML"
     )
     await callback.answer()
@@ -908,7 +665,7 @@ async def process_quote_tech_photo(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="🇺🇿 Elips Depodan Gidecek", callback_data="qbsource:ELIPS")]
     ])
     await message.answer(
-        f"📸 <b>Fotoğraf Kaydedildi!</b>\nTanım: <i>{html.escape(caption)}</i>\n\n"
+        f"📸 <b>Fotoğraf Alındı!</b>\nAçıklama: <i>{html.escape(caption)}</i>\n\n"
         f"❓ <b>Bu parça nereden tedarik edilecek?</b>",
         reply_markup=kb,
         parse_mode="HTML"
@@ -931,13 +688,13 @@ async def process_quote_tech_text(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="🇺🇿 Elips Depodan Gidecek", callback_data="qbsource:ELIPS")]
     ])
     await message.answer(
-        f"❓ <b>Teknik Açıklama:</b> <i>{html.escape(text)}</i>\n\n"
+        f"❓ <b>Teknik Tarif:</b> <i>{html.escape(text)}</i>\n\n"
         f"❓ <b>Bu parça nereden tedarik edilecek?</b>",
         reply_markup=kb,
         parse_mode="HTML"
     )
 
-# TEDARİK KAYNAĞI SEÇİMİ (ELIPS VEYA TR)
+# TEDARİK KAYNAĞI SEÇİMİ
 @dp.callback_query(F.data.startswith("qbsource:"))
 async def on_supply_source_selected(callback: types.CallbackQuery, state: FSMContext):
     source = callback.data.split(":")[1]
@@ -951,7 +708,7 @@ async def on_supply_source_selected(callback: types.CallbackQuery, state: FSMCon
     await state.set_state(QuoteBuilderState.waiting_qty)
 
     await callback.message.edit_text(
-        f"📍 <b>Tedarik Kaynağı:</b> <b>{source_label}</b>\n"
+        f"📍 <b>Tedarik:</b> <b>{source_label}</b>\n"
         f"⚙️ <code>[{part.get('code')}]</code> {html.escape(part.get('name'))}\n\n"
         f"🔢 Kaç <b>adet</b> teklif istenecek?",
         parse_mode="HTML"
@@ -997,13 +754,13 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
 async def on_quote_add_more(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_item_query)
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✍️ Kodu ve İsmi Biliyorum (Manuel)", callback_data="qb_manual")],
+        [InlineKeyboardButton(text="✍️ Kodu ve İsmi Manuel Yaz", callback_data="qb_manual")],
         [InlineKeyboardButton(text="❓ Bilmiyorum (Tekniğe Sor & Foto At)", callback_data="qb_ask_tech")]
     ])
     await callback.message.edit_text("🔍 Yeni parçanın <b>kodunu</b> veya <b>ismini</b> yazın:", reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
-# TEKLİFİ BİTİRME VE NİLAY HANIM'A METİN HAZIRLAMA
+# TEKLİF BİTİRME VE NİLAY HANIM'A METİN HAZIRLAMA
 @dp.callback_query(F.data == "qb_done")
 async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -1016,7 +773,6 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
 
     sender_name = "Ömer" if callback.from_user.id == OMER_CHAT_ID else "Kamil"
 
-    # Kullanıcının tam istediği Nilay Hanım hitabı ve dökümü
     formatted_quote = (
         f"Merhaba Nilay Hanım,\n\n"
         f"{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
@@ -1048,7 +804,6 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     )
     await callback.message.edit_text(text, parse_mode="HTML")
 
-    # Çift taraflı bildirim (Varsa ekli fotoğraflarla beraber Ömer ve Kamil'e ilet)
     notify_text = (
         f"📥 <b>YENİ TEKLİF TALEBİ HAZIRLANDI!</b>\n"
         f"👤 <b>Hazırlayan:</b> {sender_name}\n"
@@ -1058,16 +813,16 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     )
     await notify_both(notify_text)
 
-    # Varsa teknik fotoğrafları ilet
+    # Varsa eklenmiş teknik fotoğrafları ilet
     for itm in items:
         if itm.get("photo_id"):
             for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
                 try:
-                    await bot.send_photo(chat_id=cid, photo=itm["photo_id"], caption=f"📸 <b>Teklif Parça Görseli ({firm}):</b>\n<code>[{itm['code']}]</code> {itm['name']}", parse_mode="HTML")
+                    await bot.send_photo(chat_id=cid, photo=itm["photo_id"], caption=f"📸 <b>Teknik Parça Fotoğrafı ({firm}):</b>\n<code>[{itm['code']}]</code> {itm['name']}", parse_mode="HTML")
                 except Exception: pass
 
     await state.clear()
-    await callback.answer("Teklif hazırlandı!")
+    await callback.answer("Teklif kaydedildi!")
 
 # ----------------- PDF YÜKLEME VE TEKLİF YÖNETİMİ -----------------
 @dp.message(F.document)
@@ -1519,7 +1274,7 @@ async def start_dummy_server():
 
 async def main():
     try:
-        init_flag = ".init_done_v10"
+        init_flag = ".init_done_v12"
         if not os.path.exists(init_flag):
             save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
             save_data(SALES_FILE, INITIAL_REAL_SALES)

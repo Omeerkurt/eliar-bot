@@ -9,8 +9,8 @@ import difflib
 from datetime import datetime, timedelta
 from io import BytesIO
 from aiohttp import web
-from aiogram import Bot, Dispatcher, F, types
-from aiogram.filters import Command
+from aiogram import Bot, Dispatcher, F, types, BaseMiddleware
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -34,6 +34,16 @@ GEMINI_API_KEY = "AIzaSyAuUg0a1ew5V4aF1E-FTsdVinsMpXckOgQ"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+# CANLI MESAJ İZLEME MIDDLEWARE'İ (Gelen her mesajı Render loguna canlı basar)
+class LoggingMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event, data):
+        if isinstance(event, types.Message):
+            u_name = event.from_user.first_name if event.from_user else "Bilinmeyen"
+            logging.info(f"--- YENİ MESAJ GELDİ --- Gönderen: {u_name} (ID: {event.chat.id}) | Metin: '{event.text}'")
+        return await handler(event, data)
+
+dp.message.outer_middleware(LoggingMiddleware())
 
 STOCKS_FILE = "stocks_db.json"
 SALES_FILE = "weekly_sales.json"
@@ -404,7 +414,7 @@ save_tasks = lambda d: save_data(TASKS_FILE, d)
 
 async def notify_both(text: str, reply_markup=None):
     for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
-        try: await bot.send_message(chat_id=cid, text=text, parse_mode="Markdown", reply_markup=reply_markup)
+        try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e: logging.warning(f"İletilemedi ({cid}): {e}")
 
 async def send_file_to_both(file_path: str, caption: str):
@@ -505,54 +515,43 @@ def filter_sales_by_range(start_dt: datetime, end_dt: datetime):
 def build_report_text(sales_data, report_name="SATIŞ Z-RAPORU"):
     now = datetime.now()
     if not sales_data:
-        return f"📊 **ELİPS TEKSTİL ELİAR {report_name}**\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\nℹ️ Kayıt bulunamadı."
-    text = f"📊 **ELİPS TEKSTİL ELİAR {report_name}**\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\n\n"
+        return f"📊 <b>ELİPS TEKSTİL ELİAR {report_name}</b>\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\nℹ️ Kayıt bulunamadı."
+    text = f"📊 <b>ELİPS TEKSTİL ELİAR {report_name}</b>\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\n\n"
     total_qty, plants, cnt = 0, set(), 1
     for sale in sales_data:
         plants.add(sale.get("firm", ""))
         for itm in sale.get("items", []):
             q = int(itm.get("qty", 1))
             total_qty += q
-            text += f"**{cnt}.** `[{itm.get('code')}]` {itm.get('name')}\n   └ Miktar: **{q} Adet** | Tesis: **{sale.get('firm')}**\n\n"
+            text += f"<b>{cnt}.</b> <code>[{itm.get('code')}]</code> {html.escape(itm.get('name', ''))}\n   └ Miktar: <b>{q} Adet</b> | Tesis: <b>{html.escape(sale.get('firm', ''))}</b>\n\n"
             cnt += 1
-    text += f"───────────────────────────────\n📦 Toplam Satış: **{total_qty} Adet** | Tesis: **{len(plants)}**\n📂 Format seçin:"
+    text += f"───────────────────────────────\n📦 Toplam Satış: <b>{total_qty} Adet</b> | Tesis: <b>{len(plants)}</b>\n📂 Format seçin:"
     return text
 
 def get_client_history_text(firm_query: str):
     sales = load_sales()
     query = firm_query.strip().lower()
     matched = [s for s in sales if query in s.get("firm", "").lower() and s.get("status") == "APPROVED"]
-    if not matched: return f"🔍 `{firm_query}` için geçmiş onaylı kayıt bulunamadı."
+    if not matched: return f"🔍 <code>{html.escape(firm_query)}</code> için geçmiş onaylı kayıt bulunamadı."
     matched.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    text = f"🏢 **{matched[0].get('firm')} — PARÇA GEÇMİŞİ**\n═══════════════════════════════\n\n"
+    text = f"🏢 <b>{html.escape(matched[0].get('firm', ''))} — PARÇA GEÇMİŞİ</b>\n═══════════════════════════════\n\n"
     for item in matched:
         ref_str = f" [Ref: {item.get('ref_no')}]" if item.get('ref_no') and item.get('ref_no') != 'YOK' else ""
         for itm in item.get("items", []):
-            text += f"• 📅 `{item.get('date', '')}` ➔ **{itm.get('qty')}x** `{itm.get('code')}` ({itm.get('name')}){ref_str}\n"
-    text += f"\n═══════════════════════════════\n✅ Toplam: **{len(matched)} Sevkiyat / Hareket**"
+            text += f"• 📅 <code>{item.get('date', '')}</code> ➔ <b>{itm.get('qty')}x</b> <code>[{itm.get('code')}]</code> ({html.escape(itm.get('name', ''))}){ref_str}\n"
+    text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(matched)} Sevkiyat / Hareket</b>"
     return text
 
-def get_main_keyboard(is_private: bool = True):
-    if is_private:
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
-                [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
-                [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
-                [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")]
-            ],
-            resize_keyboard=True
-        )
-    else:
-        # Grupta WebApp butonu Telegram tarafından engellendiği için güvenli grup klavyesi
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
-                [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
-                [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")]
-            ],
-            resize_keyboard=True
-        )
+def get_main_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
+            [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
+            [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")]
+        ],
+        resize_keyboard=True
+    )
 
 async def setup_bot_commands():
     commands = [
@@ -570,17 +569,15 @@ async def setup_bot_commands():
     await bot.set_my_commands(commands)
 
 # ----------------- ANA MENÜ / START KOMUTU -----------------
-@dp.message(Command("start", ignore_mention=True))
+@dp.message(CommandStart())
+@dp.message(F.text.lower().in_(["/start", "start", "başlat", "baslat"]))
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.clear()
     user_id = message.chat.id
-    is_private = (message.chat.type == "private")
     sender_name = html.escape(message.from_user.first_name if message.from_user and message.from_user.first_name else "Kullanıcı")
     name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else sender_name)
     pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
     
-    logging.info(f">>> START CALISTI! Gönderen: {name} (Chat ID: {user_id}, Tip: {message.chat.type}) <<<")
-
     msg_text = (
         f"👋 <b>Selam {name}! Eliar Depo & Teklif Robotu Aktif.</b>\n\n"
         f"• Katalog PDF: <code>{pdf_info}</code>\n"
@@ -588,7 +585,11 @@ async def cmd_start(message: types.Message, state: FSMContext):
         f"• Nilay Hanım'a teklif hazırlamak için aşağıdaki menüden işlem yapabilirsiniz."
     )
     
-    await message.answer(msg_text, reply_markup=get_main_keyboard(is_private), parse_mode="HTML")
+    try:
+        await message.answer(msg_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
+    except Exception as e:
+        logging.error(f"Klavye gönderme hatası, sade metin atılıyor: {e}")
+        await message.answer(msg_text, parse_mode="HTML")
 
 # ---------------- NİLAY HANIM'A TEKLİF SİHİRBAZI ----------------
 @dp.message(Command("teklif", ignore_mention=True))
@@ -749,7 +750,7 @@ async def trigger_z_report_manual(message: types.Message):
         [InlineKeyboardButton(text="📊 Excel", callback_data="dl_rep:excel:weekly"), InlineKeyboardButton(text="📑 PDF", callback_data="dl_rep:pdf:weekly")],
         [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:weekly")]
     ])
-    await message.answer(build_report_text(sales, "HAFTALIK Z-RAPORU"), reply_markup=kb, parse_mode="Markdown")
+    await message.answer(build_report_text(sales, "HAFTALIK Z-RAPORU"), reply_markup=kb, parse_mode="HTML")
 
 @dp.message(Command("aylikrapor", ignore_mention=True))
 async def trigger_monthly_report_manual(message: types.Message):
@@ -759,7 +760,7 @@ async def trigger_monthly_report_manual(message: types.Message):
         [InlineKeyboardButton(text="📊 Excel", callback_data="dl_rep:excel:monthly"), InlineKeyboardButton(text="📑 PDF", callback_data="dl_rep:pdf:monthly")],
         [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:monthly")]
     ])
-    await message.answer(build_report_text(sales, "AYLIK SATIŞ RAPORU"), reply_markup=kb, parse_mode="Markdown")
+    await message.answer(build_report_text(sales, "AYLIK SATIŞ RAPORU"), reply_markup=kb, parse_mode="HTML")
 
 @dp.message(Command("tarihraporu", ignore_mention=True))
 @dp.message(F.text == "📅 Tarihli Rapor Al")
@@ -793,7 +794,7 @@ async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMConte
         [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:custom")]
     ])
     await state.update_data(last_filtered_sales=sales, report_title=file_label)
-    await callback.message.edit_text(build_report_text(sales, title_label), reply_markup=kb, parse_mode="Markdown")
+    await callback.message.edit_text(build_report_text(sales, title_label), reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @dp.message(CustomReportState.waiting_date_range)
@@ -808,7 +809,7 @@ async def process_custom_date_range(message: types.Message, state: FSMContext):
             [InlineKeyboardButton(text="📦 İkisi Birden", callback_data="dl_rep:both:custom")]
         ])
         await state.update_data(last_filtered_sales=sales, report_title=f"Rapor_{s_str}_{e_str}")
-        await message.answer(build_report_text(sales, f"ÖZEL RAPOR ({s_str} - {e_str})"), reply_markup=kb, parse_mode="Markdown")
+        await message.answer(build_report_text(sales, f"ÖZEL RAPOR ({s_str} - {e_str})"), reply_markup=kb, parse_mode="HTML")
     except Exception:
         await message.answer("⚠️ Format hatalı! Örnek: <code>01.10.2026 - 29.10.2026</code>", parse_mode="HTML")
 
@@ -857,7 +858,7 @@ async def cmd_history_query(message: types.Message):
     if len(parts) < 2:
         await message.answer("⚠️ Tesis adı belirtin. (Örn: <code>/gecmis TERRY JAR</code>)", parse_mode="HTML")
         return
-    await message.answer(get_client_history_text(parts[1]), parse_mode="Markdown")
+    await message.answer(get_client_history_text(parts[1]), parse_mode="HTML")
 
 @dp.message(F.text == "🏢 Tesis Geçmişi")
 async def btn_client_history(message: types.Message, state: FSMContext):
@@ -867,7 +868,7 @@ async def btn_client_history(message: types.Message, state: FSMContext):
 @dp.message(ClientHistoryState.waiting_client_name)
 async def process_client_history_input(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer(get_client_history_text(message.text.strip()), parse_mode="Markdown")
+    await message.answer(get_client_history_text(message.text.strip()), parse_mode="HTML")
 
 @dp.message(Command("bekleyenler", ignore_mention=True))
 @dp.message(F.text == "⏳ Bekleyen Teklifler")
@@ -1002,140 +1003,4 @@ async def quote_rejected(callback: types.CallbackQuery):
     sale = next((s for s in sales if s.get("id") == s_id), None)
     if sale: sale["status"] = "REJECTED"; save_sales(sales)
     await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KABUL EDİLMEDİ (İPTAL)</b>", reply_markup=None, parse_mode="HTML")
-    await callback.answer("İptal edildi.")
-
-# ----------------- WEBAPP & SAHA İŞ EMİRLERİ -----------------
-@dp.message(F.web_app_data)
-async def handle_webapp_payload(message: types.Message):
-    try: p = json.loads(message.web_app_data.data)
-    except Exception: return
-    op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
-    ref_id = f"REF-{message.message_id}"
-    dir_type = p.get("direction")
-
-    if dir_type == "STOCK_CHANGE" and p.get("action") == "DECREASE":
-        dest, contact = p.get("destination", "Bilinmeyen"), p.get("contact", "-")
-        code, name, qty = p.get("code"), p.get("name"), p.get("delta", 1)
-        sales = load_sales()
-        sales.append({
-            "id": ref_id, "firm": dest, "contact": contact, "ref_no": "MANUEL-ÇIKIŞ",
-            "items": [{"code": code, "name": name, "qty": qty}], "status": "APPROVED",
-            "date": datetime.now().strftime("%d.%m.%Y %H:%M"), "timestamp": datetime.now().isoformat()
-        })
-        save_sales(sales)
-        msg = f"📤 **PARÇA SATILDI / DEPO ÇIKIŞI!**\n🏢 Firma: `{dest}`\n👤 İlgili Kişi: `{contact}`\n⚙️ `[{code}]` {name}\n📉 Adet: **-{qty}** | Kalan: `{p.get('current_qty', 0)} ADT`\n👷‍♂️ Çıkış Yapan: {op}"
-        await notify_both(msg)
-
-    elif dir_type == "OMER_TO_KAMIL":
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Onayla", callback_data=f"otk_ok:{ref_id}"),
-             InlineKeyboardButton(text="❌ Reddet", callback_data=f"otk_no:{ref_id}")]
-        ])
-        msg = f"🔔 **ÖMER'DEN YENİ TALEP!**\n🏢 Firma: `{p.get('firm')}`\n👤 İlgili: `{p.get('contact')}`\n⚙️ `[{p.get('part_code')}]` {p.get('part_name')}\n📦 Adet: **{p.get('quantity')}** | Öncelik: `{p.get('priority')}`\n📝 Not: _{p.get('notes') or 'Yok'}_"
-        await bot.send_message(KAMIL_CHAT_ID, msg, reply_markup=kb, parse_mode="Markdown")
-        await message.answer("✅ Talep Kamil'e iletildi.")
-
-    elif dir_type == "KAMIL_TO_OMER":
-        tasks = load_tasks()
-        tasks[ref_id] = {"created_at": time.time(), "firm": p.get('firm'), "task_type": p.get('task_type')}
-        save_tasks(tasks)
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="👍 Aldım", callback_data=f"o_ack:{ref_id}"),
-             InlineKeyboardButton(text="🔍 İlgileniyorum", callback_data=f"o_busy:{ref_id}")],
-            [InlineKeyboardButton(text="✅ Bitirdim", callback_data=f"o_done:{ref_id}")]
-        ])
-        msg = f"📋 **KAMİL'DEN YENİ SAHA İŞ EMRİ!**\n🏢 Gidilecek Firma: `{p.get('firm')}`\n👤 İlgili Kişi: `{p.get('contact')}`\n🔧 Görev: **{p.get('task_type')}**\n📝 Talimat: _{p.get('instructions') or 'Yok'}_"
-        await bot.send_message(OMER_CHAT_ID, msg, reply_markup=kb, parse_mode="Markdown")
-        await message.answer("✅ Görev Ömer'e iletildi.")
-
-@dp.callback_query(F.data.startswith("otk_ok:"))
-async def otk_approved(callback: types.CallbackQuery):
-    await callback.message.edit_text(callback.message.text + "\n\n🟢 <b>KAMİL ONAYLADI.</b>", parse_mode="HTML")
-    await bot.send_message(OMER_CHAT_ID, "🎉 <b>Kamil talebini onayladı.</b>", parse_mode="HTML")
-    await callback.answer()
-
-@dp.callback_query(F.data.startswith("otk_no:"))
-async def otk_rejected(callback: types.CallbackQuery):
-    await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KAMİL REDDETTİ.</b>", parse_mode="HTML")
-    await bot.send_message(OMER_CHAT_ID, "❌ <b>Kamil talebini reddetti.</b>", parse_mode="HTML")
-    await callback.answer()
-
-@dp.callback_query(F.data.startswith("o_done:"))
-async def omer_done(callback: types.CallbackQuery):
-    ref_id = callback.data.split(":")[1]
-    tasks = load_tasks()
-    t = tasks.get(ref_id, {})
-    sec = int(time.time() - (t.get("created_at") or time.time()))
-    dur = f"{sec//60} dk {sec%60} sn" if sec >= 60 else f"{sec} sn"
-    await callback.message.edit_text(callback.message.text + f"\n\n✅ <b>TAMAMLANDI</b> (Süre: {dur})", parse_mode="HTML")
-    await bot.send_message(KAMIL_CHAT_ID, f"🏁 <b>ÖMER GÖREVİ BİTİRDİ!</b>\n🏢 <code>{t.get('firm')}</code> | ⏱️ {dur}", parse_mode="HTML")
-    await callback.answer("İş tamamlandı.")
-
-# ----------------- ÖMER VE KAMİL ARASI MESAJLAŞMA KÖPRÜSÜ -----------------
-@dp.message(~F.text.startswith("/"))
-async def chat_bridge(message: types.Message):
-    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla"]
-    if message.text in menu_buttons: return
-    tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
-    sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
-    if tid and message.text:
-        await bot.send_message(tid, f"💬 <b>{sender}:</b> {html.escape(message.text)}", parse_mode="HTML")
-        await message.reply("✓ <i>İletildi.</i>", parse_mode="HTML")
-
-# ----------------- OTOMATİK ZAMANLAYICI (HAFTALIK / AYLIK) -----------------
-async def automated_scheduler():
-    last_week, last_month = "", ""
-    while True:
-        now = datetime.now()
-        today = now.strftime("%Y-%m-%d")
-        if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_week != today:
-            last_week = today
-            sales = filter_sales_by_range(now - timedelta(days=7), now)
-            await notify_both("📢 **HAFTALIK OTOMATİK Z-RAPORU**\n\n" + build_report_text(sales, "HAFTALIK"))
-            if sales:
-                f_xls = generate_excel_z_report(sales, "Haftalik")
-                f_pdf = generate_pdf_z_report(sales, "Haftalik")
-                if f_xls: await send_file_to_both(f_xls, "📊 Excel Raporu")
-                if f_pdf: await send_file_to_both(f_pdf, "📑 PDF Raporu")
-        if (now + timedelta(days=1)).day == 1 and now.hour == 18 and now.minute == 0 and last_month != today:
-            last_month = today
-            sales = filter_sales_by_range(datetime(now.year, now.month, 1), now)
-            await notify_both("📢 **AYLIK OTOMATİK Z-RAPORU**\n\n" + build_report_text(sales, "AYLIK"))
-            if sales:
-                f_xls = generate_excel_z_report(sales, "Aylik")
-                f_pdf = generate_pdf_z_report(sales, "Aylik")
-                if f_xls: await send_file_to_both(f_xls, "📊 Excel Raporu")
-                if f_pdf: await send_file_to_both(f_pdf, "📑 PDF Raporu")
-        await asyncio.sleep(25)
-
-# ----------------- DUMMY SERVER (RENDER İÇİN) -----------------
-async def start_dummy_server():
-    try:
-        app = web.Application()
-        app.router.add_get('/', lambda r: web.Response(text="Eliar Robot Aktif"))
-        runner = web.AppRunner(app)
-        await runner.setup()
-        port = int(os.environ.get("PORT", 8080))
-        await web.TCPSite(runner, '0.0.0.0', port).start()
-        logging.info(f"Web sunucusu {port} portunda baslatildi.")
-    except Exception as e:
-        logging.warning(f"Dummy server baslatilamadi: {e}")
-
-# ----------------- MAIN / BAŞLANGIÇ -----------------
-async def main():
-    try:
-        if not os.path.exists(STOCKS_FILE):
-            init_stocks_from_catalog()
-        
-        await bot.delete_webhook(drop_pending_updates=True)
-        await setup_bot_commands()
-        await start_dummy_server()
-        asyncio.create_task(automated_scheduler())
-        
-        logging.info(">>> BOT BASARIYLA BASLATILDI VE DINLEMEDE <<<")
-        await dp.start_polling(bot)
-    except Exception as e:
-        logging.error(f"Bot baslatilirken kritik hata: {e}")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    await callback.answer("İptal edildi."

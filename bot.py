@@ -43,14 +43,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# Gemini Client Başlatma
 ai_client = None
 if HAS_GENAI and GEMINI_API_KEY:
     try:
         ai_client = genai.Client(api_key=GEMINI_API_KEY)
-        logging.info("✅ Google GenAI (Gemini) istemcisi bağlandı.")
+        logging.info("✅ Google GenAI istemcisi başarıyla bağlandı.")
     except Exception as e:
-        logging.warning(f"⚠️ Gemini uyarısı: {e}")
+        logging.warning(f"⚠️ Gemini bağlantı uyarısı: {e}")
 
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
@@ -68,9 +67,8 @@ QUOTES_FILE = "submitted_quotes.json"
 PDF_STORAGE_DIR = "stored_quotes_pdf"
 os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
-# ----------------- GERÇEK VE %100 DOĞRULANMIŞ ELİPS DEPO ENVANTERİ -----------------
+# ----------------- GERÇEK ELİPS DEPO ENVANTERİ -----------------
 REAL_WAREHOUSE_STOCKS = [
-    # KONTROL & ELEKTRONİK
     {"code": "Pd320", "name": "Pd320 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "PD330", "name": "PD330 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "Aim8-A", "name": "Aim8-A Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
@@ -107,17 +105,15 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "T7PAC-DOM32V5", "name": "T7PAC-DOM32V5 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-DIM16V5", "name": "T7PAC-DIM16V5 Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-AIO88SV1", "name": "T7PAC-AIO88SV1 Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "T7PAC-AI8SV1", "name": "T7PAC-AI8SV1 Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "T7PAC-AO8SV1", "name": "T7PAC-AO8SV1 Analog Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AI8SV1", "name": "T7PAC-AI8SV1 Analog Giriş", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AO8SV1", "name": "T7PAC-AO8SV1 Analog Çıkış", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "PANELSET-T7701 ex", "name": "PANELSET-T7701 ex Ön Panel Seti", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "PANELSET-T7700", "name": "PANELSET-T7700 Ön Panel Seti", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "T7PAC-T7CPURIO", "name": "T7PAC-T7CPURIO İşlemci Modülü", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-T7CPURIO", "name": "T7PAC-T7CPURIO İşlemci", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
     {"code": "T7PAC-DOM16V5", "name": "T7PAC-DOM16V5 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
     {"code": "40025", "name": "PLC CPU: DVP12SA211R: 8DI 4DO", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "SP-01", "name": "Saha panosu (SPU su yok)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "RA032DA", "name": "RA032DA09036000 aktuator", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-
-    # MEKATRONİK & PARÇALAR
     {"code": "1013", "name": "Vana TORK (ko'k) 3/4\" 3 yollu + aktuator", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "1015", "name": "SLD Kanal Vanası Full 3/4\" TORK 2 yollu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "5022", "name": "Salmastra (Geylani ile geldi)", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
@@ -209,8 +205,6 @@ REAL_WAREHOUSE_STOCKS = [
     {"code": "90880", "name": "DST Çekvalf Teflonu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "90567", "name": "66 Mm Teflon Takviyeli Diyafram", "cat": "MEKATRONIK", "qty": 9, "loc": "ELIPS-DEPO"},
     {"code": "90620", "name": "PH Sensörü: SPH-1-DJ-6M Ph Sensör - 6mt Kablosu", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-
-    # KATALOG PARÇALARI
     {"code": "91410", "name": "Wat 3 faz Motor (Q2E112M6C) 2,2 kW 3 HP", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "91411", "name": "WAT Motor Ayağı (Q2E112M6C)", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "41436", "name": "Rd96 SLR1-40 Pompa Çıkış Bağlantı Rakor ve Dirsekleri", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
@@ -282,6 +276,7 @@ class CustomReportState(StatesGroup):
 class QuoteBuilderState(StatesGroup):
     waiting_firm = State()
     waiting_item_query = State()
+    waiting_custom_tr = State()
     waiting_qty = State()
     confirm_more = State()
 
@@ -321,7 +316,7 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- PARÇA BAŞLIĞINI VE RESMİNİ TAM KAPSAYAN AKILLI KIRPICI -----------------
+# ----------------- AKILLI KIRPICI MOTORU -----------------
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
@@ -343,12 +338,11 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
             if not col_rects: col_rects = rects
             min_code_y = min(r.y0 for r in col_rects)
 
-            # Başlık şeridini (Yeşil/Sarı) yukarıdan tam kapsayacak şekilde al
+            # Başlık şeridini (Yeşil/Sarı) tam kapsayacak şekilde yukarıdan al
             y0 = max(10, min_code_y - 28)
             x0 = 8 if col == 0 else (pw / 2 + 3)
             x1 = (pw / 2 - 3) if col == 0 else (pw - 8)
 
-            # Alt sınırı tespit et
             all_other = page.search_for("Order Code")
             next_y1 = ph - 15
 
@@ -399,14 +393,21 @@ def find_best_matches(query: str):
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
 
-# KAMİL VE ÖMER'E AYNI ANDA İLETİŞİM
+# KAMİL VE ÖMER'E AYNI ANDA BİLDİRİM
 async def notify_both(text: str, reply_markup=None):
     for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e: logging.warning(f"Bildirim iletilemedi ({cid}): {e}")
 
-# ----------------- GEMINI PDF OKUYUCU -----------------
+# ----------------- YAPAY ZEKA (GEMINI) PDF OKUYUCU (GÖRSEL VE METİNSEL) -----------------
 async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
+    pdf_bytes = b""
+    try:
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+    except Exception as e:
+        logging.error(f"PDF dosya okuma hatası: {e}")
+
     extracted_text = ""
     try:
         import fitz
@@ -415,28 +416,80 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
     except Exception: pass
 
     prompt = (
-        "Aşağıdaki teklif metninden firma adını, tarihini, para birimini, ürünleri ve toplam tutarı çıkar.\n"
-        "Saf JSON ver (Markdown etiketi olmasın):\n"
-        '{"firm": "...", "date": "...", "currency": "EUR", "grand_total": "...", "items": [{"code": "...", "name": "...", "qty": 1, "unit_price": "...", "total_price": "..."}]}'
-        f"\n\nMetin:\n{extracted_text[:4000]}"
+        "Sen profesyonel bir depo ve muhasebe asistanısın. Ekteki fiyat teklifi belgesini analiz et.\n"
+        "Aşağıdaki bilgileri eksiksiz tespit edip YALNIZCA SAF JSON formatında döndür (Markdown ```json etiketi KULLANMA):\n"
+        "{\n"
+        '  "firm": "Müşteri / Fabrika Adı",\n'
+        '  "date": "GG.AA.YYYY",\n'
+        '  "currency": "EUR veya USD veya TL",\n'
+        '  "grand_total": "1250.00",\n'
+        '  "items": [\n'
+        '    {"code": "90880", "name": "Ürün Adı", "qty": 2, "unit_price": "50", "total_price": "100"}\n'
+        '  ]\n'
+        "}\n\n"
+        "Kurallar:\n"
+        "- Müşteri firma adını bul (Örn: ZELAL TEKSTIL, TERRY JAR, ASAKA TEKSTIL vb.). Eğer satıcı Eliar ise teklif verilen muhatap firmayı al.\n"
+        "- Her bir ürün kaleminin kodunu (varsa), adını, adedini (tam sayı) ve fiyatını çıkar.\n"
+        "- Para birimini ve genel toplamı bul."
     )
-    if ai_client:
-        try:
-            loop = asyncio.get_event_loop()
-            res = await loop.run_in_executor(None, lambda: ai_client.models.generate_content(model="gemini-2.5-flash", contents=prompt))
-            raw = re.sub(r"^```json\s*", "", res.text.strip(), flags=re.MULTILINE)
-            raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
-            parsed = json.loads(raw)
-            if parsed.get("firm") and parsed.get("items"): return parsed
-        except Exception as e: logging.error(f"Gemini parse hatası: {e}")
 
-    firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Tesis)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
+    if ai_client and pdf_bytes and HAS_GENAI:
+        # Doğrudan PDF dosyasını bayt olarak Gemini'ye gönder (Görsel OCR destekli)
+        try:
+            pdf_part = genai_types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
+            contents_payload = [pdf_part, prompt]
+        except Exception:
+            contents_payload = [f"{prompt}\n\nTeklif Metni:\n{extracted_text[:5000]}"]
+
+        # Modelleri sırayla dene
+        for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+            try:
+                loop = asyncio.get_event_loop()
+                res = await loop.run_in_executor(
+                    None,
+                    lambda m=model_name: ai_client.models.generate_content(
+                        model=m,
+                        contents=contents_payload
+                    )
+                )
+                raw = res.text.strip()
+                raw = re.sub(r"^```json\s*", "", raw, flags=re.MULTILINE)
+                raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
+                parsed = json.loads(raw)
+                if parsed.get("firm") and parsed.get("items"):
+                    logging.info(f"✅ Gemini ({model_name}) ile PDF başarıyla okundu: {parsed.get('firm')}")
+                    return parsed
+            except Exception as e:
+                logging.warning(f"Gemini {model_name} denemesi: {e}")
+
+    # Fallback: Regex ile Metin Analizi
+    firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Tesis|Sayin|Company)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
+    detected_firm = firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA"
+
+    cur = "EUR"
+    if "USD" in extracted_text or "$" in extracted_text: cur = "USD"
+    elif "TL" in extracted_text or "TRY" in extracted_text: cur = "TL"
+
+    tot_match = re.search(r"(?:Genel Toplam|Grand Total|Toplam|Total)[\s:]*([0-9.,]+)", extracted_text, re.IGNORECASE)
+    grand_total = tot_match.group(1).strip() if tot_match else "-"
+
+    detected_items = []
+    lines = [l.strip() for l in extracted_text.split("\n") if l.strip()]
+    for line in lines:
+        code_match = re.search(r"\b(\d{4,6})\b", line)
+        if code_match:
+            c = code_match.group(1)
+            detected_items.append({"code": c, "name": line[:40], "qty": 1, "unit_price": "-", "total_price": "-"})
+
+    if not detected_items:
+        detected_items = [{"code": "GENEL", "name": "PDF Teklif Kalemleri", "qty": 1, "unit_price": "-", "total_price": "-"}]
+
     return {
-        "firm": (firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA")[:30].upper(),
+        "firm": detected_firm[:30].upper(),
         "date": datetime.now().strftime("%d.%m.%Y"),
-        "currency": "EUR",
-        "grand_total": "-",
-        "items": [{"code": "GENEL", "name": "Teklif Kalemleri", "qty": 1, "unit_price": "-", "total_price": "-"}]
+        "currency": cur,
+        "grand_total": grand_total,
+        "items": detected_items[:15]
     }
 
 # ----------------- RAPOR MOTORU -----------------
@@ -636,12 +689,61 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
     await state.update_data(firm_name=firm)
     await state.set_state(QuoteBuilderState.waiting_item_query)
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📖 Parça Kataloğunu İncele (PDF)", callback_data="qb_get_catalog")]])
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🇹🇷 Eliar TR'den İstenecek (Manuel Parça)", callback_data="qb_custom_tr")],
+        [InlineKeyboardButton(text="📖 Parça Kataloğunu İncele (PDF)", callback_data="qb_get_catalog")]
+    ])
     await message.answer(
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n"
-        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91463</code>, <code>90880</code>, <code>91410</code>)\n"
-        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>adaptör</code>, <code>diyafram</code>, <code>valf</code>):",
+        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91463</code>, <code>90880</code>)\n"
+        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>adaptör</code>, <code>diyafram</code>)\n"
+        f"• Katalogda/stokta yoksa aşağıdaki <b>Eliar TR</b> butonuna tıklayın:",
         reply_markup=kb,
+        parse_mode="HTML"
+    )
+
+# 🇹🇷 ELİAR TR'DEN MANUEL PARÇA GİRİŞİ BAŞLANGICI
+@dp.callback_query(F.data == "qb_custom_tr")
+async def on_quote_custom_tr_start(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(QuoteBuilderState.waiting_custom_tr)
+    await callback.message.edit_text(
+        "🇹🇷 <b>Eliar TR (Türkiye Deposu) İçin Parça Ekleme</b>\n\n"
+        "Lütfen parçanın <b>ismini</b> ve biliyorsanız <b>kodunu</b> yazın:\n\n"
+        "<i>Örnek:</i> <code>91999 - Dozaj Pompası Diyaframı</code>\n"
+        "<i>Veya:</i> <code>Sıcaklık Transmiteri 4-20mA</code>",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.message(QuoteBuilderState.waiting_custom_tr)
+async def process_quote_custom_tr(message: types.Message, state: FSMContext):
+    text = message.text.strip()
+    if not text:
+        await message.answer("⚠️ Lütfen geçerli bir parça bilgisi yazın.")
+        return
+
+    # Kod ve isim ayrıştırma (Örn: "91234 - Parça Adı")
+    parts = re.split(r"[-–—:]", text, maxsplit=1)
+    if len(parts) == 2 and (parts[0].strip().isalnum() or len(parts[0].strip()) <= 10):
+        code = parts[0].strip().upper()
+        name = f"{parts[1].strip()} (Eliar TR)"
+    else:
+        if text.replace(" ", "").isalnum() and len(text) <= 8 and any(c.isdigit() for c in text):
+            code = text.upper()
+            name = f"Yedek Parça [{code}] (Eliar TR)"
+        else:
+            code = "TR-STOK"
+            name = f"{text} (Eliar TR)"
+
+    selected_part = {"code": code, "name": name, "qty": 0, "is_tr": True}
+    await state.update_data(selected_part=selected_part)
+    await state.set_state(QuoteBuilderState.waiting_qty)
+
+    await message.answer(
+        f"🎯 <b>Eliar TR Parçası Eklendi:</b>\n"
+        f"• Kod: <code>[{code}]</code>\n"
+        f"• Tanım: <b>{html.escape(name)}</b>\n\n"
+        f"🔢 Kaç <b>adet</b> teklif istenecek?",
         parse_mode="HTML"
     )
 
@@ -667,6 +769,9 @@ def render_search_results_page(matches, page_idx, query):
     if nav_row: buttons.append(nav_row)
 
     buttons.append([
+        InlineKeyboardButton(text="🇹🇷 Eliar TR'den İstenecek (Listede Yok)", callback_data="qb_custom_tr")
+    ])
+    buttons.append([
         InlineKeyboardButton(text="🔍 Farklı Kelime Ara", callback_data="qb_retry_search"),
         InlineKeyboardButton(text="📖 Katalog Aç", callback_data="qb_get_catalog")
     ])
@@ -680,8 +785,16 @@ async def process_quote_search(message: types.Message, state: FSMContext):
     matches = find_best_matches(query)
 
     if not matches:
-        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📖 Kataloğu Gönder", callback_data="qb_get_catalog")]])
-        await message.answer(f"⚠️ <code>{html.escape(query)}</code> ile eşleşen parça bulunamadı.\nKataloğu incelemek ister misiniz?", reply_markup=kb, parse_mode="HTML")
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🇹🇷 Eliar TR'den İstenecek (Manuel Ekle)", callback_data="qb_custom_tr")],
+            [InlineKeyboardButton(text="📖 Kataloğu Gönder", callback_data="qb_get_catalog")]
+        ])
+        await message.answer(
+            f"⚠️ <code>{html.escape(query)}</code> yerel depoda veya katalogda bulunamadı.\n\n"
+            f"Bu parçayı doğrudan <b>Eliar Türkiye (TR)</b> deposundan istemek için aşağıdaki butona tıklayın:",
+            reply_markup=kb,
+            parse_mode="HTML"
+        )
         return
 
     top_part, score = matches[0]
@@ -731,7 +844,6 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
-        # HATA DÜZELTİLDİ: await message_photo = ... kaldırıldı
         await callback.message.answer_photo(photo, caption=f"📸 <b>Katalog Görseli:</b> <code>[{part['code']}]</code> — {html.escape(part['name'])}", parse_mode="HTML")
 
     stock_text = f"Depo: {part.get('qty', 0)} ADT" if part.get('qty', 0) > 0 else "Stokta Yok (0 ADT)"
@@ -754,14 +866,15 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
     await state.update_data(quote_items=items)
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Başka Parça Ekle", callback_data="qb_more")],
+        [InlineKeyboardButton(text="➕ Yerel Depodan Ekle", callback_data="qb_more_local"),
+         InlineKeyboardButton(text="🇹🇷 Eliar TR'den Ekle", callback_data="qb_custom_tr")],
         [InlineKeyboardButton(text="🏁 Teklifi Bitir", callback_data="qb_done")]
     ])
     await state.set_state(QuoteBuilderState.confirm_more)
     await message.answer(f"✅ <b>{qty} Adet</b> <code>[{part['code']}]</code> eklendi!\nNe yapmak istersiniz?", reply_markup=kb, parse_mode="HTML")
 
-@dp.callback_query(F.data == "qb_more")
-async def on_quote_add_another(callback: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data == "qb_more_local")
+async def on_quote_add_another_local(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteBuilderState.waiting_item_query)
     await callback.message.edit_text("🔍 Yeni parçanın <b>kodunu</b> veya <b>ismini</b> yazın:", parse_mode="HTML")
     await callback.answer()
@@ -798,7 +911,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         f"═══════════════════════════════\n\n"
         f"{formatted_quote}\n\n"
         f"═══════════════════════════════\n"
-        f"💡 <i>Metne basılı tutarak Nilay Hanım'a iletebilirsiniz.</i>"
+        f"💡 <i>Metne basılı tutarak kopyalayabilirsiniz.</i>"
     )
     await callback.message.edit_text(text, parse_mode="HTML")
 
@@ -811,7 +924,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     )
     await notify_both(notify_text)
     await state.clear()
-    await callback.answer("Teklif her iki tarafa iletildi!")
+    await callback.answer("Teklif kaydedildi!")
 
 # ----------------- PDF YÜKLEME VE TEKLİF YÖNETİMİ -----------------
 @dp.message(F.document)
@@ -822,7 +935,7 @@ async def handle_document_upload(message: types.Message):
         return
 
     sender_name = "Ömer" if message.from_user.id == OMER_CHAT_ID else "Kamil"
-    wait_msg = await message.answer("⏳ <i>PDF belgesi analiz ediliyor...</i>", parse_mode="HTML")
+    wait_msg = await message.answer("⏳ <i>PDF belgesi taranıyor ve yapay zeka ile analiz ediliyor...</i>", parse_mode="HTML")
     saved_filename = f"{int(time.time())}_{doc.file_name}"
     save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
     await bot.download(doc, destination=save_path)
@@ -1236,7 +1349,6 @@ async def start_dummy_server():
 
 async def main():
     try:
-        # Canlı verilerin güvenliği için Render ilk açılışta dosyaları yükler
         init_flag = ".init_done_v9"
         if not os.path.exists(init_flag):
             save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)

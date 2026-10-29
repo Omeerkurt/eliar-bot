@@ -106,10 +106,10 @@ async def cmd_start(message: types.Message):
     user_id = message.chat.id
     name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else message.from_user.first_name)
     await message.answer(
-        f"👋 **Selam {name}! Eliar Elips Depo & İş Santrali Aktif.**\n\n"
-        f"• Parça listesi Mekatronik ➔ Elektronik ➔ Kontrolör sırasında listelenir.\n"
-        f"• Z-Raporu ve Tarihli Raporları Excel ve PDF formatında indirebilirsiniz.\n"
-        f"• Aşağıdaki menüden veya butonlardan işlem yapabilirsiniz.",
+        f"👋 **Selam {name}! Eliar - Elips Depo & İş Santrali Aktif.**\n\n"
+        f"• Mekatronik ➔ Elektronik ➔ Kontrolör Stok Listesi.\n"
+        f"• Stok Raporu ve Satış Raporları Excel ve PDF formatında indirebilirsiniz.\n"
+        f"• Aşağıdaki menüden Mini App'e girebilir veya butonlardan işlem yapabilirsiniz.",
         reply_markup=get_main_keyboard(),
         parse_mode="Markdown"
     )

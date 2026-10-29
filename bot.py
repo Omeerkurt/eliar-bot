@@ -628,6 +628,7 @@ def get_main_keyboard():
             [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
             [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
             [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="📂 Verilen Teklifler")],
+            [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="✅ Tamamlanmış Teklifler")],
             [KeyboardButton(text="🏢 Tesis Geçmişi"), KeyboardButton(text="📖 Kataloğu Gönder")]
         ],
         resize_keyboard=True
@@ -1097,6 +1098,24 @@ async def show_pending_quotes(message: types.Message):
 @dp.message(Command("verilenler"))
 @dp.message(F.text == "📂 Verilen Teklifler")
 async def show_submitted_quotes(message: types.Message):
+@dp.message(Command("tamamlananlar"))
+@dp.message(F.text == "✅ Tamamlanmış Teklifler")
+async def show_approved_quotes(message: types.Message):
+    quotes = load_quotes()
+    approved = [q for q in quotes if q.get("status") == "APPROVED"]
+    if not approved:
+        await message.answer("ℹ️ Henüz tamamlanmış (onaylı) bir teklif bulunmamaktadır.", parse_mode="HTML")
+        return
+    buttons = [
+        [InlineKeyboardButton(text=f"✅ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}"),
+         InlineKeyboardButton(text="🗑️", callback_data=f"qdel:{q['id']}")]
+        for q in reversed(approved[-12:])
+    ]
+    await message.answer("✅ <b>TAMAMLANMIŞ (ONAYLI) TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
+
+
+@dp.callback_query(F.data.startswith("qview:"))
+async def on_quote_view_details(callback: types.CallbackQuery):
     quotes = load_quotes()
     if not quotes:
         await message.answer("ℹ️ Henüz kayıtlı bir teklif bulunmamaktadır.", parse_mode="HTML")

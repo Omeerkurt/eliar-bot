@@ -558,17 +558,21 @@ async def setup_bot_commands():
     await bot.set_my_commands(commands)
 
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()  # Varsa takılı kalmış eski durumları temizler
     user_id = message.chat.id
-    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else message.from_user.first_name)
+    logging.info(f">>> START GELDI! Gönderen: {message.from_user.first_name} (ID: {message.from_user.id}) - Chat ID: {user_id} <<<")
+    
+    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else (message.from_user.first_name or "Kullanıcı"))
     pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
+    
     await message.answer(
-        f"👋 **Selam {name}! Eliar Depo & Teklif Robotu Aktif.**\n\n"
-        f"• Katalog PDF: `{pdf_info}`\n"
-        f"• Toplam Parça: **{len(RD96_CATALOG)} Kalem**\n"
+        f"👋 <b>Selam {name}! Eliar Depo & Teklif Robotu Aktif.</b>\n\n"
+        f"• Katalog PDF: <code>{pdf_info}</code>\n"
+        f"• Toplam Parça: <b>{len(RD96_CATALOG)} Kalem</b>\n"
         f"• Nilay Hanım'a teklif hazırlamak için aşağıdaki menüden işlem yapabilirsiniz.",
         reply_markup=get_main_keyboard(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 # ---------------- NİLAY HANIM'A TEKLİF SİHİRBAZI ----------------

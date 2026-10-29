@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types, BaseMiddleware
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -60,7 +60,7 @@ class LoggingMiddleware(BaseMiddleware):
 
 dp.message.outer_middleware(LoggingMiddleware())
 
-# ----------------- 1. TÜM FSM DURUMLARI -----------------
+# ----------------- 1. FSM DURUMLARI -----------------
 class ClientHistoryState(StatesGroup):
     waiting_client_name = State()
 
@@ -370,327 +370,7 @@ save_sales = lambda d: save_data(SALES_FILE, d)
 load_quotes = lambda: load_data(QUOTES_FILE, [])
 save_quotes = lambda d: save_data(QUOTES_FILE, d)
 
-# ----------------- 5. DİNAMİK VE HATASIZ GÖRSEL KIRPICI -----------------
-def get_catalog_pdf_file():
-    for name in ["Katalog.pdf", "katalog.pdf", "CATALOG.PDF", "catalog.pdf", "rd96.pdf", "RD96.pdf"]:
-        if os.path.exists(name): return name
-    for root, dirs, files in os.walk("."):
-        for fn in files:
-            lower = fn.lower()
-            if lower.endswith(".pdf") and ("katalog" in lower or "catalog" in lower or "rd96" in lower):
-                return os.path.join(root, fn)
-    return None
-
-def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
-    pdf_path = get_catalog_pdf_file()
-    if not pdf_path: return None
-    code_str = str(code).strip()
-
-    try:
-        import fitz
-        doc = fitz.open(pdf_path)
-
-        target_page = None
-        target_rect = None
-
-        # Sayfa haritasında varsa direkt o sayfaya bak
-        if code_str in CATALOG_GRID_MAP:
-            p_idx = CATALOG_GRID_MAP[code_str][0] - 1
-            if 0 <= p_idx < len(doc):
-                p = doc[p_idx]
-                r = p.search_for(f"({code_str})") or p.search_for(code_str)
-                if r:
-                    target_page = p
-                    target_rect = r[0]
-
-        # Haritada yoksa veya o sayfada bulamadıysa tüm sayfalarda ara
-        if not target_rect:
-            for p in doc:
-                r = p.search_for(f"({code_str})") or p.search_for(code_str)
-                if r:
-                    target_page = p
-                    target_rect = r[0]
-                    break
-
-        if not target_page or not target_rect:
-            return None
-
-        pw, ph = target_page.rect.width, target_page.rect.height
-        col = 0 if target_rect.x0 < (pw / 2) else 1
-        x0 = 8 if col == 0 else (pw / 2 + 2)
-        x1 = (pw / 2 - 2) if col == 0 else (pw - 8)
-
-        # Başlık kutusunu tam içine alacak şekilde yukarı pay bırak
-        y0 = max(10, target_rect.y0 - 32)
-
-        # KODUN VE YAZININ TAM ALTINDAKİ GÖRÜNTÜYÜ ALACAK ŞEKİLDE ALT SINIRI BELİRLE
-        all_headers = target_page.search_for("Order Code") + target_page.search_for("Eliar'dan")
-        same_col_below = [h for h in all_headers if (h.x0 < pw/2 if col == 0 else h.x0 >= pw/2) and h.y0 > (target_rect.y1 + 45)]
-
-        if same_col_below:
-            next_header_y = min(h.y0 for h in same_col_below)
-            y1 = max(y0 + 120, next_header_y - 28)
-        else:
-            y1 = ph - 25  # Sayfa sonuna kadar resim kutusunu boydan boya al
-
-        clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
-        pix = target_page.get_pixmap(clip=clip_rect, dpi=200)
-        return pix.tobytes("png")
-
-    except Exception as e:
-        logging.error(f"Görsel çıkarma hatası: {e}")
-        return None
-
-def calculate_similarity(query: str, part: dict) -> float:
-    q_norm = normalize_tr(query.strip())
-    name_norm = normalize_tr(part["name"])
-    code_norm = normalize_tr(part["code"])
-
-    if q_norm == code_norm: return 1.0
-    if q_norm in code_norm: return 0.96
-    if q_norm in name_norm: return 0.90
-
-    q_words, name_words = q_norm.split(), name_norm.split()
-    matched_words = sum(1 for qw in q_words if any(qw in nw for nw in name_words))
-    word_ratio = matched_words / len(q_words) if q_words else 0.0
-    seq_ratio = difflib.SequenceMatcher(None, q_norm, name_norm).ratio()
-    return max(word_ratio * 0.85, seq_ratio)
-
-def find_best_matches(query: str):
-    stocks = load_stocks()
-    scored = []
-    for p in stocks:
-        score = calculate_similarity(query, p)
-        if score > 0.25: scored.append((p, score))
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return scored
-
-async def notify_both(text: str, reply_markup=None, photo_file=None):
-    for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
-        try:
-            if photo_file:
-                await bot.send_photo(chat_id=cid, photo=photo_file, caption=text, parse_mode="HTML", reply_markup=reply_markup)
-            else:
-                await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
-        except Exception as e:
-            logging.warning(f"Bildirim iletilemedi ({cid}): {e}")
-
-async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
-    pdf_bytes = b""
-    try:
-        with open(pdf_path, "rb") as f:
-            pdf_bytes = f.read()
-    except Exception as e:
-        logging.error(f"PDF okuma hatası: {e}")
-
-    extracted_text = ""
-    try:
-        import fitz
-        doc = fitz.open(pdf_path)
-        for p in doc: extracted_text += p.get_text() + "\n"
-    except Exception: pass
-
-    prompt = (
-        "Sen profesyonel bir depo ve muhasebe asistanısın. Ekteki fiyat teklifi belgesini analiz et.\n"
-        "Aşağıdaki bilgileri eksiksiz tespit edip YALNIZCA SAF JSON formatında döndür (Markdown ```json etiketi KULLANMA):\n"
-        "{\n"
-        '  "firm": "Müşteri / Fabrika Adı",\n'
-        '  "date": "GG.AA.YYYY",\n'
-        '  "currency": "EUR veya USD veya TL",\n'
-        '  "grand_total": "1250.00",\n'
-        '  "items": [\n'
-        '    {"code": "90880", "name": "Ürün Adı", "qty": 2, "unit_price": "50", "total_price": "100"}\n'
-        '  ]\n'
-        "}\n\n"
-        "Kurallar:\n"
-        "- Müşteri firma adını bul (Örn: ZELAL TEKSTIL, TERRY JAR, ASAKA TEKSTIL vb.). Eğer satıcı Eliar ise teklif verilen muhatap firmayı al.\n"
-        "- Her bir ürün kaleminin kodunu (varsa), adını, adedini (tam sayı) ve fiyatını çıkar.\n"
-        "- Para birimini ve genel toplamı bul."
-    )
-
-    if ai_client and pdf_bytes and HAS_GENAI:
-        try:
-            pdf_part = genai_types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
-            contents_payload = [pdf_part, prompt]
-        except Exception:
-            contents_payload = [f"{prompt}\n\nTeklif Metni:\n{extracted_text[:5000]}"]
-
-        for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
-            try:
-                loop = asyncio.get_event_loop()
-                res = await loop.run_in_executor(
-                    None,
-                    lambda m=model_name: ai_client.models.generate_content(
-                        model=m,
-                        contents=contents_payload
-                    )
-                )
-                raw = res.text.strip()
-                raw = re.sub(r"^```json\s*", "", raw, flags=re.MULTILINE)
-                raw = re.sub(r"^```\s*", "", raw, flags=re.MULTILINE)
-                parsed = json.loads(raw)
-                if parsed.get("firm") and parsed.get("items"):
-                    return parsed
-            except Exception as e:
-                logging.warning(f"Gemini {model_name} denemesi: {e}")
-
-    firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Tesis|Sayin|Company)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
-    detected_firm = firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA"
-
-    cur = "EUR"
-    if "USD" in extracted_text or "$" in extracted_text: cur = "USD"
-    elif "TL" in extracted_text or "TRY" in extracted_text: cur = "TL"
-
-    tot_match = re.search(r"(?:Genel Toplam|Grand Total|Toplam|Total)[\s:]*([0-9.,]+)", extracted_text, re.IGNORECASE)
-    grand_total = tot_match.group(1).strip() if tot_match else "-"
-
-    detected_items = []
-    lines = [l.strip() for l in extracted_text.split("\n") if l.strip()]
-    for line in lines:
-        code_match = re.search(r"\b(\d{4,6})\b", line)
-        if code_match:
-            c = code_match.group(1)
-            detected_items.append({"code": c, "name": line[:40], "qty": 1, "unit_price": "-", "total_price": "-"})
-
-    if not detected_items:
-        detected_items = [{"code": "GENEL", "name": "PDF Teklif Kalemleri", "qty": 1, "unit_price": "-", "total_price": "-"}]
-
-    return {
-        "firm": detected_firm[:30].upper(),
-        "date": datetime.now().strftime("%d.%m.%Y"),
-        "currency": cur,
-        "grand_total": grand_total,
-        "items": detected_items[:15]
-    }
-
-def generate_excel_z_report(sales_data, title="Z_Raporu"):
-    fn = f"Elips_{title}_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Satislar"
-        headers = ["Sıra", "Tarih", "Ref No", "Müşteri / Fabrika", "Ürün Kodu", "Ürün Adı", "Adet"]
-        ws.append(headers)
-        h_fill = PatternFill(start_color="161F30", end_color="161F30", fill_type="solid")
-        h_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-        border = Border(*(Side(style='thin', color='DDDDDD') for _ in range(4)))
-        for c in range(1, len(headers) + 1):
-            cell = ws.cell(row=1, column=c)
-            cell.fill, cell.font = h_fill, h_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-        row, cnt = 2, 1
-        for sale in sales_data:
-            for item in sale.get("items", []):
-                ws.append([cnt, str(sale.get("date", "")), str(sale.get("ref_no", "YOK")), str(sale.get("firm", "")),
-                           item.get("code", ""), item.get("name", ""), item.get("qty", 1)])
-                for c in range(1, len(headers) + 1): ws.cell(row=row, column=c).border = border
-                row += 1; cnt += 1
-        for idx, w in enumerate([8, 18, 14, 25, 16, 40, 10], 1):
-            ws.column_dimensions[openpyxl.utils.get_column_letter(idx)].width = w
-        wb.save(fn)
-        return fn
-    except Exception as e:
-        logging.error(f"Excel hatası: {e}")
-        return None
-
-def generate_pdf_z_report(sales_data, title="Z_Raporu"):
-    fn = f"Elips_{title}_{datetime.now().strftime('%d_%m_%Y')}.pdf"
-    try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib import colors
-        doc = SimpleDocTemplate(fn, pagesize=A4, rightMargin=15, leftMargin=15, topMargin=20, bottomMargin=20)
-        styles = getSampleStyleSheet()
-        t_style = ParagraphStyle('T', parent=styles['Heading1'], fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor('#161F30'), alignment=1, spaceAfter=4)
-        s_style = ParagraphStyle('S', parent=styles['Normal'], fontName="Helvetica", fontSize=8, textColor=colors.HexColor('#64748B'), alignment=1, spaceAfter=12)
-        elements = [
-            Paragraph("ELİPS DEPO PARÇA SATIŞ RAPORU", t_style),
-            Paragraph(f"DÖKÜM TARİHİ: {datetime.now().strftime('%d.%m.%Y %H:%M')}", s_style)
-        ]
-        data = [["Sıra", "Tarih", "Ref No", "Müşteri / Tesis", "Ürün Kodu", "Ürün Adı", "Adet"]]
-        cnt, total = 1, 0
-        for sale in sales_data:
-            ref = str(sale.get("ref_no", "YOK"))
-            firm = str(sale.get("firm", ""))[:22]
-            date = str(sale.get("date", "")).split()[0]
-            for itm in sale.get("items", []):
-                q = int(itm.get("qty", 1))
-                total += q
-                data.append([str(cnt), date, ref, firm, str(itm.get("code", "")), str(itm.get("name", ""))[:28], str(q)])
-                cnt += 1
-        data.append(["TOPLAM", "", "", "", "", "Toplam Adet:", str(total)])
-        table = Table(data, colWidths=[30, 65, 60, 130, 80, 150, 50], repeatRows=1)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#161F30')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2E8F0')),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold')
-        ]))
-        elements.append(table)
-        doc.build(elements)
-        return fn
-    except Exception as e:
-        logging.error(f"PDF hatası: {e}")
-        return None
-
-def filter_sales_by_range(start_dt: datetime, end_dt: datetime):
-    sales = load_sales()
-    res = []
-    for s in sales:
-        if s.get("status") != "APPROVED": continue
-        try:
-            ts = s.get("timestamp")
-            d = datetime.fromisoformat(ts) if ts else datetime.strptime(s.get("date", "").split()[0], "%d.%m.%Y")
-            if start_dt <= d <= end_dt: res.append(s)
-        except Exception: res.append(s)
-    return res
-
-def build_report_text(sales_data, report_name="SATIŞ Z-RAPORU"):
-    now = datetime.now()
-    if not sales_data:
-        return f"📊 <b>ELİPS DEPO {report_name}</b>\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\nℹ️ Kayıt bulunamadı."
-    text = f"📊 <b>ELİPS DEPO {report_name}</b>\n📅 Tarih: {now.strftime('%d.%m.%Y %H:%M')}\n═══════════════════════════════\n\n"
-    total_qty, plants, cnt = 0, set(), 1
-    for sale in sales_data:
-        plants.add(sale.get("firm", ""))
-        for itm in sale.get("items", []):
-            q = int(itm.get("qty", 1))
-            total_qty += q
-            text += f"<b>{cnt}.</b> <code>[{itm.get('code')}]</code> {html.escape(itm.get('name', ''))}\n   └ Miktar: <b>{q} Adet</b> | Tesis: <b>{html.escape(sale.get('firm', ''))}</b>\n\n"
-            cnt += 1
-    text += f"───────────────────────────────\n📦 Toplam Satış: <b>{total_qty} Adet</b> | Tesis: <b>{len(plants)}</b>\n📂 Format seçin:"
-    return text
-
-def get_client_history_text(firm_query: str):
-    sales = load_sales()
-    q_norm = normalize_tr(firm_query.strip())
-    scored = []
-    for s in sales:
-        if s.get("status") != "APPROVED": continue
-        f_norm = normalize_tr(s.get("firm", ""))
-        ratio = difflib.SequenceMatcher(None, q_norm, f_norm).ratio()
-        if q_norm in f_norm or ratio > 0.40:
-            scored.append((s, ratio))
-
-    if not scored: return f"🔍 <code>{html.escape(firm_query)}</code> için onaylı geçmiş hareket bulunamadı."
-    scored.sort(key=lambda x: x[1], reverse=True)
-    best_firm = scored[0][0].get("firm")
-    firm_records = [s for s, _ in scored if s.get("firm") == best_firm]
-
-    text = f"🏢 <b>{html.escape(best_firm)} — PARÇA GEÇMİŞİ</b>\n═══════════════════════════════\n\n"
-    for item in firm_records:
-        for itm in item.get("items", []):
-            text += f"• 📅 <code>{item.get('date', '')}</code> ➔ <b>{itm.get('qty')}x</b> <code>[{itm.get('code')}]</code> ({html.escape(itm.get('name', ''))})\n"
-    text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(firm_records)} Sevkiyat / Hareket</b>"
-    return text
-
+# ----------------- ANA KLAVYE & KOMUTLAR -----------------
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -704,16 +384,46 @@ def get_main_keyboard():
         resize_keyboard=True
     )
 
-# ----------------- 6. NİLAY HANIM'A TEKLİF SİHİRBAZI -----------------
-@dp.message(Command("teklif", ignore_mention=True))
-@dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla")
+# ----------------- START & MENÜ (KİLİTLENMEYİ ENGELLEYEN STATEFILTER('*')) -----------------
+@dp.message(CommandStart(), StateFilter('*'))
+@dp.message(Command("start"), StateFilter('*'))
+@dp.message(Command("menu"), StateFilter('*'))
+@dp.message(F.text.lower().in_(["/start", "start", "başlat", "baslat", "/menu", "menü", "menu"]), StateFilter('*'))
+async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()  # Bütün kilitlenmiş durumları anında sıfırlar
+    user_id = message.chat.id
+    sender_name = html.escape(message.from_user.first_name if message.from_user else "Kullanıcı")
+    name = "Ömer" if user_id == OMER_CHAT_ID else ("Kamil" if user_id == KAMIL_CHAT_ID else sender_name)
+    pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
+    stocks = load_stocks()
+
+    msg_text = (
+        f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.\n\n"
+        f"• Katalog PDF: {pdf_info}\n"
+        f"• Güncel Depo & Katalog: {len(stocks)} Çeşit\n"
+        f"• <b>İpucu:</b> Fiyat teklifi PDF'ini direkt buraya gönderebilirsiniz, yapay zeka ile otomatik taranacaktır."
+    )
+    await message.answer(msg_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
+
+@dp.message(Command("katalog"), StateFilter('*'))
+@dp.message(F.text == "📖 Kataloğu Gönder", StateFilter('*'))
+async def send_catalog_pdf(message: types.Message, state: FSMContext):
+    cat_path = get_catalog_pdf_file()
+    if cat_path and os.path.exists(cat_path):
+        await message.answer_document(FSInputFile(cat_path), caption="📖 <b>Elips Depo - Yedek Parça Kataloğu</b>", parse_mode="HTML")
+    else:
+        await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
+
+# ----------------- NİLAY HANIM'A TEKLİF SİHİRBAZI -----------------
+@dp.message(Command("teklif", ignore_mention=True), StateFilter('*'))
+@dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla", StateFilter('*'))
 async def start_quote_wizard(message: types.Message, state: FSMContext):
     await state.clear()
     await state.update_data(quote_items=[])
     await state.set_state(QuoteBuilderState.waiting_firm)
     await message.answer("🏢 <b>Teklif hangi müşteri / fabrika için hazırlanacak?</b>\n(Örnek: <code>MARK FORMELLE</code>, <code>TERRY JAR</code>)", parse_mode="HTML")
 
-# ADIM 1: FİRMA ALINDI, SADECE PARÇA ADI/KODU SORULUR (BUTON KALABALIĞI YOK)
+# ADIM 1: FİRMA ALINDI, SADECE PARÇA ADI/KODU SORULUR (BUTONSUZ VE TEMİZ)
 @dp.message(QuoteBuilderState.waiting_firm)
 async def process_quote_firm(message: types.Message, state: FSMContext):
     firm = message.text.strip().upper()
@@ -801,7 +511,6 @@ async def prompt_part_selection(target, part: dict, state: FSMContext):
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_supply_source)
 
-    # DİNAMİK VE DOĞRU ORTALANMIŞ GÖRSELİ GÖNDER
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
@@ -1072,10 +781,11 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer("Teklif kaydedildi!")
 
-# ----------------- 7. TEKLİF YÖNETİMİ (BEKLEYENLER / TAMAMLANANLAR / VERİLENLER) -----------------
-@dp.message(Command("bekleyenler"))
-@dp.message(F.text == "⏳ Bekleyen Teklifler")
-async def show_pending_quotes(message: types.Message):
+# ----------------- TEKLİF YÖNETİMİ (BEKLEYENLER / TAMAMLANANLAR / VERİLENLER) -----------------
+@dp.message(Command("bekleyenler"), StateFilter('*'))
+@dp.message(F.text == "⏳ Bekleyen Teklifler", StateFilter('*'))
+async def show_pending_quotes(message: types.Message, state: FSMContext):
+    await state.clear()
     quotes = load_quotes()
     pending = [q for q in quotes if q.get("status") == "PENDING"]
     if not pending:
@@ -1086,9 +796,10 @@ async def show_pending_quotes(message: types.Message):
         buttons.append([InlineKeyboardButton(text=f"⏳ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")])
     await message.answer("⏳ <b>BEKLEYEN TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
-@dp.message(Command("tamamlananlar"))
-@dp.message(F.text == "✅ Tamamlanmış Teklifler")
-async def show_approved_quotes(message: types.Message):
+@dp.message(Command("tamamlananlar"), StateFilter('*'))
+@dp.message(F.text == "✅ Tamamlanmış Teklifler", StateFilter('*'))
+async def show_approved_quotes(message: types.Message, state: FSMContext):
+    await state.clear()
     quotes = load_quotes()
     approved = [q for q in quotes if q.get("status") == "APPROVED"]
     if not approved:
@@ -1099,9 +810,10 @@ async def show_approved_quotes(message: types.Message):
         buttons.append([InlineKeyboardButton(text=f"✅ {q['firm']} ({q.get('date', '')[:10]})", callback_data=f"qview:{q['id']}")])
     await message.answer("✅ <b>TAMAMLANMIŞ (ONAYLI) TEKLİFLER:</b>\nİncelemek istediğinize tıklayın:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode="HTML")
 
-@dp.message(Command("verilenler"))
-@dp.message(F.text == "📂 Verilen Teklifler")
-async def show_submitted_quotes(message: types.Message):
+@dp.message(Command("verilenler"), StateFilter('*'))
+@dp.message(F.text == "📂 Verilen Teklifler", StateFilter('*'))
+async def show_submitted_quotes(message: types.Message, state: FSMContext):
+    await state.clear()
     quotes = load_quotes()
     if not quotes:
         await message.answer("ℹ️ Henüz kayıtlı bir teklif bulunmamaktadır.", parse_mode="HTML")
@@ -1139,7 +851,6 @@ async def on_quote_view_details(callback: types.CallbackQuery):
         lines.append(f"{idx}. <code>[{itm.get('code')}]</code> {itm.get('name')} — {itm.get('qty')} Adet (<i>{source_badge}</i>)")
 
     buttons = []
-    # Beklemede ise Onayla / Reddet butonları çıkar
     if st == "PENDING":
         buttons.append([
             InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
@@ -1179,7 +890,7 @@ async def on_quote_delete(callback: types.CallbackQuery):
     await callback.answer("Teklif silindi.")
     await notify_both(f"🗑️ <b>Bir Teklif Silindi!</b>\n🏢 Firma: <code>{html.escape(q['firm'])}</code>\n👤 Silen: <b>{del_by}</b>")
 
-# ONNAY & AKILLI STOK DÜŞÜŞÜ (SADECE ELİPS DEPO)
+# ONAY & AKILLI STOK DÜŞÜŞÜ (SADECE ELİPS DEPO)
 @dp.callback_query(F.data.startswith("qstat:"))
 async def on_quote_status_change(callback: types.CallbackQuery):
     _, quote_id, new_status = callback.data.split(":")
@@ -1268,9 +979,10 @@ async def on_quote_deduct_confirm(callback: types.CallbackQuery):
     await callback.answer()
 
 # ----------------- PARÇA LİSTESİ -----------------
-@dp.message(Command("stok", ignore_mention=True))
-@dp.message(F.text == "📦 Parça Listesi")
-async def show_stocks(message: types.Message):
+@dp.message(Command("stok", ignore_mention=True), StateFilter('*'))
+@dp.message(F.text == "📦 Parça Listesi", StateFilter('*'))
+async def show_stocks(message: types.Message, state: FSMContext):
+    await state.clear()
     stocks = load_stocks()
     available = [s for s in stocks if s.get("qty", 0) > 0]
     out_of_stock = [s for s in stocks if s.get("qty", 0) == 0]
@@ -1286,9 +998,10 @@ async def show_stocks(message: types.Message):
     await message.answer(text, parse_mode="HTML")
 
 # ----------------- RAPORLAR & TESİS GEÇMİŞİ -----------------
-@dp.message(Command("zraporu", ignore_mention=True))
-@dp.message(F.text == "📊 Z-Raporu Al")
-async def trigger_z_report_manual(message: types.Message):
+@dp.message(Command("zraporu", ignore_mention=True), StateFilter('*'))
+@dp.message(F.text == "📊 Z-Raporu Al", StateFilter('*'))
+async def trigger_z_report_manual(message: types.Message, state: FSMContext):
+    await state.clear()
     sales = filter_sales_by_range(datetime.now() - timedelta(days=7), datetime.now())
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📊 Excel", callback_data="dl_rep:excel:weekly"), InlineKeyboardButton(text="📑 PDF", callback_data="dl_rep:pdf:weekly")],
@@ -1296,9 +1009,10 @@ async def trigger_z_report_manual(message: types.Message):
     ])
     await message.answer(build_report_text(sales, "HAFTALIK Z-RAPORU"), reply_markup=kb, parse_mode="HTML")
 
-@dp.message(Command("tarihraporu", ignore_mention=True))
-@dp.message(F.text == "📅 Tarihli Rapor Al")
-async def trigger_custom_date_report(message: types.Message):
+@dp.message(Command("tarihraporu", ignore_mention=True), StateFilter('*'))
+@dp.message(F.text == "📅 Tarihli Rapor Al", StateFilter('*'))
+async def trigger_custom_date_report(message: types.Message, state: FSMContext):
+    await state.clear()
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🟢 Bugün", callback_data="date_filter:today"),
          InlineKeyboardButton(text="📅 Son 7 Gün", callback_data="date_filter:7days"),
@@ -1368,16 +1082,18 @@ async def handle_download_report_choice(callback: types.CallbackQuery, state: FS
         f = generate_pdf_z_report(sales, title)
         if f and os.path.exists(f): await callback.message.answer_document(FSInputFile(f), caption=f"📑 <b>Elips Depo {title} (PDF)</b>", parse_mode="HTML")
 
-@dp.message(Command("gecmis", ignore_mention=True))
-async def cmd_history_query(message: types.Message):
+@dp.message(Command("gecmis", ignore_mention=True), StateFilter('*'))
+async def cmd_history_query(message: types.Message, state: FSMContext):
+    await state.clear()
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
         await message.answer("⚠️ Tesis adı belirtin. (Örn: <code>/gecmis TERRY JAR</code>)", parse_mode="HTML")
         return
     await message.answer(get_client_history_text(parts[1]), parse_mode="HTML")
 
-@dp.message(F.text == "🏢 Tesis Geçmişi")
+@dp.message(F.text == "🏢 Tesis Geçmişi", StateFilter('*'))
 async def btn_client_history(message: types.Message, state: FSMContext):
+    await state.clear()
     await state.set_state(ClientHistoryState.waiting_client_name)
     await message.answer("🔍 Geçmişini aradığınız <b>Fabrika Adını</b> yazın (Örn: Terry, Zelal, Asaka):", parse_mode="HTML")
 
@@ -1386,8 +1102,57 @@ async def process_client_history_input(message: types.Message, state: FSMContext
     await state.clear()
     await message.answer(get_client_history_text(message.text.strip()), parse_mode="HTML")
 
+# ----------------- PDF YÜKLEME -----------------
+@dp.message(F.document, StateFilter('*'))
+async def handle_document_upload(message: types.Message, state: FSMContext):
+    doc = message.document
+    if not doc.file_name.lower().endswith(".pdf"):
+        await message.answer("⚠️ Lütfen PDF formatında bir teklif dosyası yükleyin.")
+        return
+
+    sender_name = "Ömer" if message.from_user.id == OMER_CHAT_ID else "Kamil"
+    wait_msg = await message.answer("⏳ <i>PDF belgesi taranıyor ve yapay zeka ile analiz ediliyor...</i>", parse_mode="HTML")
+    saved_filename = f"{int(time.time())}_{doc.file_name}"
+    save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
+    await bot.download(doc, destination=save_path)
+
+    parsed_data = await parse_quote_pdf_with_gemini(save_path)
+    firm = parsed_data.get("firm", "BİLİNMEYEN FİRMA").upper()
+    date = parsed_data.get("date", datetime.now().strftime("%d.%m.%Y"))
+    currency = parsed_data.get("currency", "EUR")
+    grand_total = parsed_data.get("grand_total", "-")
+    items = parsed_data.get("items", [])
+
+    quote_id = f"TK-{int(time.time())}"
+    quotes = load_quotes()
+    new_quote = {
+        "id": quote_id, "firm": firm, "date": date, "currency": currency,
+        "grand_total": grand_total, "status": "PENDING", "items": items, "pdf_file": save_path, "creator": sender_name
+    }
+    quotes.append(new_quote)
+    save_quotes(quotes)
+
+    lines = [f"🏢 <b>Firma:</b> {html.escape(firm)}", f"📅 <b>Tarih:</b> {date}", f"👤 <b>Yükleyen:</b> {sender_name}"]
+    lines.append("\n📦 <b>Algılanan Teklif Kalemleri:</b>")
+    for idx, itm in enumerate(items, 1):
+        lines.append(f"<b>{idx}.</b> <code>[{itm.get('code','-')}]</code> {html.escape(itm.get('name','Ürün'))} | Adet: <b>{itm.get('qty',1)}</b>")
+
+    lines.append(f"\n💰 <b>Genel Toplam:</b> <b>{grand_total} {currency}</b>\nLütfen teklifin durumunu seçin:")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Onayla", callback_data=f"qstat:{quote_id}:APPROVED"),
+         InlineKeyboardButton(text="❌ Reddet", callback_data=f"qstat:{quote_id}:REJECTED")],
+        [InlineKeyboardButton(text="🗑️ Teklifi Sil", callback_data=f"qdel:{quote_id}")]
+    ])
+    await wait_msg.delete()
+    await message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+
+    other_notify = f"📄 <b>Yeni Teklif PDF'i Yüklendi!</b>\n👤 Yükleyen: <b>{sender_name}</b>\n🏢 Firma: <b>{firm}</b>\n💰 Tutar: <b>{grand_total} {currency}</b>"
+    target_id = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else OMER_CHAT_ID
+    try: await bot.send_message(chat_id=target_id, text=other_notify, parse_mode="HTML")
+    except Exception: pass
+
 # ----------------- WEBAPP VERİ ALICISI & SOHBET KÖPRÜSÜ -----------------
-@dp.message(F.web_app_data)
+@dp.message(F.web_app_data, StateFilter('*'))
 async def handle_webapp_payload(message: types.Message):
     try: p = json.loads(message.web_app_data.data)
     except Exception: return
@@ -1428,7 +1193,7 @@ async def handle_webapp_payload(message: types.Message):
         )
         await notify_both(msg)
 
-@dp.message(~F.text.startswith("/"))
+@dp.message(~F.text.startswith("/"), StateFilter(None))
 async def chat_bridge(message: types.Message):
     menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanmış Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
     if message.text in menu_buttons: return
@@ -1455,22 +1220,26 @@ async def automated_scheduler():
                 if f_pdf: await bot.send_document(OMER_CHAT_ID, FSInputFile(f_pdf))
         await asyncio.sleep(25)
 
+async def handle_ping(request):
+    return web.Response(text="Elips Depo Robotu Aktif", status=200)
+
 async def start_dummy_server():
     try:
         app = web.Application()
-        app.router.add_get('/', lambda r: web.Response(text="Elips Depo Robotu Aktif"))
+        app.router.add_get('/', handle_ping)
+        app.router.add_get('/health', handle_ping)
         runner = web.AppRunner(app)
         await runner.setup()
         port = int(os.environ.get("PORT", 8080))
         site = web.TCPSite(runner, '0.0.0.0', port)
         await site.start()
-        logging.info(f"✅ Render web server {port} portunda baslatildi.")
+        logging.info(f"✅ Render web server 0.0.0.0:{port} portunda baslatildi.")
     except Exception as e:
         logging.warning(f"Server baslatilamadi: {e}")
 
 async def main():
     try:
-        init_flag = ".init_done_v17"
+        init_flag = ".init_done_v18"
         if not os.path.exists(init_flag):
             save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
             save_data(SALES_FILE, INITIAL_REAL_SALES)

@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# CANLI MESAJ İZLEME MIDDLEWARE'İ (Gelen her mesajı Render loguna canlı basar)
+# CANLI MESAJ İZLEME MIDDLEWARE'İ
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
         if isinstance(event, types.Message):
@@ -1001,8 +1001,142 @@ async def quote_rejected(callback: types.CallbackQuery):
     s_id = callback.data.split(":")[1]
     sales = load_sales()
     sale = next((s for s in sales if s.get("id") == s_id), None)
-    if sale:
-        sale["status"] = "REJECTED"
-        save_sales(sales)
+    if sale: sale["status"] = "REJECTED"; save_sales(sales)
     await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KABUL EDİLMEDİ (İPTAL)</b>", reply_markup=None, parse_mode="HTML")
     await callback.answer("İptal edildi.")
+
+# ----------------- WEBAPP & SAHA İŞ EMİRLERİ -----------------
+@dp.message(F.web_app_data)
+async def handle_webapp_payload(message: types.Message):
+    try: p = json.loads(message.web_app_data.data)
+    except Exception: return
+    op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
+    ref_id = f"REF-{message.message_id}"
+    dir_type = p.get("direction")
+
+    if dir_type == "STOCK_CHANGE" and p.get("action") == "DECREASE":
+        dest, contact = p.get("destination", "Bilinmeyen"), p.get("contact", "-")
+        code, name, qty = p.get("code"), p.get("name"), p.get("delta", 1)
+        sales = load_sales()
+        sales.append({
+            "id": ref_id, "firm": dest, "contact": contact, "ref_no": "MANUEL-ÇIKIŞ",
+            "items": [{"code": code, "name": name, "qty": qty}], "status": "APPROVED",
+            "date": datetime.now().strftime("%d.%m.%Y %H:%M"), "timestamp": datetime.now().isoformat()
+        })
+        save_sales(sales)
+        msg = f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n🏢 Firma: <code>{html.escape(dest)}</code>\n👤 İlgili Kişi: <code>{html.escape(contact)}</code>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📉 Adet: <b>-{qty}</b> | Kalan: <code>{p.get('current_qty', 0)} ADT</code>\n👷‍♂️ Çıkış Yapan: {op}"
+        await notify_both(msg)
+
+    elif dir_type == "OMER_TO_KAMIL":
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Onayla", callback_data=f"otk_ok:{ref_id}"),
+             InlineKeyboardButton(text="❌ Reddet", callback_data=f"otk_no:{ref_id}")]
+        ])
+        msg = f"🔔 <b>ÖMER'DEN YENİ TALEP!</b>\n🏢 Firma: <code>{html.escape(p.get('firm', ''))}</code>\n👤 İlgili: <code>{html.escape(p.get('contact', ''))}</code>\n⚙️ <code>[{p.get('part_code')}]</code> {html.escape(p.get('part_name', ''))}\n📦 Adet: <b>{p.get('quantity')}</b> | Öncelik: <code>{p.get('priority')}</code>\n📝 Not: <i>{html.escape(p.get('notes') or 'Yok')}</i>"
+        await bot.send_message(KAMIL_CHAT_ID, msg, reply_markup=kb, parse_mode="HTML")
+        await message.answer("✅ Talep Kamil'e iletildi.")
+
+    elif dir_type == "KAMIL_TO_OMER":
+        tasks = load_tasks()
+        tasks[ref_id] = {"created_at": time.time(), "firm": p.get('firm'), "task_type": p.get('task_type')}
+        save_tasks(tasks)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="👍 Aldım", callback_data=f"o_ack:{ref_id}"),
+             InlineKeyboardButton(text="🔍 İlgileniyorum", callback_data=f"o_busy:{ref_id}")],
+            [InlineKeyboardButton(text="✅ Bitirdim", callback_data=f"o_done:{ref_id}")]
+        ])
+        msg = f"📋 <b>KAMİL'DEN YENİ SAHA İŞ EMRİ!</b>\n🏢 Gidilecek Firma: <code>{html.escape(p.get('firm', ''))}</code>\n👤 İlgili Kişi: <code>{html.escape(p.get('contact', ''))}</code>\n🔧 Görev: <b>{html.escape(p.get('task_type', ''))}</b>\n📝 Talimat: <i>{html.escape(p.get('instructions') or 'Yok')}</i>"
+        await bot.send_message(OMER_CHAT_ID, msg, reply_markup=kb, parse_mode="HTML")
+        await message.answer("✅ Görev Ömer'e iletildi.")
+
+@dp.callback_query(F.data.startswith("otk_ok:"))
+async def otk_approved(callback: types.CallbackQuery):
+    await callback.message.edit_text(callback.message.text + "\n\n🟢 <b>KAMİL ONAYLADI.</b>", parse_mode="HTML")
+    await bot.send_message(OMER_CHAT_ID, "🎉 <b>Kamil talebini onayladı.</b>", parse_mode="HTML")
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("otk_no:"))
+async def otk_rejected(callback: types.CallbackQuery):
+    await callback.message.edit_text(callback.message.text + "\n\n🔴 <b>KAMİL REDDETTİ.</b>", parse_mode="HTML")
+    await bot.send_message(OMER_CHAT_ID, "❌ <b>Kamil talebini reddetti.</b>", parse_mode="HTML")
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("o_done:"))
+async def omer_done(callback: types.CallbackQuery):
+    ref_id = callback.data.split(":")[1]
+    tasks = load_tasks()
+    t = tasks.get(ref_id, {})
+    sec = int(time.time() - (t.get("created_at") or time.time()))
+    dur = f"{sec//60} dk {sec%60} sn" if sec >= 60 else f"{sec} sn"
+    await callback.message.edit_text(callback.message.text + f"\n\n✅ <b>TAMAMLANDI</b> (Süre: {dur})", parse_mode="HTML")
+    await bot.send_message(KAMIL_CHAT_ID, f"🏁 <b>ÖMER GÖREVİ BİTİRDİ!</b>\n🏢 <code>{html.escape(t.get('firm', ''))}</code> | ⏱️ {dur}", parse_mode="HTML")
+    await callback.answer("İş tamamlandı.")
+
+# ----------------- ÖMER VE KAMİL ARASI MESAJLAŞMA KÖPRÜSÜ -----------------
+@dp.message(~F.text.startswith("/"))
+async def chat_bridge(message: types.Message):
+    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla"]
+    if message.text in menu_buttons: return
+    tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
+    sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
+    if tid and message.text:
+        await bot.send_message(tid, f"💬 <b>{sender}:</b> {html.escape(message.text)}", parse_mode="HTML")
+        await message.reply("✓ <i>İletildi.</i>", parse_mode="HTML")
+
+# ----------------- OTOMATİK ZAMANLAYICI (HAFTALIK / AYLIK) -----------------
+async def automated_scheduler():
+    last_week, last_month = "", ""
+    while True:
+        now = datetime.now()
+        today = now.strftime("%Y-%m-%d")
+        if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_week != today:
+            last_week = today
+            sales = filter_sales_by_range(now - timedelta(days=7), now)
+            await notify_both("📢 <b>HAFTALIK OTOMATİK Z-RAPORU</b>\n\n" + build_report_text(sales, "HAFTALIK"))
+            if sales:
+                f_xls = generate_excel_z_report(sales, "Haftalik")
+                f_pdf = generate_pdf_z_report(sales, "Haftalik")
+                if f_xls: await send_file_to_both(f_xls, "📊 Excel Raporu")
+                if f_pdf: await send_file_to_both(f_pdf, "📑 PDF Raporu")
+        if (now + timedelta(days=1)).day == 1 and now.hour == 18 and now.minute == 0 and last_month != today:
+            last_month = today
+            sales = filter_sales_by_range(datetime(now.year, now.month, 1), now)
+            await notify_both("📢 <b>AYLIK OTOMATİK Z-RAPORU</b>\n\n" + build_report_text(sales, "AYLIK"))
+            if sales:
+                f_xls = generate_excel_z_report(sales, "Aylik")
+                f_pdf = generate_pdf_z_report(sales, "Aylik")
+                if f_xls: await send_file_to_both(f_xls, "📊 Excel Raporu")
+                if f_pdf: await send_file_to_both(f_pdf, "📑 PDF Raporu")
+        await asyncio.sleep(25)
+
+# ----------------- DUMMY SERVER (RENDER İÇİN) -----------------
+async def start_dummy_server():
+    try:
+        app = web.Application()
+        app.router.add_get('/', lambda r: web.Response(text="Eliar Robot Aktif"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get("PORT", 8080))
+        await web.TCPSite(runner, '0.0.0.0', port).start()
+        logging.info(f"Web sunucusu {port} portunda baslatildi.")
+    except Exception as e:
+        logging.warning(f"Dummy server baslatilamadi: {e}")
+
+# ----------------- MAIN / BAŞLANGIÇ -----------------
+async def main():
+    try:
+        if not os.path.exists(STOCKS_FILE):
+            init_stocks_from_catalog()
+        
+        await bot.delete_webhook(drop_pending_updates=True)
+        await setup_bot_commands()
+        await start_dummy_server()
+        asyncio.create_task(automated_scheduler())
+        
+        logging.info(">>> BOT BASARIYLA BASLATILDI VE DINLEMEDE <<<")
+        await dp.start_polling(bot)
+    except Exception as e:
+        logging.error(f"Bot baslatilirken kritik hata: {e}")
+
+if __name__ == "__main__":
+    asyncio.run(main())

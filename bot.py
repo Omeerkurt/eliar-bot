@@ -1106,5 +1106,33 @@ async def main():
     asyncio.create_task(automated_scheduler())
     await dp.start_polling(bot)
 
+async def start_dummy_server():
+    try:
+        app = web.Application()
+        app.router.add_get('/', lambda r: web.Response(text="Eliar Robot Aktif"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get("PORT", 8080))
+        await web.TCPSite(runner, '0.0.0.0', port).start()
+        logging.info(f"Web sunucusu {port} portunda baslatildi.")
+    except Exception as e:
+        logging.warning(f"Dummy server baslatilamadi (onemsiz, bot calismaya devam eder): {e}")
+
+async def main():
+    try:
+        if not os.path.exists(STOCKS_FILE):
+            init_stocks_from_catalog()
+        
+        # Asılı kalan eski webhook ve bağlantıları temizle
+        await bot.delete_webhook(drop_pending_updates=True)
+        await setup_bot_commands()
+        await start_dummy_server()
+        asyncio.create_task(automated_scheduler())
+        
+        logging.info(">>> BOT BASARIYLA BASLATILDI VE DINLEMEDE <<<")
+        await dp.start_polling(bot)
+    except Exception as e:
+        logging.error(f"Bot baslatilirken kritik hata: {e}")
+
 if __name__ == "__main__":
     asyncio.run(main())

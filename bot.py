@@ -101,7 +101,7 @@ CATALOG_GRID_MAP = {
     "50247": (20, 1), "50249": (20, 2), "15401": (20, 3), "41439": (20, 4), "91633": (20, 5), "91448": (20, 6),
     "42595": (21, 1), "90861": (21, 3), "90817": (21, 6),
     "96683": (22, 1), "96097": (22, 2), "91598": (22, 4), "91037": (22, 5), "40082": (22, 6),
-    "91386": (23, 1), "91488": (23, 2), "90567": (23, 3), "90965": (23, 4),
+    "91386": (23, 3), "91488": (23, 4), "90567": (23, 5), "90965": (23, 6),
     "40647": (24, 1), "90715": (24, 2), "90828": (24, 5), "90834": (24, 6),
     "96468": (25, 1), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
     "90832": (26, 4), "40634": (26, 6),
@@ -243,22 +243,49 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- DOĞRU VE NET KATALOG KIRPMA MOTORU -----------------
+# ==============================================================================
+#      KUSURSUZ SAYFALAR ARASI AKILLI KATALOG KIRPICI (CROSS-PAGE STITCHER)
+# ==============================================================================
+def stitch_pixmaps_vertically(pix_header, pix_body) -> bytes:
+    """Sayfa 23'ün dibindeki başlık ile Sayfa 24'ün tepesindeki resmi dikey birleştirir"""
+    try:
+        from PIL import Image
+        import io
+        img1 = Image.open(io.BytesIO(pix_header.tobytes("png")))
+        img2 = Image.open(io.BytesIO(pix_body.tobytes("png")))
+
+        target_w = max(img1.width, img2.width)
+        if img1.width != target_w:
+            img1 = img1.resize((target_w, int(img1.height * (target_w / img1.width))))
+        if img2.width != target_w:
+            img2 = img2.resize((target_w, int(img2.height * (target_w / img2.width))))
+
+        combined = Image.new("RGB", (target_w, img1.height + img2.height), (255, 255, 255))
+        combined.paste(img1, (0, 0))
+        combined.paste(img2, (0, img1.height))
+
+        out = io.BytesIO()
+        combined.save(out, format="PNG")
+        return out.getvalue()
+    except Exception as e:
+        logging.warning(f"Resim birleştirme hatası (tek resim dönülüyor): {e}")
+        return pix_body.tobytes("png")
+
 def crop_slot_from_page(page, slot: int) -> bytes:
     """
-    Üstteki ürüne taşmayan, başlığı ve doğrudan altındaki resmi tam alan kırpıcı.
+    Ürün başlığı, ürün kodu ve altındaki resmi tam alan, üstteki ürüne taşmayan ızgara kırpıcı.
     """
     pw, ph = page.rect.width, page.rect.height
     col = 0 if slot in [1, 3, 5] else 1
     row = 0 if slot in [1, 2] else (1 if slot in [3, 4] else 2)
 
-    x0 = 12 if col == 0 else (pw / 2.0 + 4)
-    x1 = (pw / 2.0 - 4) if col == 0 else (pw - 12)
+    x0 = 8 if col == 0 else (pw / 2.0 + 2)
+    x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
 
     row_bounds = [
-        (35, 292),   # Slot 1 & 2
-        (298, 552),  # Slot 3 & 4
-        (558, 816)   # Slot 5 & 6
+        (25, 285),   # Slot 1 & 2
+        (288, 550),  # Slot 3 & 4
+        (550, 815)   # Slot 5 & 6 (90567 Diyafram burada yer alır)
     ]
     y0, y1 = row_bounds[row]
 
@@ -272,6 +299,10 @@ def crop_slot_from_page(page, slot: int) -> bytes:
         return None
 
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
+    """
+    PDF içindeki kodu dinamik arar; başlığı ve doğrudan altındaki resmi yakalar.
+    Eğer başlık önceki sayfanın dibinde, resim sonraki sayfanın tepesindeyse iki sayfayı dikey birleştirir!
+    """
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
     try:
@@ -279,26 +310,52 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         doc = fitz.open(pdf_path)
         code_str = str(code).strip()
 
+        # 1. Önce PDF içindeki gerçek vektör metin aramasını yap
+        for p_idx, page in enumerate(doc):
+            rects = (
+                page.search_for(f"({code_str})")
+                or page.search_for(f" {code_str} ")
+                or page.search_for(code_str)
+            )
+            if rects:
+                pw, ph = page.rect.width, page.rect.height
+                r = rects[0]
+                col = 0 if ((r.x0 + r.x1) / 2.0) < (pw / 2.0) else 1
+                x0 = 8 if col == 0 else (pw / 2.0 + 2)
+                x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
+
+                # DURUM 1: Başlık önceki sayfanın dibinde, kod ve resim bu sayfanın tepesinde (Örn: Pin Silindir 40647)
+                if r.y0 < 130 and p_idx > 0:
+                    p_prev = doc[p_idx - 1]
+                    rect_header = fitz.Rect(x0, ph - 62, x1, ph - 20)
+                    pix_header = p_prev.get_pixmap(clip=rect_header, dpi=200)
+                    rect_body = fitz.Rect(x0, max(15, r.y0 - 15), x1, min(ph - 15, r.y0 + 245))
+                    pix_body = page.get_pixmap(clip=rect_body, dpi=200)
+                    return stitch_pixmaps_vertically(pix_header, pix_body)
+
+                # DURUM 2: Başlık bu sayfanın dibinde, resim sonraki sayfada
+                if r.y0 > ph - 100 and p_idx < len(doc) - 1:
+                    p_next = doc[p_idx + 1]
+                    rect_header = fitz.Rect(x0, max(15, r.y0 - 15), x1, ph - 20)
+                    pix_header = page.get_pixmap(clip=rect_header, dpi=200)
+                    rect_body = fitz.Rect(x0, 25, x1, 285)
+                    pix_body = p_next.get_pixmap(clip=rect_body, dpi=200)
+                    return stitch_pixmaps_vertically(pix_header, pix_body)
+
+                # DURUM 3: Standart Tek Sayfa (Örn: Diyafram 90567)
+                y0 = max(10, r.y0 - 32)
+                y1 = min(ph - 10, y0 + 268)
+                clip_rect = fitz.Rect(x0, y0, x1, y1)
+                pix = page.get_pixmap(clip=clip_rect, dpi=200)
+                return pix.tobytes("png")
+
+        # 2. Dinamik bulunamazsa güncellenmiş koordinat haritasından çek
         if code_str in CATALOG_GRID_MAP:
             page_no, slot = CATALOG_GRID_MAP[code_str]
             p_idx = page_no - 1
             if p_idx < len(doc):
                 return crop_slot_from_page(doc[p_idx], slot)
 
-        for p_idx, page in enumerate(doc):
-            rects = page.search_for(code_str) or page.search_for(f"({code_str})")
-            if rects:
-                r = rects[0]
-                pw, ph = page.rect.width, page.rect.height
-                col = 0 if r.x0 < (pw / 2.0) else 1
-                y0 = max(20, r.y0 - 32)
-                y1 = min(ph - 15, y0 + 265)
-                x0 = 12 if col == 0 else (pw / 2.0 + 4)
-                x1 = (pw / 2.0 - 4) if col == 0 else (pw - 12)
-
-                clip_rect = fitz.Rect(x0, y0, x1, y1)
-                pix = page.get_pixmap(clip=clip_rect, dpi=200)
-                return pix.tobytes("png")
         return None
     except Exception as e:
         logging.error(f"Görsel çıkarma hatası: {e}")
@@ -387,7 +444,6 @@ def find_best_matches(query: str):
 
 # ----------------- TEST MODUNA DUYARLI BİLDİRİM -----------------
 async def notify_both(text: str, reply_markup=None):
-    # Test modundayken Kamil'e ASLA bildirim gitmez, sadece Ömer'e gelir
     recipients = {OMER_CHAT_ID} if TEST_MODE else {OMER_CHAT_ID, KAMIL_CHAT_ID}
     if TEST_MODE:
         text += "\n\n🧪 <i>[TEST MODU: Kamil'e bildirim gitmedi, gerçek stoklar ve Z-raporu korunuyor.]</i>"
@@ -396,7 +452,7 @@ async def notify_both(text: str, reply_markup=None):
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e: logging.warning(f"İletilemedi ({cid}): {e}")
 
-# ----------------- GÜVENLİ Z-RAPORU MOTORU -----------------
+# ----------------- KURUMSAL VE DÜZELTİLMİŞ Z-RAPORU MOTORU -----------------
 def parse_date_safe(date_str: str) -> datetime:
     if not date_str: return None
     date_str = str(date_str).strip()
@@ -447,24 +503,25 @@ def build_report_text(sales_data, report_name="SATIŞ Z-RAPORU"):
         f"📊 <b>ELİPS DEPO {report_name}</b>\n"
         f"📅 Rapor Tarihi: {now.strftime('%d.%m.%Y %H:%M')}\n"
         "═══════════════════════════════\n"
-        f"📦 Toplam Satılan Parça: <b>{total_qty} Adet</b>\n"
-        f"🏭 Hizmet Verilen Fabrika: <b>{len(plants)} Tesis</b>\n"
-        f"📑 Toplam Sevkiyat Hareketi: <b>{len(sales_data)} İşlem</b>\n"
+        f"💰 <b>GENEL SEVKİYAT ÖZETİ:</b>\n"
+        f"• Toplam Satılan Parça: <b>{total_qty} Adet</b>\n"
+        f"• Hizmet Verilen Fabrika: <b>{len(plants)} Tesis</b>\n"
+        f"• Tamamlanan İşlem: <b>{len(sales_data)} Hareket</b>\n"
         "═══════════════════════════════\n\n"
-        "<b>📦 EN ÇOK SATILAN PARÇALAR (ÖZET):</b>\n"
+        "<b>📦 SATILAN PARÇALAR (KONSOLİDE LİSTE):</b>\n"
     )
 
     for idx, (code, data) in enumerate(item_totals.items(), 1):
-        text += f"<b>{idx}.</b> <code>[{code}]</code> {html.escape(data['name'][:30])} ➔ <b>{data['qty']} Adet</b>\n"
+        text += f"• <code>[{code}]</code> {html.escape(data['name'][:30])} ➔ <b>{data['qty']} Adet</b>\n"
 
     text += "\n═══════════════════════════════\n<b>🏭 TESİS ÇIKIŞLARI:</b>\n"
-    for s in sales_data[:12]:
+    for s in sales_data[:10]:
         depo_tag = "🇹🇷 [TR]" if s.get("source") == "TR_DEPO" else "🇺🇿 [ELİPS]"
         item_summary = ", ".join([f"{i.get('code')} ({i.get('qty')} adt)" for i in s.get("items", [])])
         text += f"• <code>{s.get('date', '')[:10]}</code> {depo_tag} <b>{html.escape(s.get('firm', ''))}</b>\n  └ {html.escape(item_summary)}\n"
 
-    if len(sales_data) > 12:
-        text += f"\n<i>...ve {len(sales_data) - 12} hareket daha (Excel / PDF ile tam listeyi alabilirsiniz).</i>\n"
+    if len(sales_data) > 10:
+        text += f"\n<i>...ve {len(sales_data) - 10} hareket daha (Aşağıdan Excel veya PDF ile tam dökümü alabilirsiniz).</i>\n"
 
     text += "\n📂 <i>İndirmek istediğiniz dosya formatını seçin:</i>"
     return text
@@ -1013,8 +1070,8 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
     ])
     await message.answer(
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n"
-        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91661</code>, <code>90880</code>)\n"
-        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>sürücü</code>, <code>diyafram</code>):",
+        f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91661</code>, <code>90567</code>, <code>40647</code>)\n"
+        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>diyafram</code>, <code>pin silindir</code>):",
         reply_markup=kb,
         parse_mode="HTML"
     )
@@ -1103,6 +1160,7 @@ async def on_quote_part_confirmed(callback: types.CallbackQuery, state: FSMConte
     await state.update_data(selected_part=part)
     await state.set_state(QuoteBuilderState.waiting_qty)
 
+    # İki sayfaya taşan parçaları da birleştirip net gönderir
     img_bytes = extract_part_image_from_pdf(part["code"], part.get("name", ""))
     if img_bytes:
         photo = BufferedInputFile(img_bytes, filename=f"{part['code']}.png")
@@ -1208,7 +1266,7 @@ async def show_stocks(message: types.Message):
 
     await message.answer(text, parse_mode="HTML")
 
-# ----------------- RAPOR MOTORU & MENÜSÜ -----------------
+# ----------------- DÜZELTİLMİŞ Z-RAPORU MENÜSÜ & İŞLEMLERİ -----------------
 @dp.message(Command("zraporu", ignore_mention=True))
 @dp.message(F.text == "📊 Z-Raporu Al")
 async def trigger_z_report_manual(message: types.Message):
@@ -1225,7 +1283,7 @@ async def trigger_z_report_manual(message: types.Message):
             InlineKeyboardButton(text="✍️ Özel Tarih Aralığı Gir", callback_data="date_filter:custom")
         ]
     ])
-    await message.answer("📊 <b>Hangi dönemin Z-Raporunu almak istiyorsunuz?</b>", reply_markup=kb, parse_mode="HTML")
+    await message.answer("📊 <b>Hangi dönemin Satış Z-Raporunu almak istiyorsunuz?</b>", reply_markup=kb, parse_mode="HTML")
 
 @dp.message(Command("tarihraporu", ignore_mention=True))
 @dp.message(F.text == "📅 Tarihli Rapor Al")
@@ -1246,7 +1304,7 @@ async def process_date_filter_btn(callback: types.CallbackQuery, state: FSMConte
     if mode == "today":
         s_dt = datetime(now.year, now.month, now.day, 0, 0, 0)
         e_dt = datetime(now.year, now.month, now.day, 23, 59, 59)
-        title_label, file_label = "GÜNLÜK Z-RAPORU", "Gunluk_Z_Raporu"
+        title_label, file_label = "GÜNLÜK Z-RAPORU (BUGÜN)", "Gunluk_Z_Raporu"
     elif mode == "7days":
         s_dt = now - timedelta(days=7)
         e_dt = now
@@ -1362,7 +1420,6 @@ async def handle_webapp_payload(message: types.Message):
 # ----------------- SOHBET KÖPRÜSÜ (TELSİZ) -----------------
 @dp.message(~F.text.startswith("/"))
 async def chat_bridge(message: types.Message):
-    # Test modundayken Kamil'e telsiz mesajı iletme!
     if TEST_MODE:
         return
 
@@ -1404,7 +1461,6 @@ async def start_dummy_server():
 
 async def main():
     try:
-        # Gerçek başlangıç stok tablosunu ilk defa açılıyorsa hazırla
         if not os.path.exists(STOCKS_FILE):
             save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
 

@@ -61,7 +61,7 @@ class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event, data):
         if isinstance(event, types.Message):
             u_name = event.from_user.first_name if event.from_user else "Bilinmeyen"
-            logging.info(f"--- MESAJ: {u_name} (ID: {event.chat.id}) | {event.text or event.document.file_name if event.document else ''}")
+            logging.info(f"--- MESAJ: {u_name} (ID: {event.chat.id}) | {event.text or (event.document.file_name if event.document else '')}")
         return await handler(event, data)
 
 dp.message.outer_middleware(LoggingMiddleware())
@@ -98,7 +98,7 @@ CATALOG_GRID_MAP = {
     "96683": (22, 1), "96097": (22, 2), "91598": (22, 4), "91037": (22, 5), "40082": (22, 6),
     "91386": (23, 3), "91488": (23, 4), "90567": (23, 5), "90965": (23, 6),
     "40647": (24, 1), "90715": (24, 2), "90828": (24, 5), "90834": (24, 6),
-    "96468": (25, 1), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
+    "96468": (25, 1), "20031": (25, 2), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
     "90832": (26, 4), "40634": (26, 6),
     "96412": (27, 1), "90878": (27, 2), "90881": (27, 3), "90880": (27, 4),
     "90879": (28, 1), "91284": (28, 3), "14574": (28, 4), "14541": (28, 6),
@@ -133,7 +133,128 @@ CATALOG_GRID_MAP = {
     "50054": (62, 3), "15005": (63, 3)
 }
 
+# ----------------- 63 SAYFALIK KATALOĞUN TAM BİRLEŞİK ENVANTERİ -----------------
 REAL_WAREHOUSE_STOCKS = [
+    # Mekatronik & Valfler & Pnömatik
+    {"code": "20031", "name": "Tork LS102M Switch Box", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90475", "name": "Autonics Kapasitif Sensör: CR18-8DN", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91285", "name": "P00142140 U2 Çek Valf", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50606", "name": "Nipel 2010 - 1/2\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "91472", "name": "Solenoid Valf: L03Eb13 1/2\" S00100400", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50247", "name": "Valf Bobini: B00126625 FGC1 24VDC 6W", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50249", "name": "Valf Soketi: M1TS2L01 24V Ledli 11mm", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "15401", "name": "Tee Rakor: 4000 1/4\" D-D-D", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41439", "name": "1/4\" Paslanmaz Tek Taraflı Nipel", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91633", "name": "Omal VIP Vana: VNC10004 NBR 1/2\" PN10", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "42595", "name": "1/2\" x Ø16mm Pirinç Altıköşe Hortum Ağzı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "90861", "name": "Siyah Kauçuk Su Hortumu 16mm (Metre)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "90817", "name": "Omal Vana: DG424H405 3/4\" DN20 PN65", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96097", "name": "DG424H405 Omal Aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91598", "name": "Omal Küresel Vana: V424H405 3/4\" Paslanmaz", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "40082", "name": "Krohne Optiflux 5300 Manyetik Debimetre", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91386", "name": "E/H DN25 (1/2\") Mass Flowmetre Promass 40E15", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91488", "name": "V424H405 Vana Küresi 3/4\" RD", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90965", "name": "Manometre: G27-10-R1 (AW10/AR10 için)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90828", "name": "Omal Vana: DG451H006 3 Yollu L Port 1\" DN25", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90834", "name": "Omal Aktüatör: DA045402S F03-F05", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96468", "name": "Omal Çift Etkili Aktüatör: DAN0045412S DA45", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90548", "name": "3 Yollu L Port 1\" Vana Küresi 545-II-F06", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90832", "name": "Omal Aktüatör: DA0015411S DA15 15Nm F03", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90878", "name": "DST16-23 Yaylı Çekvalf Paslanmaz 3/4\"", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "14574", "name": "Nipel 2010 - 1/4\"", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "14541", "name": "Orantılı Nipel 2030 1/4\"-1/8\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50219", "name": "Pnömatik Rakor: 57116 1/4\"-10mm Dirsek Pirinç", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41441", "name": "57226 1/4\" x 10mm Döner Tee", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "91447", "name": "Pnömatik Rakor: 57020 1/4\"-10mm Düz Erkek", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "50057", "name": "Pnömatik Rakor: 57020 1/4\"-8mm Düz Pirinç", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "54612", "name": "Yıldız Başlı Cıvata: M4x30mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "50098", "name": "Manifold: SS5Y5-41-04-01F-Q 4'lü", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "15005", "name": "Kuyruklu Dirsek: 5020 1/4\" Erkek-Dişi", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50549", "name": "Redüksiyon 2090 1/4\" - 1/8\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "40085", "name": "Basınç Anahtarı: PMN10A 2-10 Bar NO", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91451", "name": "57116 RDD 1/4\"-8mm Dirsek Aignep", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50023", "name": "KQ2S06-01AS: 1/8\"-6mm Düz İçten Sıkmalı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50273", "name": "Manifold: SS5Y5-41-05-01F-Q 5'li Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50021", "name": "Valf Soketi: DIN 43650C Ledli 24V", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41442", "name": "RD96 MU_22 Krom Kaplı Ray: Ø25 / 180mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41404", "name": "RD96 MU_33 Krom Kaplı Ray: Ø25 / 267mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "96501", "name": "SMC C76-32PS Sızdırmazlık Kiti", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "16016", "name": "Paslanmaz Altı Köşe Cıvata M5x10mm", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "16039", "name": "Paslanmaz M5 Yaylı Rondela", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "16034", "name": "Paslanmaz M5 Pul", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "41403", "name": "Havşa Başlı İmbus Cıvata M8x10", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "90767", "name": "RD96 Cambaz Kolu Sacı", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90762", "name": "Sensör Tutucu: BM2-032 Bant Tipi 32mm", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "41400", "name": "RD96 MU Z Ekseni Yataklama Pimleri", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41401", "name": "RD96 MU Z Ekseni Gijonları 292mm*M6", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41402", "name": "RD96 MU Z Ekseni Paslanmaz Yataklama Plakası", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "54516", "name": "RD96 Full Z Axis Equipment", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90768", "name": "Cambaz Kutusu Dolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "16032", "name": "Paslanmaz Altı Köşe Cıvata M6x10mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16041", "name": "Paslanmaz M6 Yaylı Rondela", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16035", "name": "Paslanmaz M6 Pul", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "11906", "name": "Altı Köşe Somun M6", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16043", "name": "Paslanmaz İmbus M5x20mm Cıvata", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16030", "name": "Paslanmaz Altı Köşe Cıvata M5x20mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "12302", "name": "Fiberli Kör Somun M6", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "41444", "name": "Krom Ray: Ø25 / 1350mm X Ekseni", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50263", "name": "Silindir: CD85N25-400C-B Çelik (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91044", "name": "SMC Küresel Mafsal: KJ10D M10*1,25", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "54510", "name": "Pnömatik Rakor: KQ2VS04-01AS 1/8\"-4mm", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50262", "name": "Silindir: CD85N25-300C-B (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41399", "name": "Pnömatik Rakor: KQ2U04-00 4mm Y Bağlantı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91269", "name": "RD96 X Ekseni Mekanik Yatak Kilidi", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91270", "name": "RD96 Y Ekseni Mekanik Yatak Kilidi", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50278", "name": "Manifold: SS5YJ3-S41-02-M5F-Q 2'li", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90725", "name": "Hız Ayar Valfi: ASN2-02 1/8\" Susturuculu", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50040", "name": "Dirsek Rakor 1/8\"-6mm KQ2L06-01AS", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41398", "name": "Soket Ucu: SY100-30-A", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "54630", "name": "SYJ3243 2'li Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91066", "name": "Pnömatik Rakor: KQ2H06-M5A M5-6mm Altıgen", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41457", "name": "Kör Tapa: M-5P M5x0,8 (SMC)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "96404", "name": "RD96 MU22 Paslanmaz Çelik Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41406", "name": "RD96 MU33 PVC Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41405", "name": "RD96 MU33 Paslanmaz Çelik Tabla (304)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90484", "name": "3/4\" Kimyasal Vana / Kür. Vana + Elcik + Adaptör", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91490", "name": "3/4\" RD Vana Adaptör Bağlantı O-ringi", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "91489", "name": "3/4\" RD Vana Conta Takımı", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90930", "name": "EPDM Lastik Conta 25*40 Kare O-ring", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91495", "name": "3/4\" Şeffaf Kimyasal Hortum (Metre)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "54661", "name": "RD96 MU 22 Y Ekseni Kolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54662", "name": "RD96 MU 33 Y Ekseni Kolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41437", "name": "Flowmetre Dönüşüm Flanşı (Micromotion>E/H)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90568", "name": "66 Mm Teflon Takviyeli Diyafram Pulu", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91782", "name": "RD96-33 Hareketli Kablo (EM)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91271", "name": "RD96-22 Hareketli Kablo (EM)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91268", "name": "RD96 MU Fırça", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90793", "name": "Loblu Pompa Conta (Teflon Giydirme)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90324", "name": "SLR1-40 Lob Anahtarı", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "16044", "name": "Yıldız Başlı M4 x 5mm Vida", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "14847", "name": "Klemp Kelepçesi: 1\" - Ø33.7mm Paslanmaz", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41290", "name": "Soket Muhafazası: HAN24 B-AGG-QB", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41287", "name": "Socket Cover: HDC HB 24TSVU 1/21 P", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41288", "name": "Soket: HDC-HE-24BS 24 Pin Dişi", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41289", "name": "Soket: HDC-HE-24SS 24 Pin Erkek", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54629", "name": "SY114 4'lü Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54628", "name": "SY114 2'li Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50024", "name": "Hava Hortumu: TU0604BU 6mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "50025", "name": "Hava Hortumu: TU0806BU 8mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "91586", "name": "Hava Hortumu: TU1065BU 10mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "50027", "name": "Hava Hortumu: TU0425BU 4mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "92038", "name": "Regülatör: AW30-F03DE-B 3/8\" Filtreli", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54620", "name": "G36-P10-01-X30 Manometre", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "14577", "name": "Nipel: 2010 3/8\"", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "14317", "name": "Pnömatik Tee Rakor: 4000 3/8\" D-D-D", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "96449", "name": "Orantılı Nipel: 2030 1/4\"-3/8\"", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91950", "name": "Çek Valf: U4 1/4\"", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "96219", "name": "Küresel Vana: 6310 3/8\" Erkek-Dişi", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91453", "name": "Pnömatik Rakor: 57116 3/8\"-10mm Dirsek", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50008", "name": "Tespit Elemanı AR30 / AW30 Braket", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50010", "name": "Tespit Elemanı: AW23P-270AS Braket", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50046", "name": "Regülatör: AW20-F02C-B (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50054", "name": "Küresel Vana: 6310 1/4\" Erkek-Dişi", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+
+    # Standart Kontrolörler / PLC
     {"code": "91661", "name": "Sürücü VZAB2P2BAA V1000 3/2,2 kW", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "40642", "name": "PLC CPU: CJ1M-CPU21", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "Pd320", "name": "Pd320 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
@@ -211,6 +332,18 @@ def save_data(file_path, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+def sync_all_stocks_to_db():
+    existing = load_data(STOCKS_FILE, [])
+    existing_codes = {s["code"].lower() for s in existing}
+    added = False
+    for p in REAL_WAREHOUSE_STOCKS:
+        if p["code"].lower() not in existing_codes:
+            existing.append(p)
+            added = True
+    if added or not os.path.exists(STOCKS_FILE):
+        save_data(STOCKS_FILE, existing)
+        logging.info("✅ Tüm katalog parçaları (20031 dahil) envantere senkronize edildi.")
+
 load_stocks = lambda: load_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
 load_sales = lambda: load_data(SALES_FILE, [])
 load_quotes = lambda: load_data(QUOTES_FILE, [])
@@ -239,7 +372,9 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- SAYFALAR ARASI AKILLI KATALOG KIRPICI -----------------
+# ==============================================================================
+#      KUSURSUZ SAYFALAR ARASI AKILLI KATALOG KIRPICI (CROSS-PAGE STITCHER)
+# ==============================================================================
 def stitch_pixmaps_vertically(pix_header, pix_body) -> bytes:
     try:
         from PIL import Image
@@ -296,6 +431,7 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         doc = fitz.open(pdf_path)
         code_str = str(code).strip()
 
+        # 1. Önce PDF içindeki gerçek vektör metin aramasını yap
         for p_idx, page in enumerate(doc):
             rects = (
                 page.search_for(f"({code_str})")
@@ -309,7 +445,7 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
                 x0 = 8 if col == 0 else (pw / 2.0 + 2)
                 x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
 
-                # DURUM 1: Başlık önceki sayfanın dibinde, resim bu sayfada (Örn: Pin Silindir 40647)
+                # DURUM 1: Başlık önceki sayfanın dibinde, kod ve resim bu sayfada (Örn: Pin Silindir 40647)
                 if r.y0 < 130 and p_idx > 0:
                     p_prev = doc[p_idx - 1]
                     rect_header = fitz.Rect(x0, ph - 62, x1, ph - 20)
@@ -334,6 +470,7 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
                 pix = page.get_pixmap(clip=clip_rect, dpi=200)
                 return pix.tobytes("png")
 
+        # 2. Dinamik bulunamazsa güncellenmiş koordinat haritasından çek
         if code_str in CATALOG_GRID_MAP:
             page_no, slot = CATALOG_GRID_MAP[code_str]
             p_idx = page_no - 1
@@ -349,7 +486,6 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
 #      KUSURSUZ ELIAR TEKLİF PDF OKUYUCU (YEREL TABLO + GEMINI DUAL ENGINE)
 # ==============================================================================
 def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
-    """Eliar Teklif PDF'lerindeki Müşteri Adı, Tablo, Ref No ve Fiyatları %100 net okur"""
     full_text = ""
     items = []
     firm = None
@@ -365,7 +501,7 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
         for page in doc: full_text += page.get_text() + "\n"
     except Exception: pass
 
-    # 1. Müşteri Adı Tespiti
+    # 1. Müşteri Adı Tespiti (Hatasız)
     m_firm = re.search(r"Müşteri\s*Adı\s*:\s*([^\n\r]+)", full_text, re.IGNORECASE)
     if m_firm:
         val = m_firm.group(1).strip()
@@ -373,7 +509,6 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
         if len(val) >= 3 and val.upper() != "ADI:":
             firm = val.upper()
 
-    # Dosya isminden kurtarıcı doğrulama (Örn: HAJJ TEKSTIL FIYAT TEKLIFI.pdf -> HAJJ TEKSTIL)
     if not firm or firm == "ADI:":
         clean_fn = re.sub(r"(fiyat|teklif|teklifi|\.pdf|\.jpg|\.png)", "", original_filename, flags=re.IGNORECASE).strip()
         clean_fn = re.sub(r"^[_\-\s]+|[_\-\s]+$", "", clean_fn)
@@ -389,18 +524,17 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
     m_date = re.search(r"Teklif\s*Tarihi\s*:\s*([\d\.\/\-]+)", full_text, re.IGNORECASE)
     if m_date: date_str = m_date.group(1).strip()
 
-    # 3. Nilay Demir Kontrolü
     if "nilay" in full_text.lower():
         is_nilay = True
 
-    # 4. Toplam Tutar & Para Birimi
+    # 3. Toplam Tutar & Para Birimi
     m_tot = re.search(r"TOPLAM\s*:\s*([\d\.,]+)\s*([€$£]|EUR|USD|TL)?", full_text, re.IGNORECASE)
     if m_tot:
         grand_total = m_tot.group(1).strip()
         curr_symbol = m_tot.group(2) or "€"
         currency = "EUR" if curr_symbol == "€" else ("USD" if curr_symbol == "$" else curr_symbol)
 
-    # 5. Tablo ve Parçaları Çekme
+    # 4. Tablo ve Parçaları Çekme
     try:
         import pdfplumber
         with pdfplumber.open(pdf_path) as pdf:
@@ -437,7 +571,6 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
     except Exception as e:
         logging.warning(f"pdfplumber ayrıştırma: {e}")
 
-    # Fallback: Satır bazlı regex
     if not items:
         for line in full_text.splitlines():
             m_item = re.search(r"(\b\d{4,7}\b)\s+([A-Za-z0-9\s\/\-\.\(\)\"\,\*]+?)\s+(\d+)\s+([\d\.,]+\s*€?)", line)
@@ -473,18 +606,22 @@ async def parse_quote_pdf_smart(pdf_path: str, original_filename: str = "") -> d
                 '{"firm":"...","ref_no":"...","date":"...","currency":"EUR","grand_total":"...","items":[{"code":"...","name":"...","qty":1,"unit_price":"...","total_price":"..."}]}'
             )
             with open(pdf_path, "rb") as f: file_bytes = f.read()
-            response = await loop.run_in_executor(
-                None,
-                lambda: ai_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=[prompt, genai_types.Part.from_bytes(data=file_bytes, mime_type="application/pdf")]
-                )
-            )
-            raw = response.text.replace("```json", "").replace("```", "").strip()
-            parsed = json.loads(raw)
-            if parsed.get("items"):
-                parsed["is_nilay"] = local_data.get("is_nilay", False)
-                return parsed
+            for m_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+                try:
+                    response = await loop.run_in_executor(
+                        None,
+                        lambda: ai_client.models.generate_content(
+                            model=m_name,
+                            contents=[prompt, genai_types.Part.from_bytes(data=file_bytes, mime_type="application/pdf")]
+                        )
+                    )
+                    raw = response.text.replace("```json", "").replace("```", "").strip()
+                    parsed = json.loads(raw)
+                    if parsed.get("items"):
+                        parsed["is_nilay"] = local_data.get("is_nilay", False)
+                        return parsed
+                except Exception:
+                    pass
         except Exception as e:
             logging.error(f"Gemini API parse hatası: {e}")
 
@@ -518,7 +655,7 @@ async def notify_both(text: str, reply_markup=None):
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e: logging.warning(f"İletilemedi ({cid}): {e}")
 
-# ----------------- KURUMSAL VE DÜZELTİLMİŞ Z-RAPORU MOTORU -----------------
+# ----------------- GÜVENLİ Z-RAPORU MOTORU -----------------
 def parse_date_safe(date_str: str) -> datetime:
     if not date_str: return None
     date_str = str(date_str).strip()
@@ -696,13 +833,12 @@ def get_client_history_text(firm_query: str):
     text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(firm_records)} Sevkiyat / Hareket</b>"
     return text
 
-# ----------------- SAĞLAM VE ESNEK KLAVYELER (is_persistent=False) -----------------
+# ----------------- MENÜ DÜZENLEMESİ (is_persistent=False) -----------------
 def get_main_keyboard():
-    """is_persistent=False ile altta her zaman kilitli kalmaz; menüye basınca açılır!"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [KeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla"), KeyboardButton(text="📦 Parça Listesi")],
+            [KeyboardButton(text="📝 Eliar'dan Teklif Al"), KeyboardButton(text="📦 Parça Listesi")],
             [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
             [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="✅ Tamamlanan Teklifler")],
             [KeyboardButton(text="📂 Verilen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")],
@@ -717,7 +853,7 @@ def get_start_inline_keyboard():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="⚡ Eliar Mini App'i Aç", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [InlineKeyboardButton(text="📝 Nilay Hanım'a Teklif Hazırla", callback_data="btn_teklif_hazirla")],
+            [InlineKeyboardButton(text="📝 Eliar'dan Teklif Al", callback_data="btn_teklif_hazirla")],
             [InlineKeyboardButton(text="📦 Parça Listesi", callback_data="btn_parca_listesi"), InlineKeyboardButton(text="📊 Z-Raporu Al", callback_data="btn_z_raporu")],
             [InlineKeyboardButton(text="⏳ Bekleyen Teklifler", callback_data="btn_bekleyenler"), InlineKeyboardButton(text="✅ Tamamlanan Teklifler", callback_data="btn_tamamlananlar")],
             [InlineKeyboardButton(text="📂 Verilen Teklifler", callback_data="btn_verilenler"), InlineKeyboardButton(text="🏢 Tesis Geçmişi", callback_data="btn_tesis_gecmisi")],
@@ -728,7 +864,7 @@ def get_start_inline_keyboard():
 async def setup_bot_commands():
     commands = [
         BotCommand(command="start", description="Başlat / Ana Menü"),
-        BotCommand(command="teklif", description="Nilay Hanım'a Teklif Hazırla"),
+        BotCommand(command="teklif", description="Eliar'dan Teklif İste"),
         BotCommand(command="stok", description="Parça Listesi"),
         BotCommand(command="bekleyenler", description="Bekleyen Teklifler"),
         BotCommand(command="tamamlananlar", description="Tamamlanan Teklifler"),
@@ -818,48 +954,63 @@ async def send_catalog_pdf(message: types.Message):
         await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
 
 # ==============================================================================
-#            YENİ: FOTOĞRAFTAN / ETİKETTEN PARÇA TANIMA (GEMINI VISION)
+#      DÜZELTİLMİŞ FOTOĞRAF / ETİKET TANIMA (GEMINI 2.0 / 1.5 FLASH VISION)
 # ==============================================================================
 @dp.message(F.photo)
 async def handle_photo_recognition(message: types.Message, state: FSMContext):
-    if not ai_client:
-        await message.answer("⚠️ Görsel tanıma için Gemini bağlantısı aktif değil.")
-        return
-
     wait_msg = await message.answer("🔍 <i>Fotoğraftaki parça, etiket ve model bilgisi yapay zeka ile taranıyor...</i>", parse_mode="HTML")
 
+    tmp_img_path = f"tmp_recog_{int(time.time()*1000)}.jpg"
     try:
         photo = message.photo[-1]
-        file_io = BytesIO()
-        await bot.download(photo, destination=file_io)
-        img_bytes = file_io.getvalue()
+        file_obj = await bot.get_file(photo.file_id)
+        await bot.download_file(file_obj.file_path, tmp_img_path)
 
-        prompt = (
-            "Sen tekstil otomasyonu (Eliar / Elips) yedek parça ve donanım uzmanısın. "
-            "Fotoğraftaki parçayı, etiketini, modelini, sipariş kodunu veya tipini (vana, sensör, diyafram, sürücü, kart, silindir, pompa vb.) incele.\n"
-            "YALNIZCA SAF JSON DÖNDÜR:\n"
-            "{\n"
-            '  "detected_code": "Varsa etiket/parça kodu veya model (örn: 90416, 90567, V1000, CD85N, BES005M vb.) yoksa boş bırak",\n'
-            '  "detected_name": "Parçanın en doğru Türkçe teknik tanımı",\n'
-            '  "category": "MEKATRONIK veya ELEKTRONIK veya KONTROL"\n'
-            "}"
-        )
+        with open(tmp_img_path, "rb") as f:
+            img_bytes = f.read()
 
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: ai_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[prompt, genai_types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")]
+        det_code = ""
+        det_name = ""
+
+        if ai_client:
+            prompt = (
+                "Sen endüstriyel tekstil otomasyonu (Eliar / Elips) yedek parça ve donanım uzmanısın. "
+                "Fotoğraftaki parçayı, etiketini, modelini, sipariş kodunu veya tipini (vana, sensör, diyafram, sürücü, kart, silindir, bobin, pompa vb.) incele.\n"
+                "KESİNLİKLE YALNIZCA SAF JSON DÖNDÜR:\n"
+                "{\n"
+                '  "detected_code": "Varsa etiket/parça kodu veya model (örn: 90416, 90567, V1000, CD85N, BES005M, 20031 vb.) yoksa boş bırak",\n'
+                '  "detected_name": "Parçanın en doğru Türkçe teknik tanımı",\n'
+                '  "category": "MEKATRONIK veya ELEKTRONIK veya KONTROL"\n'
+                "}"
             )
-        )
 
-        raw = response.text.replace("```json", "").replace("```", "").strip()
-        parsed = json.loads(raw)
-        det_code = str(parsed.get("detected_code", "")).strip()
-        det_name = str(parsed.get("detected_name", "")).strip()
+            try:
+                from PIL import Image
+                pil_img = Image.open(BytesIO(img_bytes))
+            except Exception:
+                pil_img = None
 
-        # Envanterde ara
+            loop = asyncio.get_event_loop()
+            content_payload = [prompt, pil_img] if pil_img else [prompt, genai_types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")]
+
+            for m_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
+                try:
+                    response = await loop.run_in_executor(
+                        None,
+                        lambda: ai_client.models.generate_content(
+                            model=m_name,
+                            contents=content_payload
+                        )
+                    )
+                    if response and response.text:
+                        raw = response.text.replace("```json", "").replace("```", "").strip()
+                        parsed = json.loads(raw)
+                        det_code = str(parsed.get("detected_code", "")).strip()
+                        det_name = str(parsed.get("detected_name", "")).strip()
+                        break
+                except Exception as ex:
+                    logging.warning(f"Vision {m_name} denemesi: {ex}")
+
         matched_part = None
         stocks = load_stocks()
 
@@ -872,7 +1023,6 @@ async def handle_photo_recognition(message: types.Message, state: FSMContext):
         await wait_msg.delete()
 
         if matched_part:
-            # Varsa katalogdaki şemasını da kırpıp gönder
             cat_img = extract_part_image_from_pdf(matched_part["code"], matched_part["name"])
             if cat_img:
                 photo_file = BufferedInputFile(cat_img, filename=f"{matched_part['code']}.png")
@@ -880,7 +1030,7 @@ async def handle_photo_recognition(message: types.Message, state: FSMContext):
 
             stock_stat = f"🟢 Mevcut ({matched_part['qty']} ADT)" if matched_part['qty'] > 0 else "🔴 Stokta Yok (0 ADT)"
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="📝 Bu Parça İçin Nilay Hanım'a Teklif Hazırla", callback_data=f"prefill_q:{matched_part['code']}")],
+                [InlineKeyboardButton(text="📝 Bu Parça İçin Eliar'dan Teklif Al", callback_data=f"prefill_q:{matched_part['code']}")],
                 [InlineKeyboardButton(text="❌ Kapat", callback_data="cb_close_card")]
             ])
 
@@ -891,22 +1041,26 @@ async def handle_photo_recognition(message: types.Message, state: FSMContext):
                 f"📦 <b>Depo Eşleşmesi:</b> <code>[{matched_part['code']}]</code> {matched_part['name']}\n"
                 f"📊 <b>Depo Durumu:</b> <b>{stock_stat}</b> | Konum: <code>{matched_part['loc']}</code>\n"
                 f"═══════════════════════════════\n"
-                f"❓ <i>Bu parça için Nilay Hanım'a fiyat teklifi talebi oluşturulsun mu?</i>"
+                f"❓ <i>Bu parça için Eliar'dan (Nilay Hanım'dan) fiyat teklifi talebi oluşturulsun mu?</i>"
             )
             await message.answer(res_text, reply_markup=kb, parse_mode="HTML")
         else:
             await message.answer(
-                f"🔍 <b>Parça Görselden İncelendi:</b>\n"
-                f"• Tespit: <b>{det_name}</b> {f'[{det_code}]' if det_code else ''}\n"
-                f"ℹ️ <i>Depo kayıtlarında birebir eşleşme bulunamadı. Kodu manuel aratabilirsiniz.</i>",
+                f"🔍 <b>Görsel İncelendi:</b>\n"
+                f"• Tespit Edilen: <b>{det_name or 'Endüstriyel Parça'}</b> {f'[{det_code}]' if det_code else ''}\n\n"
+                f"ℹ️ <i>Depo kayıtlarında otomatik eşleşmedi. Parça kodunu veya ismini yazarak teklif oluşturabilirsiniz.</i>",
                 parse_mode="HTML"
             )
 
     except Exception as e:
-        logging.error(f"Görsel analiz hatası: {e}")
+        logging.error(f"Görsel analiz genel hatası: {e}")
         try: await wait_msg.delete()
         except Exception: pass
-        await message.answer("⚠️ Görsel analiz edilirken bir hata oluştu.")
+        await message.answer("⚠️ Görsel taranırken bir hata oluştu. Parça kodunu manuel yazabilirsiniz.")
+    finally:
+        if os.path.exists(tmp_img_path):
+            try: os.remove(tmp_img_path)
+            except Exception: pass
 
 @dp.callback_query(F.data.startswith("prefill_q:"))
 async def on_prefill_quote(callback: types.CallbackQuery, state: FSMContext):
@@ -933,7 +1087,7 @@ async def cb_close(callback: types.CallbackQuery):
     await callback.answer()
 
 # ==============================================================================
-#            PDF YÜKLEME: BOT HAZIRLAMADIYSA ONAY SORMA & SEVKİYAT SEÇİMİ
+#      DÜZELTİLMİŞ EŞLEŞTİRME: HEM FİRMA HEM DE PARÇALAR KONTROL EDİLİR!
 # ==============================================================================
 @dp.message(F.document)
 async def handle_document_upload(message: types.Message):
@@ -942,7 +1096,7 @@ async def handle_document_upload(message: types.Message):
         await message.answer("⚠️ Lütfen PDF formatında bir teklif dosyası yükleyin.")
         return
 
-    wait_msg = await message.answer("⏳ <i>PDF analiz ediliyor, Nilay Hanım teklif geçmişi ve Elips Depo stokları taranıyor...</i>", parse_mode="HTML")
+    wait_msg = await message.answer("⏳ <i>PDF analiz ediliyor, parça ve fiyat bilgileri doğrulanıyor...</i>", parse_mode="HTML")
 
     saved_filename = f"{int(time.time())}_{doc.file_name}"
     save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
@@ -957,15 +1111,28 @@ async def handle_document_upload(message: types.Message):
     items = parsed_data.get("items", [])
     is_nilay = parsed_data.get("is_nilay", False)
 
-    # 1. Bot Tarafından Hazırlanma Kontrolü
+    # 1. HEM FİRMA ADI HEM DE PARÇA EŞLEŞMESİ KONTROLÜ (KESİN DOĞRULAMA)
     quotes = load_quotes()
     matched_quote = None
+
     for q in quotes:
-        # Sadece bekleyen ve bot tarafından hazırlanan tekliflerle karşılaştır
         if q.get("status") == "PENDING":
             f1 = normalize_tr(q.get("firm", ""))
             f2 = normalize_tr(firm)
-            if f1 in f2 or f2 in f1 or difflib.SequenceMatcher(None, f1, f2).ratio() > 0.60:
+            firm_match = (f1 in f2 or f2 in f1 or difflib.SequenceMatcher(None, f1, f2).ratio() > 0.60)
+
+            items_match = False
+            for req_item in q.get("items", []):
+                req_code = str(req_item.get("code", "")).lower()
+                req_name = normalize_tr(req_item.get("name", ""))
+                for p_itm in items:
+                    p_code = str(p_itm.get("code", "")).lower()
+                    p_name = normalize_tr(p_itm.get("name", ""))
+                    if (req_code and req_code == p_code) or (req_name and req_name in p_name):
+                        items_match = True
+                        break
+
+            if firm_match and items_match:
                 matched_quote = q
                 break
 
@@ -984,21 +1151,21 @@ async def handle_document_upload(message: types.Message):
 
     await wait_msg.delete()
 
-    # EĞER BOT HAZIRLAMADIYSA -> KULLANICIYA SOR!
+    # EĞER BOT HAZIRLAMADIYSA VEYA PARÇALAR FARKLIYSA -> KULLANICIYA NET SOR!
     if not matched_quote:
         temp_quote["status"] = "UNMATCHED_PROMPT"
         quotes.append(temp_quote)
         save_quotes(quotes)
 
         prompt_text = (
-            f"⚠️ <b>HARİCİ / BOT DIŞI TEKLİF FORMU ALGILANDI</b>\n"
+            f"⚠️ <b>HARİCİ / BOT DIŞI TEKLİF BELGESİ ALGILANDI</b>\n"
             f"═══════════════════════════════\n"
             f"🏢 <b>Müşteri:</b> <b>{html.escape(firm)}</b>\n"
             f"🔖 <b>Ref No:</b> <code>{ref_no}</code> | 📅 <b>Tarih:</b> {date}\n"
             f"💰 <b>Toplam Tutar:</b> <b>{grand_total} {currency}</b>\n"
             f"📦 <b>Tespit Edilen Kalem:</b> {len(items)} Parça\n"
             f"═══════════════════════════════\n"
-            f"ℹ️ <i>Bu teklif daha önce Eliar Depo Botu üzerinden hazırlanmamıştır.</i>\n\n"
+            f"ℹ️ <i>Bu teklif daha önce Eliar Depo Botu üzerinden hazırlanmamıştır (veya parçaları eşleşmemektedir).</i>\n\n"
             f"❓ <b>Bu teklifi yine de sisteme girmek ve işlemek ister misiniz?</b>"
         )
         kb_prompt = InlineKeyboardMarkup(inline_keyboard=[
@@ -1008,7 +1175,7 @@ async def handle_document_upload(message: types.Message):
         await message.answer(prompt_text, reply_markup=kb_prompt, parse_mode="HTML")
         return
 
-    # EĞER BOT HAZIRLADIYSA -> NİLAY HANIM EŞLEŞTİ VE DİREKT DEPO SEÇİMİNE GEÇ
+    # EĞER HEM FİRMA HEM PARÇALAR EŞLEŞTİYSE -> DOĞRULANMIŞ EKRANA GEÇ
     quotes.append(temp_quote)
     save_quotes(quotes)
     await render_quote_routing_screen(message, temp_quote, is_nilay=is_nilay, matched_quote=matched_quote)
@@ -1024,14 +1191,13 @@ async def render_quote_routing_screen(target_msg, quote_data, is_nilay=False, ma
 
     match_lines = []
     if matched_quote:
-        match_lines.append("🎯 <b>NİLAY HANIM'A HAZIRLANAN TEKLİF İLE EŞLEŞTİ!</b>")
-        match_lines.append(f"<i>(Bot üzerindeki {matched_quote.get('firm')} teklifiyle doğrulandı)</i>")
+        match_lines.append("🎯 <b>ELİAR'A (NİLAY HANIM'A) HAZIRLANAN TEKLİF İLE EŞLEŞTİ!</b>")
+        match_lines.append(f"<i>(Daha önce hazırlanan {matched_quote.get('firm')} parça talebi doğrulandı)</i>")
     elif is_nilay:
         match_lines.append("🎯 <b>NİLAY DEMİR İMZALI RESMİ TEKLİF DOĞRULANDI!</b>")
     else:
         match_lines.append("📄 <b>SİSTEME ALINAN FİYAT TEKLİFİ</b>")
 
-    # Elips Deposu Stok Analizi
     stocks = load_stocks()
     stock_analysis_lines = []
 
@@ -1419,9 +1585,9 @@ async def on_quote_view_details(callback: types.CallbackQuery):
         await callback.message.answer("\n".join(lines), parse_mode="HTML")
     await callback.answer()
 
-# ----------------- NİLAY HANIM'A TEKLİF SİHİRBAZI -----------------
+# ----------------- ELİAR'DAN TEKLİF ALMA SİHİRBAZI -----------------
 @dp.message(Command("teklif", ignore_mention=True))
-@dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla")
+@dp.message(F.text == "📝 Eliar'dan Teklif Al")
 async def start_quote_wizard(message: types.Message, state: FSMContext):
     data = await state.get_data()
     prefilled_part = data.get("prefilled_part")
@@ -1440,7 +1606,6 @@ async def process_quote_firm(message: types.Message, state: FSMContext):
     await state.update_data(firm_name=firm)
     data = await state.get_data()
 
-    # Eğer parçayı fotoğraftan seçerek geldiyse arama adımını atla, direkt adet sor!
     if data.get("selected_part"):
         part = data["selected_part"]
         await state.set_state(QuoteBuilderState.waiting_qty)
@@ -1590,6 +1755,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         await state.clear()
         return
 
+    # METİNDE NİLAY HANIM HİTABI KORUNDU
     formatted_quote = (
         f"Merhaba Nilay hanim\n\n"
         f"{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
@@ -1612,7 +1778,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     save_quotes(quotes)
 
     text = (
-        f"📋 <b>KOPYALAMAYA HAZIR NİLAY HANIM TEKLİF METNİ:</b>\n"
+        f"📋 <b>KOPYALAMAYA HAZIR ELİAR (NİLAY HANIM) TEKLİF METNİ:</b>\n"
         f"═══════════════════════════════\n\n"
         f"<code>{html.escape(formatted_quote)}</code>\n\n"
         f"═══════════════════════════════\n"
@@ -1778,7 +1944,7 @@ async def process_client_history_input(message: types.Message, state: FSMContext
     await state.clear()
     await message.answer(get_client_history_text(message.text.strip()), parse_mode="HTML")
 
-# ----------------- WEBAPP -----------------
+# ----------------- WEBAPP VERİLERİ -----------------
 @dp.message(F.web_app_data)
 async def handle_webapp_payload(message: types.Message):
     try: p = json.loads(message.web_app_data.data)
@@ -1806,7 +1972,7 @@ async def chat_bridge(message: types.Message):
     if TEST_MODE:
         return
 
-    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanan Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
+    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanan Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Eliar'dan Teklif Al", "📖 Kataloğu Gönder"]
     if message.text in menu_buttons: return
     tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
     sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
@@ -1844,8 +2010,8 @@ async def start_dummy_server():
 
 async def main():
     try:
-        if not os.path.exists(STOCKS_FILE):
-            save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
+        # Tüm 63 sayfalık katalog parçalarını envantere otomatik senkronize et
+        sync_all_stocks_to_db()
 
         await bot.delete_webhook(drop_pending_updates=True)
         await setup_bot_commands()

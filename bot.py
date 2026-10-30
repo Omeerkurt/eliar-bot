@@ -33,11 +33,21 @@ try:
 except ImportError:
     HAS_GENAI = False
 
+# ==============================================================================
+#                     CANLI YAPILANDIRMA & TEST MODU
+# ==============================================================================
 BOT_TOKEN = "9212674639:AAGVES4GiQRUlwrXfFy6iu4IsXKYo-4jzUY"
 OMER_CHAT_ID = 6915998444
 KAMIL_CHAT_ID = 35013468
 WEBAPP_URL = "https://omeerkurt.github.io/eliar-depo/"
 GEMINI_API_KEY = "AIzaSyAuUg0a1ew5V4aF1E-FTsdVinsMpXckOgQ"
+
+# ------------------------------------------------------------------------------
+# 🧪 TEST & SİMÜLASYON MODU:
+# True  ➔ Kamil'e bildirim gitmez, telsiz kapanır, gerçek stoklar ve Z-raporu ASLA değişmez.
+# False ➔ Canlı Mod (Kamil'e bildirim gider, gerçek stoktan düşüş yapılır).
+# ------------------------------------------------------------------------------
+TEST_MODE = True
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 bot = Bot(token=BOT_TOKEN)
@@ -69,7 +79,6 @@ PDF_STORAGE_DIR = "stored_quotes_pdf"
 os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
 # ----------------- KATALOG KOORDİNAT HARİTASI (RD96) -----------------
-# Format: "Kod": (Sayfa No, Kutu No [1: Sol Üst, 2: Sağ Üst, 3: Sol Orta, 4: Sağ Orta, 5: Sol Alt, 6: Sağ Alt])
 CATALOG_GRID_MAP = {
     "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
     "41370": (3, 3), "41381": (3, 5), "91514": (3, 6),
@@ -205,11 +214,24 @@ def save_data(file_path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 load_stocks = lambda: load_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
-save_stocks = lambda d: save_data(STOCKS_FILE, d)
 load_sales = lambda: load_data(SALES_FILE, [])
-save_sales = lambda d: save_data(SALES_FILE, d)
 load_quotes = lambda: load_data(QUOTES_FILE, [])
 save_quotes = lambda d: save_data(QUOTES_FILE, d)
+
+# ----------------- TEST MODU GÜVENLİK KİLİTLERİ -----------------
+def save_stocks(d):
+    """Test modundayken gerçek stok dosyasının değiştirilmesini engeller"""
+    if TEST_MODE:
+        logging.info("🧪 TEST MODU: save_stocks engellendi (Depo stokları sabit kaldı).")
+        return
+    save_data(STOCKS_FILE, d)
+
+def save_sales(d):
+    """Test modundayken Z-Raporuna sahte satış kaydı eklenmesini engeller"""
+    if TEST_MODE:
+        logging.info("🧪 TEST MODU: save_sales engellendi (Z-Raporu temiz kaldı).")
+        return
+    save_data(SALES_FILE, d)
 
 def get_catalog_pdf_file():
     for name in ["Katalog.pdf", "katalog.pdf", "CATALOG.PDF", "catalog.pdf", "rd96.pdf", "RD96.pdf"]:
@@ -221,10 +243,10 @@ def get_catalog_pdf_file():
                 return os.path.join(root, fn)
     return None
 
-# ----------------- GELİŞMİŞ VE DOĞRU KATALOG KIRPMA MOTORU -----------------
+# ----------------- DOĞRU VE NET KATALOG KIRPMA MOTORU -----------------
 def crop_slot_from_page(page, slot: int) -> bytes:
     """
-    Ürün başlığı, ürün kodu ve altındaki parçayı tam kapsayan, üstteki ürüne taşmayan net kırpıcı.
+    Üstteki ürüne taşmayan, başlığı ve doğrudan altındaki resmi tam alan kırpıcı.
     """
     pw, ph = page.rect.width, page.rect.height
     col = 0 if slot in [1, 3, 5] else 1
@@ -233,7 +255,6 @@ def crop_slot_from_page(page, slot: int) -> bytes:
     x0 = 12 if col == 0 else (pw / 2.0 + 4)
     x1 = (pw / 2.0 - 4) if col == 0 else (pw - 12)
 
-    # 3'lü dikey ızgara koordinatları (Başlık + altındaki resim kutusu dahil)
     row_bounds = [
         (35, 292),   # Slot 1 & 2
         (298, 552),  # Slot 3 & 4
@@ -258,22 +279,18 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         doc = fitz.open(pdf_path)
         code_str = str(code).strip()
 
-        # 1. Ön tanımlı koordinat haritasından doğrudan çek
         if code_str in CATALOG_GRID_MAP:
             page_no, slot = CATALOG_GRID_MAP[code_str]
             p_idx = page_no - 1
             if p_idx < len(doc):
                 return crop_slot_from_page(doc[p_idx], slot)
 
-        # 2. Dinamik arama: Başlığı ve altındaki resmi tam yakalama
         for p_idx, page in enumerate(doc):
             rects = page.search_for(code_str) or page.search_for(f"({code_str})")
             if rects:
                 r = rects[0]
                 pw, ph = page.rect.width, page.rect.height
                 col = 0 if r.x0 < (pw / 2.0) else 1
-                
-                # Kod metni ürünün başlığındadır. Başlığın 28pt üstünden başlayıp, altındaki resim dahil ~260pt indiriyoruz.
                 y0 = max(20, r.y0 - 32)
                 y1 = min(ph - 15, y0 + 265)
                 x0 = 12 if col == 0 else (pw / 2.0 + 4)
@@ -287,7 +304,7 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         logging.error(f"Görsel çıkarma hatası: {e}")
         return None
 
-# ----------------- GEMINI 2.5 FLASH İLE PDF ANALİZİ -----------------
+# ----------------- GEMINI 2.5 FLASH İLE PDF PARSE -----------------
 async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
     extracted_text = ""
     try:
@@ -306,7 +323,7 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
 
     prompt = (
         "Sen tekstil otomasyonu endüstriyel teklif analiz uzmanısın. Ek'teki fiyat teklifi belgesini tara.\n"
-        "YALNIZCA SAF JSON DÖNDÜR, markdown veya ek metin ekleme:\n"
+        "YALNIZCA SAF JSON DÖNDÜR, markdown etiketi veya fazlalık metin ekleme:\n"
         "{\n"
         '  "firm": "Müşteri / Fabrika Adı",\n'
         '  "ref_no": "Teklif No / Ref Varsa",\n'
@@ -339,7 +356,6 @@ async def parse_quote_pdf_with_gemini(pdf_path: str) -> dict:
         except Exception as e:
             logging.error(f"Gemini API parse hatası: {e}")
 
-    # Basit Fallback
     firm_match = re.search(r"(?:Sayın|Müşteri|Firma|Firma Adı|Tesis)[\s:]+([^\n\r]+)", extracted_text, re.IGNORECASE)
     detected_firm = firm_match.group(1).strip() if firm_match else "BİLİNMEYEN FİRMA"
     return {
@@ -369,12 +385,18 @@ def find_best_matches(query: str):
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
 
+# ----------------- TEST MODUNA DUYARLI BİLDİRİM -----------------
 async def notify_both(text: str, reply_markup=None):
-    for cid in {OMER_CHAT_ID, KAMIL_CHAT_ID}:
+    # Test modundayken Kamil'e ASLA bildirim gitmez, sadece Ömer'e gelir
+    recipients = {OMER_CHAT_ID} if TEST_MODE else {OMER_CHAT_ID, KAMIL_CHAT_ID}
+    if TEST_MODE:
+        text += "\n\n🧪 <i>[TEST MODU: Kamil'e bildirim gitmedi, gerçek stoklar ve Z-raporu korunuyor.]</i>"
+
+    for cid in recipients:
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception as e: logging.warning(f"İletilemedi ({cid}): {e}")
 
-# ----------------- DÜZELTİLMİŞ Z-RAPORU & TARİH FİLTRESİ -----------------
+# ----------------- GÜVENLİ Z-RAPORU MOTORU -----------------
 def parse_date_safe(date_str: str) -> datetime:
     if not date_str: return None
     date_str = str(date_str).strip()
@@ -406,7 +428,6 @@ def build_report_text(sales_data, report_name="SATIŞ Z-RAPORU"):
             "ℹ️ <i>Bu dönem için onaylanmış parça satışı/çıkışı bulunmamaktadır.</i>"
         )
 
-    # Konsolide Ürün Özeti
     item_totals = {}
     plants = set()
     total_qty = 0
@@ -552,7 +573,7 @@ def get_client_history_text(firm_query: str):
     text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(firm_records)} Sevkiyat / Hareket</b>"
     return text
 
-# ----------------- SAĞLAM KLAVYELER -----------------
+# ----------------- SAĞLAM VE SABİT KLAVYELER -----------------
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -608,8 +629,10 @@ async def cmd_start(message: types.Message, state: FSMContext):
     pdf_info = "✓ Bulundu" if get_catalog_pdf_file() else "✗ Bulunamadı (Katalog.pdf)"
     stocks = load_stocks()
 
+    test_banner = "\n🧪 <b>[DİKKAT: TEST / SİMÜLASYON MODU AKTİF - Kamil'e bildirim gitmez, stoklar değişmez!]</b>\n" if TEST_MODE else ""
+
     msg_text = (
-        f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.\n\n"
+        f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.{test_banner}\n"
         f"• Katalog PDF: <b>{pdf_info}</b>\n"
         f"• Güncel Depo Kalem: <b>{len(stocks)} Çeşit Parça</b>\n\n"
         f"💡 <i>Aşağıdan Mini App'e girebilir, teklif hazırlayabilir veya gelen teklif PDF'ini direkt buraya yükleyebilirsiniz.</i>"
@@ -696,13 +719,10 @@ async def handle_document_upload(message: types.Message):
     # 2. Elips (Özbekistan) Deposu Stok Analizi
     stocks = load_stocks()
     stock_analysis_lines = []
-    has_missing_parts = False
-    has_any_available = False
 
     for itm in items:
         code = itm.get("code", "")
         req_qty = int(itm.get("qty", 1))
-        # Stokta ara
         p = next((s for s in stocks if s["code"].lower() == code.lower()), None)
         if not p:
             p = next((s for s in stocks if normalize_tr(s["name"]) in normalize_tr(itm.get("name", ""))), None)
@@ -711,14 +731,10 @@ async def handle_document_upload(message: types.Message):
         itm["depo_available"] = avail_qty
 
         if avail_qty >= req_qty:
-            has_any_available = True
             stock_analysis_lines.append(f"• <code>[{code}]</code> {html.escape(itm.get('name', ''))} ({req_qty} Adet) ➔ 🟢 <b>Depoda Var ({avail_qty} ADT)</b>")
         elif avail_qty > 0:
-            has_any_available = True
-            has_missing_parts = True
             stock_analysis_lines.append(f"• <code>[{code}]</code> {html.escape(itm.get('name', ''))} ({req_qty} Adet) ➔ 🟡 <b>Kısmi Stok ({avail_qty} ADT Var)</b>")
         else:
-            has_missing_parts = True
             stock_analysis_lines.append(f"• <code>[{code}]</code> {html.escape(itm.get('name', ''))} ({req_qty} Adet) ➔ 🔴 <b>Depoda YOK (0 ADT)</b>")
 
     quote_id = f"TK-{int(time.time())}"
@@ -734,7 +750,6 @@ async def handle_document_upload(message: types.Message):
     })
     save_quotes(quotes)
 
-    # Yanıt Mesajı Oluşturma
     lines = [
         match_header,
         "═══════════════════════════════",
@@ -771,12 +786,10 @@ async def on_quote_route_selected(callback: types.CallbackQuery):
     items = q.get("items", [])
 
     if route_choice == "TR":
-        # Türkiye'den gelecek - Özbek depo stoklarına DOKUNMA
         q["status"] = "APPROVED"
         q["source"] = "TR_DEPO"
         save_quotes(quotes)
 
-        # Satış defterine TR sevkiyatı olarak ekle
         sales = load_sales()
         sales.append({
             "id": f"SLS-{int(time.time())}",
@@ -802,7 +815,6 @@ async def on_quote_route_selected(callback: types.CallbackQuery):
         await callback.answer("Türkiye sevkiyatı olarak onaylandı.")
         return
 
-    # Özbek veya Kısmi Depo Seçildiğinde Stok Kontrolü
     missing_items = []
     available_items = []
 
@@ -880,6 +892,7 @@ async def on_quote_apply_stock(callback: types.CallbackQuery):
             else:
                 not_found_report.append(f"• <code>[{code}]</code> {item.get('name', '')}: Depoda 0 adet var (TR'den gelmeli)")
 
+        # GÜVENLİK KİLİDİ: Test modundaysa save_stocks gerçek dosyayı kaydetmez!
         save_stocks(stocks)
 
         sales.append({
@@ -1346,9 +1359,13 @@ async def handle_webapp_payload(message: types.Message):
         msg = f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n🏢 Firma: <code>{html.escape(dest)}</code>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📉 Adet: <b>-{qty}</b> | Kalan: <code>{p.get('current_qty', 0)} ADT</code>\n👷‍♂️ Çıkış Yapan: {op}"
         await notify_both(msg)
 
-# ----------------- SOHBET KÖPRÜSÜ -----------------
+# ----------------- SOHBET KÖPRÜSÜ (TELSİZ) -----------------
 @dp.message(~F.text.startswith("/"))
 async def chat_bridge(message: types.Message):
+    # Test modundayken Kamil'e telsiz mesajı iletme!
+    if TEST_MODE:
+        return
+
     menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Nilay Hanım'a Teklif Hazırla", "📖 Kataloğu Gönder"]
     if message.text in menu_buttons: return
     tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
@@ -1387,12 +1404,17 @@ async def start_dummy_server():
 
 async def main():
     try:
-        save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
+        # Gerçek başlangıç stok tablosunu ilk defa açılıyorsa hazırla
+        if not os.path.exists(STOCKS_FILE):
+            save_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
+
         await bot.delete_webhook(drop_pending_updates=True)
         await setup_bot_commands()
         await start_dummy_server()
         asyncio.create_task(automated_scheduler())
-        logging.info(">>> ELIPS DEPO BOTU KUSURSUZ DEVREDE <<<")
+        
+        mode_str = "🧪 TEST / SİMÜLASYON MODUNDA (Kamil kapalı, stoklar korunuyor)" if TEST_MODE else "🟢 CANLI MODDA (Kamil aktif)"
+        logging.info(f">>> ELIPS DEPO BOTU BAŞLATILDI: {mode_str} <<<")
         await dp.start_polling(bot)
     except Exception as e:
         logging.error(f"Kritik hata: {e}")

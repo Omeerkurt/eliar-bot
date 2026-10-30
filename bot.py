@@ -275,7 +275,7 @@ def crop_slot_from_page(page, slot: int) -> bytes:
     row_bounds = [
         (25, 285),
         (288, 550),
-        (550, 815)   # Slot 5 & 6 (90567 Diyafram burada)
+        (550, 815)   # Slot 5 & 6 (90567 Diyafram)
     ]
     y0, y1 = row_bounds[row]
 
@@ -309,7 +309,7 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
                 x0 = 8 if col == 0 else (pw / 2.0 + 2)
                 x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
 
-                # DURUM 1: Başlık önceki sayfanın dibinde, kod ve resim bu sayfanın tepesinde (Örn: Pin Silindir 40647)
+                # DURUM 1: Başlık önceki sayfanın dibinde, resim bu sayfada (Örn: Pin Silindir 40647)
                 if r.y0 < 130 and p_idx > 0:
                     p_prev = doc[p_idx - 1]
                     rect_header = fitz.Rect(x0, ph - 62, x1, ph - 20)
@@ -373,7 +373,7 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
         if len(val) >= 3 and val.upper() != "ADI:":
             firm = val.upper()
 
-    # Eğer PDF metninden okunamazsa dosya isminden çıkar (Örn: HAJJ TEKSTIL FIYAT TEKLIFI.pdf -> HAJJ TEKSTIL)
+    # Dosya isminden kurtarıcı doğrulama (Örn: HAJJ TEKSTIL FIYAT TEKLIFI.pdf -> HAJJ TEKSTIL)
     if not firm or firm == "ADI:":
         clean_fn = re.sub(r"(fiyat|teklif|teklifi|\.pdf|\.jpg|\.png)", "", original_filename, flags=re.IGNORECASE).strip()
         clean_fn = re.sub(r"^[_\-\s]+|[_\-\s]+$", "", clean_fn)
@@ -400,7 +400,7 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
         curr_symbol = m_tot.group(2) or "€"
         currency = "EUR" if curr_symbol == "€" else ("USD" if curr_symbol == "$" else curr_symbol)
 
-    # 5. pdfplumber ile Tablo ve Ürünleri %100 Net Çekme
+    # 5. Tablo ve Parçaları Çekme
     try:
         import pdfplumber
         with pdfplumber.open(pdf_path) as pdf:
@@ -415,7 +415,6 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
                         if "Ürün Kodu" in row_str or "Birim Fiyat" in row_str or "TOPLAM" in row_str:
                             continue
 
-                        # Kolon 0: Ürün Kodu, Kolon 1: Ürün Adı, Kolon 2+: Miktar
                         c0 = clean_row[0]
                         c1 = clean_row[1] if len(clean_row) > 1 else ""
 
@@ -462,14 +461,10 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
     }
 
 async def parse_quote_pdf_smart(pdf_path: str, original_filename: str = "") -> dict:
-    """Yerel tablo motoru + Gemini Dual Motor"""
     local_data = parse_eliar_pdf_locally(pdf_path, original_filename)
-
-    # Eğer yerel motor ürünleri ve firmayı bulduysa doğrudan dön
     if local_data["items"] and local_data["firm"] != "BİLİNMEYEN FİRMA":
         return local_data
 
-    # Bulunamazsa Gemini 2.5 Flash'tan destek al
     if ai_client:
         try:
             loop = asyncio.get_event_loop()
@@ -701,8 +696,9 @@ def get_client_history_text(firm_query: str):
     text += f"\n═══════════════════════════════\n✅ Toplam: <b>{len(firm_records)} Sevkiyat / Hareket</b>"
     return text
 
-# ----------------- SAĞLAM VE SABİT KLAVYELER -----------------
+# ----------------- SAĞLAM VE ESNEK KLAVYELER (is_persistent=False) -----------------
 def get_main_keyboard():
+    """is_persistent=False ile altta her zaman kilitli kalmaz; menüye basınca açılır!"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
@@ -713,7 +709,7 @@ def get_main_keyboard():
             [KeyboardButton(text="📖 Kataloğu Gönder")]
         ],
         resize_keyboard=True,
-        is_persistent=True,
+        is_persistent=False,
         input_field_placeholder="İşlem seçin..."
     )
 
@@ -766,10 +762,10 @@ async def cmd_start(message: types.Message, state: FSMContext):
         f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.{test_banner}\n"
         f"• Katalog PDF: <b>{pdf_info}</b>\n"
         f"• Güncel Depo Kalem: <b>{len(stocks)} Çeşit Parça</b>\n\n"
-        f"💡 <i>Aşağıdan Mini App'e girebilir, teklif hazırlayabilir veya gelen teklif PDF'ini direkt buraya yükleyebilirsiniz.</i>"
+        f"💡 <i>Menüden işlem seçebilir, teklif hazırlayabilir, parça/etiket fotoğrafı atabilir veya teklif PDF'i yükleyebilirsiniz.</i>"
     )
     await message.answer(msg_text, reply_markup=get_start_inline_keyboard(), parse_mode="HTML")
-    await message.answer("👇 <b>Kalıcı Menü:</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
+    await message.answer("👇 <b>Menü Butonları:</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
 
 # ----------------- INLINE BUTON KÖPRÜLERİ -----------------
 @dp.callback_query(F.data == "btn_teklif_hazirla")
@@ -821,7 +817,124 @@ async def send_catalog_pdf(message: types.Message):
     else:
         await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
 
-# ----------------- GÜÇLENDİRİLMİŞ PDF OKUMA VE DEPO KARAR MOTORU -----------------
+# ==============================================================================
+#            YENİ: FOTOĞRAFTAN / ETİKETTEN PARÇA TANIMA (GEMINI VISION)
+# ==============================================================================
+@dp.message(F.photo)
+async def handle_photo_recognition(message: types.Message, state: FSMContext):
+    if not ai_client:
+        await message.answer("⚠️ Görsel tanıma için Gemini bağlantısı aktif değil.")
+        return
+
+    wait_msg = await message.answer("🔍 <i>Fotoğraftaki parça, etiket ve model bilgisi yapay zeka ile taranıyor...</i>", parse_mode="HTML")
+
+    try:
+        photo = message.photo[-1]
+        file_io = BytesIO()
+        await bot.download(photo, destination=file_io)
+        img_bytes = file_io.getvalue()
+
+        prompt = (
+            "Sen tekstil otomasyonu (Eliar / Elips) yedek parça ve donanım uzmanısın. "
+            "Fotoğraftaki parçayı, etiketini, modelini, sipariş kodunu veya tipini (vana, sensör, diyafram, sürücü, kart, silindir, pompa vb.) incele.\n"
+            "YALNIZCA SAF JSON DÖNDÜR:\n"
+            "{\n"
+            '  "detected_code": "Varsa etiket/parça kodu veya model (örn: 90416, 90567, V1000, CD85N, BES005M vb.) yoksa boş bırak",\n'
+            '  "detected_name": "Parçanın en doğru Türkçe teknik tanımı",\n'
+            '  "category": "MEKATRONIK veya ELEKTRONIK veya KONTROL"\n'
+            "}"
+        )
+
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: ai_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[prompt, genai_types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")]
+            )
+        )
+
+        raw = response.text.replace("```json", "").replace("```", "").strip()
+        parsed = json.loads(raw)
+        det_code = str(parsed.get("detected_code", "")).strip()
+        det_name = str(parsed.get("detected_name", "")).strip()
+
+        # Envanterde ara
+        matched_part = None
+        stocks = load_stocks()
+
+        if det_code:
+            matched_part = next((s for s in stocks if s["code"].lower() == det_code.lower()), None)
+        if not matched_part and det_name:
+            matches = find_best_matches(det_name)
+            if matches: matched_part = matches[0][0]
+
+        await wait_msg.delete()
+
+        if matched_part:
+            # Varsa katalogdaki şemasını da kırpıp gönder
+            cat_img = extract_part_image_from_pdf(matched_part["code"], matched_part["name"])
+            if cat_img:
+                photo_file = BufferedInputFile(cat_img, filename=f"{matched_part['code']}.png")
+                await message.answer_photo(photo_file, caption=f"📸 <b>Katalog Eşleşmesi:</b> <code>[{matched_part['code']}]</code> {matched_part['name']}", parse_mode="HTML")
+
+            stock_stat = f"🟢 Mevcut ({matched_part['qty']} ADT)" if matched_part['qty'] > 0 else "🔴 Stokta Yok (0 ADT)"
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="📝 Bu Parça İçin Nilay Hanım'a Teklif Hazırla", callback_data=f"prefill_q:{matched_part['code']}")],
+                [InlineKeyboardButton(text="❌ Kapat", callback_data="cb_close_card")]
+            ])
+
+            res_text = (
+                f"🎯 <b>GÖRSELDEN PARÇA BAŞARIYLA TANINDI!</b>\n"
+                f"═══════════════════════════════\n"
+                f"🔍 <b>Tespit:</b> {det_name} {f'[{det_code}]' if det_code else ''}\n"
+                f"📦 <b>Depo Eşleşmesi:</b> <code>[{matched_part['code']}]</code> {matched_part['name']}\n"
+                f"📊 <b>Depo Durumu:</b> <b>{stock_stat}</b> | Konum: <code>{matched_part['loc']}</code>\n"
+                f"═══════════════════════════════\n"
+                f"❓ <i>Bu parça için Nilay Hanım'a fiyat teklifi talebi oluşturulsun mu?</i>"
+            )
+            await message.answer(res_text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await message.answer(
+                f"🔍 <b>Parça Görselden İncelendi:</b>\n"
+                f"• Tespit: <b>{det_name}</b> {f'[{det_code}]' if det_code else ''}\n"
+                f"ℹ️ <i>Depo kayıtlarında birebir eşleşme bulunamadı. Kodu manuel aratabilirsiniz.</i>",
+                parse_mode="HTML"
+            )
+
+    except Exception as e:
+        logging.error(f"Görsel analiz hatası: {e}")
+        try: await wait_msg.delete()
+        except Exception: pass
+        await message.answer("⚠️ Görsel analiz edilirken bir hata oluştu.")
+
+@dp.callback_query(F.data.startswith("prefill_q:"))
+async def on_prefill_quote(callback: types.CallbackQuery, state: FSMContext):
+    code = callback.data.split(":")[1]
+    stocks = load_stocks()
+    part = next((s for s in stocks if s["code"] == code), None)
+    if not part:
+        await callback.answer("Parça bulunamadı.", show_alert=True)
+        return
+
+    await state.clear()
+    await state.update_data(quote_items=[], prefilled_part=part)
+    await state.set_state(QuoteBuilderState.waiting_firm)
+    await callback.message.answer(
+        f"🏢 <code>[{part['code']}]</code> {part['name']} için teklif <b>hangi müşteri / fabrika</b> için hazırlanacak?\n"
+        f"(Örn: <code>HAJJ TEKSTİL</code>, <code>TERRY JAR</code>):",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data == "cb_close_card")
+async def cb_close(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.answer()
+
+# ==============================================================================
+#            PDF YÜKLEME: BOT HAZIRLAMADIYSA ONAY SORMA & SEVKİYAT SEÇİMİ
+# ==============================================================================
 @dp.message(F.document)
 async def handle_document_upload(message: types.Message):
     doc = message.document
@@ -835,7 +948,6 @@ async def handle_document_upload(message: types.Message):
     save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
     await bot.download(doc, destination=save_path)
 
-    # DÜZELTİLDİ: Eliar kurumsal şablonunu ve dosya adını %100 net okuyan hibrit motor
     parsed_data = await parse_quote_pdf_smart(save_path, doc.file_name)
     firm = parsed_data.get("firm", "BİLİNMEYEN FİRMA").upper()
     ref_no = parsed_data.get("ref_no", "BELİRTİLMEDİ")
@@ -845,29 +957,81 @@ async def handle_document_upload(message: types.Message):
     items = parsed_data.get("items", [])
     is_nilay = parsed_data.get("is_nilay", False)
 
-    # 1. Nilay Hanım Teklifi İle Eşleşme Kontrolü
+    # 1. Bot Tarafından Hazırlanma Kontrolü
     quotes = load_quotes()
     matched_quote = None
     for q in quotes:
-        f1 = normalize_tr(q.get("firm", ""))
-        f2 = normalize_tr(firm)
-        if f1 in f2 or f2 in f1 or difflib.SequenceMatcher(None, f1, f2).ratio() > 0.55:
-            matched_quote = q
-            break
-        for itm in q.get("items", []):
-            if any(itm.get("code") == p_itm.get("code") for p_itm in items):
+        # Sadece bekleyen ve bot tarafından hazırlanan tekliflerle karşılaştır
+        if q.get("status") == "PENDING":
+            f1 = normalize_tr(q.get("firm", ""))
+            f2 = normalize_tr(firm)
+            if f1 in f2 or f2 in f1 or difflib.SequenceMatcher(None, f1, f2).ratio() > 0.60:
                 matched_quote = q
                 break
 
-    match_lines = []
-    if matched_quote or is_nilay:
-        match_lines.append("🎯 <b>NİLAY HANIM'A HAZIRLANAN TEKLİF İLE EŞLEŞTİ!</b>")
-        if is_nilay:
-            match_lines.append("👩‍💼 <i>Teklifi Hazırlayan: Nilay DEMİR (Satış Destek Uzmanı)</i>")
-    else:
-        match_lines.append("📄 <b>YENİ FİYAT TEKLİFİ FORMU ALGILANDI</b>")
+    quote_id = f"TK-{int(time.time())}"
+    temp_quote = {
+        "id": quote_id,
+        "firm": firm,
+        "ref_no": ref_no,
+        "date": date,
+        "currency": currency,
+        "grand_total": grand_total,
+        "status": "PENDING",
+        "items": items,
+        "pdf_file": save_path
+    }
 
-    # 2. Elips (Özbekistan) Deposu Stok Analizi
+    await wait_msg.delete()
+
+    # EĞER BOT HAZIRLAMADIYSA -> KULLANICIYA SOR!
+    if not matched_quote:
+        temp_quote["status"] = "UNMATCHED_PROMPT"
+        quotes.append(temp_quote)
+        save_quotes(quotes)
+
+        prompt_text = (
+            f"⚠️ <b>HARİCİ / BOT DIŞI TEKLİF FORMU ALGILANDI</b>\n"
+            f"═══════════════════════════════\n"
+            f"🏢 <b>Müşteri:</b> <b>{html.escape(firm)}</b>\n"
+            f"🔖 <b>Ref No:</b> <code>{ref_no}</code> | 📅 <b>Tarih:</b> {date}\n"
+            f"💰 <b>Toplam Tutar:</b> <b>{grand_total} {currency}</b>\n"
+            f"📦 <b>Tespit Edilen Kalem:</b> {len(items)} Parça\n"
+            f"═══════════════════════════════\n"
+            f"ℹ️ <i>Bu teklif daha önce Eliar Depo Botu üzerinden hazırlanmamıştır.</i>\n\n"
+            f"❓ <b>Bu teklifi yine de sisteme girmek ve işlemek ister misiniz?</b>"
+        )
+        kb_prompt = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Evet, Sisteme Gir ve Analiz Et", callback_data=f"qext_accept:{quote_id}")],
+            [InlineKeyboardButton(text="❌ Hayır, İptal Et", callback_data=f"qext_reject:{quote_id}")]
+        ])
+        await message.answer(prompt_text, reply_markup=kb_prompt, parse_mode="HTML")
+        return
+
+    # EĞER BOT HAZIRLADIYSA -> NİLAY HANIM EŞLEŞTİ VE DİREKT DEPO SEÇİMİNE GEÇ
+    quotes.append(temp_quote)
+    save_quotes(quotes)
+    await render_quote_routing_screen(message, temp_quote, is_nilay=is_nilay, matched_quote=matched_quote)
+
+async def render_quote_routing_screen(target_msg, quote_data, is_nilay=False, matched_quote=None):
+    quote_id = quote_data["id"]
+    firm = quote_data["firm"]
+    ref_no = quote_data["ref_no"]
+    date = quote_data["date"]
+    currency = quote_data["currency"]
+    grand_total = quote_data["grand_total"]
+    items = quote_data.get("items", [])
+
+    match_lines = []
+    if matched_quote:
+        match_lines.append("🎯 <b>NİLAY HANIM'A HAZIRLANAN TEKLİF İLE EŞLEŞTİ!</b>")
+        match_lines.append(f"<i>(Bot üzerindeki {matched_quote.get('firm')} teklifiyle doğrulandı)</i>")
+    elif is_nilay:
+        match_lines.append("🎯 <b>NİLAY DEMİR İMZALI RESMİ TEKLİF DOĞRULANDI!</b>")
+    else:
+        match_lines.append("📄 <b>SİSTEME ALINAN FİYAT TEKLİFİ</b>")
+
+    # Elips Deposu Stok Analizi
     stocks = load_stocks()
     stock_analysis_lines = []
 
@@ -888,20 +1052,6 @@ async def handle_document_upload(message: types.Message):
         else:
             stock_analysis_lines.append(f"• <code>[{code}]</code> {html.escape(itm.get('name', ''))} ({req_qty} Adet) ➔ 🔴 <b>Depoda YOK (0 ADT)</b>")
 
-    quote_id = f"TK-{int(time.time())}"
-    quotes.append({
-        "id": quote_id,
-        "firm": firm,
-        "ref_no": ref_no,
-        "date": date,
-        "currency": currency,
-        "grand_total": grand_total,
-        "status": "PENDING",
-        "items": items,
-        "pdf_file": save_path
-    })
-    save_quotes(quotes)
-
     lines = match_lines + [
         "═══════════════════════════════",
         f"🏢 <b>Müşteri:</b> <b>{html.escape(firm)}</b>",
@@ -915,13 +1065,37 @@ async def handle_document_upload(message: types.Message):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🇺🇿 Özbek (Elips) Depodan Karşıla", callback_data=f"qroute:{quote_id}:ELIPS")],
-        [InlineKeyboardButton(text="🇹🇷 Türkiye'den (TR) Gelecek", callback_data=f"qroute:{quote_id}:TR")],
+        [InlineKeyboardButton(text="🇹🇷 Eliar TR'den Gelecek", callback_data=f"qroute:{quote_id}:TR")],
         [InlineKeyboardButton(text="🔄 Kısmi (Elimizdekiler Özbek, Kalan TR)", callback_data=f"qroute:{quote_id}:PARTIAL")],
         [InlineKeyboardButton(text="❌ Teklifi Kabul Etme / İptal", callback_data=f"qstat:{quote_id}:REJECTED")]
     ])
 
-    await wait_msg.delete()
-    await message.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+    if hasattr(target_msg, "answer"):
+        await target_msg.answer("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+    else:
+        await target_msg.edit_text("\n".join(lines), reply_markup=kb, parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("qext_accept:"))
+async def on_quote_external_accept(callback: types.CallbackQuery):
+    quote_id = callback.data.split(":")[1]
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == quote_id), None)
+    if not q:
+        await callback.answer("Teklif bulunamadı.", show_alert=True)
+        return
+    q["status"] = "PENDING"
+    save_quotes(quotes)
+    await callback.answer("Teklif sisteme alındı.")
+    await render_quote_routing_screen(callback.message, q)
+
+@dp.callback_query(F.data.startswith("qext_reject:"))
+async def on_quote_external_reject(callback: types.CallbackQuery):
+    quote_id = callback.data.split(":")[1]
+    quotes = load_quotes()
+    quotes = [x for x in quotes if x["id"] != quote_id]
+    save_quotes(quotes)
+    await callback.message.edit_text("❌ <b>Harici teklif sisteme kaydedilmedi, işlem iptal edildi.</b>", parse_mode="HTML")
+    await callback.answer("İptal edildi.")
 
 # ----------------- SEVKİYAT MENŞEİ (ÖZBEK / TR) SEÇİMİ -----------------
 @dp.callback_query(F.data.startswith("qroute:"))
@@ -956,7 +1130,7 @@ async def on_quote_route_selected(callback: types.CallbackQuery):
         save_sales(sales)
 
         msg = (
-            f"🇹🇷 <b>TEKLİF ONAYLANDI (TÜRKİYE'DEN GELECEK)!</b>\n"
+            f"🇹🇷 <b>TEKLİF ONAYLANDI (ELİAR TÜRKİYE'DEN GELECEK)!</b>\n"
             f"═══════════════════════════════\n"
             f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n"
             f"🔖 Ref No: <code>{q.get('ref_no', 'YOK')}</code>\n"
@@ -1090,7 +1264,7 @@ async def on_quote_status_cancel(callback: types.CallbackQuery):
     await callback.answer("İptal edildi.")
 
 # ==============================================================================
-#            YENİ: TAMAMLANMIŞ TEKLİFLER EKRANI & ARAMA / FİLTRELEME
+#            TAMAMLANMIŞ TEKLİFLER EKRANI & ARAMA / FİLTRELEME
 # ==============================================================================
 def render_completed_quotes_list(quotes_list):
     buttons = [
@@ -1227,7 +1401,7 @@ async def on_quote_view_details(callback: types.CallbackQuery):
     depo_str = "🇹🇷 Türkiye (TR) Depo" if q.get("source") == "TR_DEPO" else ("🇺🇿 Özbek (Elips) Depo" if q.get("source") == "ELIPS_DEPO" else "Belirlenmedi")
 
     lines = [
-        f"📄 <b>Teklif Kartı</b>",
+        f"📄 <b>Teklif Detayı</b>",
         f"🏢 Firma: <b>{html.escape(q['firm'])}</b>",
         f"🔖 Ref No: <code>{q.get('ref_no', 'YOK')}</code>",
         f"📅 Tarih: <code>{q.get('date')}</code>",
@@ -1249,8 +1423,14 @@ async def on_quote_view_details(callback: types.CallbackQuery):
 @dp.message(Command("teklif", ignore_mention=True))
 @dp.message(F.text == "📝 Nilay Hanım'a Teklif Hazırla")
 async def start_quote_wizard(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    prefilled_part = data.get("prefilled_part")
+
     await state.clear()
     await state.update_data(quote_items=[])
+    if prefilled_part:
+        await state.update_data(selected_part=prefilled_part)
+
     await state.set_state(QuoteBuilderState.waiting_firm)
     await message.answer("🏢 <b>Teklif hangi müşteri / fabrika için hazırlanacak?</b>\n(Örnek: <code>HAJJ TEKSTİL</code>, <code>TERRY JAR</code>)", parse_mode="HTML")
 
@@ -1258,15 +1438,23 @@ async def start_quote_wizard(message: types.Message, state: FSMContext):
 async def process_quote_firm(message: types.Message, state: FSMContext):
     firm = message.text.strip().upper()
     await state.update_data(firm_name=firm)
-    await state.set_state(QuoteBuilderState.waiting_item_query)
+    data = await state.get_data()
 
+    # Eğer parçayı fotoğraftan seçerek geldiyse arama adımını atla, direkt adet sor!
+    if data.get("selected_part"):
+        part = data["selected_part"]
+        await state.set_state(QuoteBuilderState.waiting_qty)
+        await message.answer(f"🎯 <b>Seçilen Parça:</b> <code>[{part['code']}]</code> {html.escape(part['name'])}\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
+        return
+
+    await state.set_state(QuoteBuilderState.waiting_item_query)
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📖 Parça Kataloğunu İncele (PDF)", callback_data="qb_get_catalog")]
     ])
     await message.answer(
         f"🔍 <b>Hangi parça için teklif istenecek?</b>\n"
         f"• Varsa <b>Sipariş Kodunu</b> yazın (Örn: <code>91661</code>, <code>90567</code>, <code>40647</code>)\n"
-        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>diyafram</code>, <code>solenoid valf</code>):",
+        f"• Veya <b>Ürün İsmini</b> yazın (Örn: <code>diyafram</code>, <code>pin silindir</code>):",
         reply_markup=kb,
         parse_mode="HTML"
     )
@@ -1418,7 +1606,8 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
         "status": "PENDING",
         "items": items,
-        "pdf_file": None
+        "pdf_file": None,
+        "created_via_bot": True
     })
     save_quotes(quotes)
 
@@ -1460,7 +1649,7 @@ async def show_stocks(message: types.Message):
 
     await message.answer(text, parse_mode="HTML")
 
-# ----------------- DÜZELTİLMİŞ Z-RAPORU MENÜSÜ & İŞLEMLERİ -----------------
+# ----------------- Z-RAPORU MENÜSÜ & İŞLEMLERİ -----------------
 @dp.message(Command("zraporu", ignore_mention=True))
 @dp.message(F.text == "📊 Z-Raporu Al")
 async def trigger_z_report_manual(message: types.Message):

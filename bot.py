@@ -43,7 +43,7 @@ WEBAPP_URL = "https://omeerkurt.github.io/eliar-depo/"
 GEMINI_API_KEY = "AIzaSyAuUg0a1ew5V4aF1E-FTsdVinsMpXckOgQ"
 
 # 🧪 TEST & SİMÜLASYON MODU (True: Kamil'e gitmez, gerçek stoklar ve Z-raporu değişmez)
-TEST_MODE = False
+TEST_MODE = True
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 bot = Bot(token=BOT_TOKEN)
@@ -73,229 +73,388 @@ QUOTES_FILE = "submitted_quotes.json"
 PDF_STORAGE_DIR = "stored_quotes_pdf"
 os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
-# ----------------- KATALOG KOORDİNAT HARİTASI (RD96) -----------------
-CATALOG_GRID_MAP = {
-    "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
-    "41370": (3, 3), "41381": (3, 5), "91514": (3, 6),
-    "91410": (4, 1), "91411": (4, 2), "41436": (4, 3), "41435": (4, 4), "96469": (4, 5), "60002": (4, 6),
-    "90338": (5, 1), "91128": (5, 2), "91516": (5, 4), "41538": (5, 5), "41407": (5, 6),
-    "41420": (6, 1), "93041": (6, 2), "93035": (6, 3), "60020": (6, 4),
-    "91517": (7, 1), "41430": (7, 2), "41408": (7, 3), "41415": (7, 4), "41419": (7, 5), "41414": (7, 6),
-    "41425": (8, 1), "41427": (8, 2), "41426": (8, 3), "93039": (8, 4), "93040": (8, 5),
-    "41413": (9, 2), "41418": (9, 3), "41411": (9, 4), "41428": (9, 5), "41429": (9, 6),
-    "93043": (10, 1), "93042": (10, 2), "93037": (10, 3), "93036": (10, 4),
-    "60044": (11, 1), "41434": (11, 2), "90946": (11, 3), "41432": (11, 4), "41409": (11, 5), "41424": (11, 6),
-    "41433": (12, 1), "41416": (12, 2), "41417": (12, 3), "41533": (12, 4), "96541": (12, 5),
-    "90951": (13, 2), "41384": (13, 5), "41383": (13, 6),
-    "90310": (14, 1), "90952": (14, 2), "90332": (14, 3), "90328": (14, 4),
-    "90949": (15, 1), "90947": (15, 2), "90321": (15, 3), "16073": (15, 4), "90490": (15, 5), "91238": (15, 6),
-    "90333": (16, 1), "90948": (16, 2), "91407": (16, 3), "93008": (16, 4), "90345": (16, 5), "90325": (16, 6),
-    "90320": (17, 1), "90950": (17, 2), "60003": (17, 3), "96112": (17, 4), "90827": (17, 5), "50155": (17, 6),
-    "96467": (18, 1), "91603": (18, 2), "91035": (18, 3), "90547": (18, 4), "20031": (18, 5), "90475": (18, 6),
-    "50160": (19, 1), "91285": (19, 2), "50606": (19, 3), "91472": (19, 4),
-    "50247": (20, 1), "50249": (20, 2), "15401": (20, 3), "41439": (20, 4), "91633": (20, 5), "91448": (20, 6),
-    "42595": (21, 1), "90861": (21, 3), "90817": (21, 6),
-    "96683": (22, 1), "96097": (22, 2), "91598": (22, 4), "91037": (22, 5), "40082": (22, 6),
-    "91386": (23, 3), "91488": (23, 4), "90567": (23, 5), "90965": (23, 6),
-    "40647": (24, 1), "90715": (24, 2), "90828": (24, 5), "90834": (24, 6),
-    "96468": (25, 1), "20031": (25, 2), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
-    "90832": (26, 4), "40634": (26, 6),
-    "96412": (27, 1), "90878": (27, 2), "90881": (27, 3), "90880": (27, 4),
-    "90879": (28, 1), "91284": (28, 3), "14574": (28, 4), "14541": (28, 6),
-    "91332": (29, 1), "50219": (29, 2), "54626": (29, 3), "41441": (29, 5), "91447": (29, 6),
-    "50057": (30, 1), "54612": (30, 2), "50098": (30, 3), "50018": (30, 4), "91594": (30, 5),
-    "91590": (31, 3), "15005": (31, 4), "50549": (31, 5), "40085": (31, 6),
-    "91451": (32, 1), "50023": (32, 2), "50273": (32, 3), "50021": (32, 4),
-    "41442": (33, 1), "41404": (33, 2), "96517": (33, 3), "50257": (33, 4), "96501": (33, 5), "90766": (33, 6),
-    "16016": (34, 1), "16039": (34, 2), "16034": (34, 3), "41403": (34, 4), "90767": (34, 5), "91071": (34, 6),
-    "90762": (35, 1), "90840": (35, 2), "41400": (35, 3), "41401": (35, 4), "41300": (35, 5), "41402": (35, 6),
-    "91277": (36, 1), "54516": (36, 2), "90768": (36, 3), "90769": (36, 4),
-    "90782": (37, 1), "16032": (37, 2), "16041": (37, 3), "16035": (37, 4), "50260": (37, 5), "90759": (37, 6),
-    "50138": (38, 2), "91086": (38, 3), "91045": (38, 4), "90770": (38, 5), "16043": (38, 6),
-    "16030": (39, 1), "90765": (39, 4), "11906": (39, 6),
-    "12302": (40, 1), "41444": (40, 2), "91303": (40, 3), "50263": (40, 4),
-    "91044": (41, 1), "54510": (41, 3), "90761": (41, 4), "50262": (41, 6),
-    "41399": (42, 5), "50259": (42, 6), "50258": (43, 6), "50261": (44, 6),
-    "91269": (46, 2), "91270": (46, 3), "50278": (46, 4), "50293": (46, 5), "90725": (46, 6),
-    "50040": (47, 2), "41396": (47, 3), "41398": (47, 5), "54630": (47, 6),
-    "50270": (48, 1), "50287": (48, 2), "91066": (48, 3), "91064": (48, 4), "41457": (48, 5), "50238": (48, 6),
-    "50156": (49, 1), "91043": (49, 2), "50269": (49, 3),
-    "50289": (50, 6), "50291": (52, 1), "90781": (52, 5),
-    "96404": (53, 2), "41406": (53, 3), "41405": (53, 4),
-    "90484": (54, 1), "91490": (54, 2), "91489": (54, 3), "90930": (54, 5), "91495": (54, 6),
-    "54661": (55, 3), "54662": (55, 4), "41437": (55, 5), "90568": (55, 6),
-    "50014": (56, 1), "91782": (56, 2), "91271": (56, 3), "91268": (56, 4), "90793": (56, 5), "90324": (56, 6),
-    "16044": (57, 1), "14847": (57, 2), "41290": (57, 3), "41287": (57, 4), "41288": (57, 5), "41289": (57, 6),
-    "54629": (58, 1), "54628": (58, 2),
-    "50024": (59, 1), "50025": (59, 2), "91586": (59, 3), "50027": (59, 4), "92038": (59, 5), "54620": (59, 6),
-    "14577": (60, 1), "14317": (60, 2), "96449": (60, 3), "91950": (60, 4), "96219": (60, 6),
-    "91453": (61, 1), "50008": (61, 2), "50010": (61, 3), "50046": (61, 4),
-    "50054": (62, 3), "15005": (63, 3)
-}
-
-# ----------------- 63 SAYFALIK KATALOĞUN TAM BİRLEŞİK ENVANTERİ -----------------
+# ----------------- 64 SAYFALIK KATALOĞUN TAM BİRLEŞİK LİSTESİ (170+ KALEM) -----------------
 REAL_WAREHOUSE_STOCKS = [
-    # Mekatronik & Valfler & Pnömatik
-    {"code": "20031", "name": "Tork LS102M Switch Box", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90475", "name": "Autonics Kapasitif Sensör: CR18-8DN", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91285", "name": "P00142140 U2 Çek Valf", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "50606", "name": "Nipel 2010 - 1/2\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "91472", "name": "Solenoid Valf: L03Eb13 1/2\" S00100400", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50247", "name": "Valf Bobini: B00126625 FGC1 24VDC 6W", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "50249", "name": "Valf Soketi: M1TS2L01 24V Ledli 11mm", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "15401", "name": "Tee Rakor: 4000 1/4\" D-D-D", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "41439", "name": "1/4\" Paslanmaz Tek Taraflı Nipel", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "91633", "name": "Omal VIP Vana: VNC10004 NBR 1/2\" PN10", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "42595", "name": "1/2\" x Ø16mm Pirinç Altıköşe Hortum Ağzı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "90861", "name": "Siyah Kauçuk Su Hortumu 16mm (Metre)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
-    {"code": "90817", "name": "Omal Vana: DG424H405 3/4\" DN20 PN65", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "96097", "name": "DG424H405 Omal Aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91598", "name": "Omal Küresel Vana: V424H405 3/4\" Paslanmaz", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "40082", "name": "Krohne Optiflux 5300 Manyetik Debimetre", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91386", "name": "E/H DN25 (1/2\") Mass Flowmetre Promass 40E15", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91488", "name": "V424H405 Vana Küresi 3/4\" RD", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90965", "name": "Manometre: G27-10-R1 (AW10/AR10 için)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90828", "name": "Omal Vana: DG451H006 3 Yollu L Port 1\" DN25", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90834", "name": "Omal Aktüatör: DA045402S F03-F05", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "96468", "name": "Omal Çift Etkili Aktüatör: DAN0045412S DA45", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90548", "name": "3 Yollu L Port 1\" Vana Küresi 545-II-F06", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90832", "name": "Omal Aktüatör: DA0015411S DA15 15Nm F03", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90878", "name": "DST16-23 Yaylı Çekvalf Paslanmaz 3/4\"", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "14574", "name": "Nipel 2010 - 1/4\"", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
-    {"code": "14541", "name": "Orantılı Nipel 2030 1/4\"-1/8\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "50219", "name": "Pnömatik Rakor: 57116 1/4\"-10mm Dirsek Pirinç", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "41441", "name": "57226 1/4\" x 10mm Döner Tee", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "91447", "name": "Pnömatik Rakor: 57020 1/4\"-10mm Düz Erkek", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
-    {"code": "50057", "name": "Pnömatik Rakor: 57020 1/4\"-8mm Düz Pirinç", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
-    {"code": "54612", "name": "Yıldız Başlı Cıvata: M4x30mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "50098", "name": "Manifold: SS5Y5-41-04-01F-Q 4'lü", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "15005", "name": "Kuyruklu Dirsek: 5020 1/4\" Erkek-Dişi", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "50549", "name": "Redüksiyon 2090 1/4\" - 1/8\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "40085", "name": "Basınç Anahtarı: PMN10A 2-10 Bar NO", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91451", "name": "57116 RDD 1/4\"-8mm Dirsek Aignep", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "50023", "name": "KQ2S06-01AS: 1/8\"-6mm Düz İçten Sıkmalı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "50273", "name": "Manifold: SS5Y5-41-05-01F-Q 5'li Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50021", "name": "Valf Soketi: DIN 43650C Ledli 24V", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "41442", "name": "RD96 MU_22 Krom Kaplı Ray: Ø25 / 180mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "41404", "name": "RD96 MU_33 Krom Kaplı Ray: Ø25 / 267mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "96501", "name": "SMC C76-32PS Sızdırmazlık Kiti", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "16016", "name": "Paslanmaz Altı Köşe Cıvata M5x10mm", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "16039", "name": "Paslanmaz M5 Yaylı Rondela", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "16034", "name": "Paslanmaz M5 Pul", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "41403", "name": "Havşa Başlı İmbus Cıvata M8x10", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
-    {"code": "90767", "name": "RD96 Cambaz Kolu Sacı", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90762", "name": "Sensör Tutucu: BM2-032 Bant Tipi 32mm", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "41400", "name": "RD96 MU Z Ekseni Yataklama Pimleri", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "41401", "name": "RD96 MU Z Ekseni Gijonları 292mm*M6", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "41402", "name": "RD96 MU Z Ekseni Paslanmaz Yataklama Plakası", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "54516", "name": "RD96 Full Z Axis Equipment", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90768", "name": "Cambaz Kutusu Dolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "16032", "name": "Paslanmaz Altı Köşe Cıvata M6x10mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "16041", "name": "Paslanmaz M6 Yaylı Rondela", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "16035", "name": "Paslanmaz M6 Pul", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "11906", "name": "Altı Köşe Somun M6", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "16043", "name": "Paslanmaz İmbus M5x20mm Cıvata", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "16030", "name": "Paslanmaz Altı Köşe Cıvata M5x20mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
-    {"code": "12302", "name": "Fiberli Kör Somun M6", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
-    {"code": "41444", "name": "Krom Ray: Ø25 / 1350mm X Ekseni", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50263", "name": "Silindir: CD85N25-400C-B Çelik (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91044", "name": "SMC Küresel Mafsal: KJ10D M10*1,25", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "54510", "name": "Pnömatik Rakor: KQ2VS04-01AS 1/8\"-4mm", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "50262", "name": "Silindir: CD85N25-300C-B (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41399", "name": "Pnömatik Rakor: KQ2U04-00 4mm Y Bağlantı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "91269", "name": "RD96 X Ekseni Mekanik Yatak Kilidi", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91270", "name": "RD96 Y Ekseni Mekanik Yatak Kilidi", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50278", "name": "Manifold: SS5YJ3-S41-02-M5F-Q 2'li", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90725", "name": "Hız Ayar Valfi: ASN2-02 1/8\" Susturuculu", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "50040", "name": "Dirsek Rakor 1/8\"-6mm KQ2L06-01AS", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "41398", "name": "Soket Ucu: SY100-30-A", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "54630", "name": "SYJ3243 2'li Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91066", "name": "Pnömatik Rakor: KQ2H06-M5A M5-6mm Altıgen", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "41457", "name": "Kör Tapa: M-5P M5x0,8 (SMC)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "96404", "name": "RD96 MU22 Paslanmaz Çelik Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41406", "name": "RD96 MU33 PVC Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41405", "name": "RD96 MU33 Paslanmaz Çelik Tabla (304)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90484", "name": "3/4\" Kimyasal Vana / Kür. Vana + Elcik + Adaptör", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "91490", "name": "3/4\" RD Vana Adaptör Bağlantı O-ringi", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
-    {"code": "91489", "name": "3/4\" RD Vana Conta Takımı", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "90930", "name": "EPDM Lastik Conta 25*40 Kare O-ring", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "91495", "name": "3/4\" Şeffaf Kimyasal Hortum (Metre)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
-    {"code": "54661", "name": "RD96 MU 22 Y Ekseni Kolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "54662", "name": "RD96 MU 33 Y Ekseni Kolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41437", "name": "Flowmetre Dönüşüm Flanşı (Micromotion>E/H)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90568", "name": "66 Mm Teflon Takviyeli Diyafram Pulu", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "91782", "name": "RD96-33 Hareketli Kablo (EM)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91271", "name": "RD96-22 Hareketli Kablo (EM)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "91268", "name": "RD96 MU Fırça", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90793", "name": "Loblu Pompa Conta (Teflon Giydirme)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "90324", "name": "SLR1-40 Lob Anahtarı", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "16044", "name": "Yıldız Başlı M4 x 5mm Vida", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
-    {"code": "14847", "name": "Klemp Kelepçesi: 1\" - Ø33.7mm Paslanmaz", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "41290", "name": "Soket Muhafazası: HAN24 B-AGG-QB", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41287", "name": "Socket Cover: HDC HB 24TSVU 1/21 P", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41288", "name": "Soket: HDC-HE-24BS 24 Pin Dişi", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "41289", "name": "Soket: HDC-HE-24SS 24 Pin Erkek", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "54629", "name": "SY114 4'lü Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "54628", "name": "SY114 2'li Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50024", "name": "Hava Hortumu: TU0604BU 6mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "50025", "name": "Hava Hortumu: TU0806BU 8mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "91586", "name": "Hava Hortumu: TU1065BU 10mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "50027", "name": "Hava Hortumu: TU0425BU 4mm Mavi (Metre)", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
-    {"code": "92038", "name": "Regülatör: AW30-F03DE-B 3/8\" Filtreli", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "54620", "name": "G36-P10-01-X30 Manometre", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "14577", "name": "Nipel: 2010 3/8\"", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "14317", "name": "Pnömatik Tee Rakor: 4000 3/8\" D-D-D", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "96449", "name": "Orantılı Nipel: 2030 1/4\"-3/8\"", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
-    {"code": "91950", "name": "Çek Valf: U4 1/4\"", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "96219", "name": "Küresel Vana: 6310 3/8\" Erkek-Dişi", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "91453", "name": "Pnömatik Rakor: 57116 3/8\"-10mm Dirsek", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "50008", "name": "Tespit Elemanı AR30 / AW30 Braket", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "50010", "name": "Tespit Elemanı: AW23P-270AS Braket", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "50046", "name": "Regülatör: AW20-F02C-B (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50054", "name": "Küresel Vana: 6310 1/4\" Erkek-Dişi", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-
-    # Standart Kontrolörler / PLC
+    # Sayfa 2 - Güç ve Kontrol
     {"code": "91661", "name": "Sürücü VZAB2P2BAA V1000 3/2,2 kW", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
     {"code": "40642", "name": "PLC CPU: CJ1M-CPU21", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "Pd320", "name": "Pd320 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "PD330", "name": "PD330 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "40645", "name": "Güç kaynağı: CJ1W-PA202", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "40643", "name": "Dijital giriş modülü: CJ1W-ID211", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "40644", "name": "Dijital çıkış modülü: CJ1W-OC211", "cat": "ELEKTRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "90802", "name": "Güç Kaynağı: CQM1-PA203 (omron)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 3 - PLC ve Pompalar
+    {"code": "CQM1H-CPU21", "name": "Omron CQM1H-CPU21 Modül", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "CQM1-ID211", "name": "Omron CQM1-ID211 Input Modül", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41370", "name": "Plc Çıkış Modülü: CQM1-OC222 (Omron)", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41381", "name": "Rd96 22 Li Pompa Altı Paslanmaz Tava", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91514", "name": "Rd96 SLR1-40 AISI 316L Loblu Pompa", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 4 - Motor ve Bağlantılar
+    {"code": "91410", "name": "Wat 3 faz Motor Q2E112M6C 2,2 kW 3 HP 1000 d/d", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91411", "name": "WAT Motor Ayağı (Q2E112M6C)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41436", "name": "Rd96 SLR1-40 Pompa Çıkış Bağlantı Rakor ve Dirsekleri", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "41435", "name": "Rd96 SLR1-40 Pompa Giriş Bağlantı Rakor ve Dirsekleri", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "96469", "name": "Rakor Contası - Gasket - Nw 40 Dın - EPDM", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "60002", "name": "Klemp Contası: EPDM (DN25) 1''- Ø33.7mm", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 5 - SLR1-40 Pompa Parçaları
+    {"code": "90338", "name": "SLR1-40 ASI 316L Salmastra Bileziği (Part No 13)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91128", "name": "SLR 1-40 Mec. Seal Si.Carbon/Si.Carbide (Part No 8-8A)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "91516", "name": "SLR1-40 NBR O-Ring (Part No 80D)", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "41538", "name": "SLR1-40 Cover Seal (Part No: 09) (AISI-304)", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "41407", "name": "SLR1-40 Pump Housing (Part No: 01) (CF-8M)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 6 - Lob ve Cıvatalar
+    {"code": "41420", "name": "SLR1-40 Allen Screw (Part No: 51B) (A2)", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "93041", "name": "SLR1-40 Brass Flanş Burcu (Part No 35)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "93035", "name": "SLR1-40 AISI 431 Wedge Lobe (Part No 2)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "60020", "name": "SLR1-40 AISI 316 Lobe Screw (Part No 25)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "91517", "name": "SLR1-40 NBR O-Ring (Part No 80)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "41430", "name": "SLR1-40 O-ring (Part No: 80A) (EPDM)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 7 - Kapaklar ve Burçlar
+    {"code": "41408", "name": "SLR1-40 Pump Cover (Part No: 03) (AISI-316)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41415", "name": "SLR1-40 Wing Nut (Part No: 45) (AISI 316)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41419", "name": "SLR1-40 Allen Screw (Part No: 51A) (8.8)", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "41414", "name": "SLR1-40 Dragging Bushing (Part No: 17B)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 8 - Dişliler ve Somunlar
+    {"code": "41425", "name": "SLR1-40 Safety Nut (Part No: 62) (Steel)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41427", "name": "SLR1-40 Conical Tightening Ring (Part No: 65A) (Steel)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "41426", "name": "SLR1-40 Safety Washer (Part No: 63) (Steel)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "93039", "name": "SLR1-40 F 154 Motor Shaft Dişlisi (Part No 19)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "93040", "name": "SLR1-40 F-154 Tahrik Shaft Dişlisi (Part No 19A)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 9 - Rulmanlar ve Burçlar
+    {"code": "41413", "name": "SLR1-40 Drive Shaft Bushing (Part No:17) (ST-35)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41418", "name": "SLR1-40 Allen Screw (Part No: 51) (8.8)", "cat": "MEKATRONIK", "qty": 12, "loc": "ELIPS-DEPO"},
+    {"code": "41411", "name": "SLR1-40 Bearing Stop Flange (Part No: 12A) (F-114)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41428", "name": "SLR1-40 Ball Bearing (Part No: 70) (Steel)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "41429", "name": "SLR1-40 Needle Bearing (Part No: 70A) (Steel)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 10 - Şaftlar ve Keçeler
+    {"code": "93043", "name": "SLR1-40 Steel Tahrik Shaft Mili Kaması (Part No 61A)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "93042", "name": "SLR1-40 Steel Motor Shaft Mili Kaması (Part No 61)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "93037", "name": "SLR1-40 AISI 329 Tahrik Shaft (Part No 05A)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "93036", "name": "SLR1-40 AISI 329 Motor Shaft (Part No 5)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "60044", "name": "SLR1-40 NBR Keçe (Part No 88)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41434", "name": "SLR1-40 Bleeder (Part No: 87) (Plastic)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 11 - Gövde Elemanları
+    {"code": "90946", "name": "SLR1-40 Filtre", "cat": "MEKATRONIK", "qty": 12, "loc": "ELIPS-DEPO"},
+    {"code": "41432", "name": "SLR1-40 Oil Plug (Part No: 85) (Plastic)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "41409", "name": "SLR1-40 Support (Part No: 06) (GG-15)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41424", "name": "SLR1-40 Pin (Part No: 56) (F-522)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 12 - Kelepçeler ve Kapaklar
+    {"code": "41433", "name": "SLR1-40 Peephole (Part No: 86) (Plastic)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "41416", "name": "SLR1-40 Protector (Part No: 47A) (Plastic)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41417", "name": "SLR1-40 Screw (Part No: 50) (A2)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "41533", "name": "SLR1-40 Part 18A (Gasket)", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "96541", "name": "23-35 Paslanmaz Hortum Kelepçesi", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "96540", "name": "13-19 mm Paslanmaz Hortum Kelepçesi", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 13-17 - FIP25 Pompa Komple ve Elemanları
+    {"code": "90951", "name": "Rd96 Fip25 Pompa + Motor+ Flanş (Takım)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41384", "name": "R96 Fip 25 Pompa Bağlantı Çıkış Rakoru ve Dirseği", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41383", "name": "R96 Fip 25 Pompa Bağlantı Giriş Rakoru ve Dirseği", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "90310", "name": "Fip25 1\"/1\" Esnek Çarklı Pompa (Motorsuz)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90952", "name": "Fip25 Pompa Gövde+Kapak+Oring", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90332", "name": "Fip25 Pompa Mili (01-46634) (Şaft Version 2)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90328", "name": "Fip25 Maşon (Sleeve 01-45214)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "90949", "name": "Fip25 Maşon Alyan Vida (0.0300.943)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "90947", "name": "Fip25 Salmastra Sacı (Washer 01-45782)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90321", "name": "Fip25 Saç Vidası (0.0150.001)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "16073", "name": "Fip25 M8 Pul (Washer 0.0350.11)", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "90490", "name": "Fip25 Kapak Cıvatası Screw 4-20x8", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "91238", "name": "Fip25 O-ring (0-2173.523) FDA", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "90333", "name": "Fip25 Kapak Pimi (Screw Stud 01-46638)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "90948", "name": "Fip25 Bakalit Flanş (Motor Flange 01-24252)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91407", "name": "Fip25 Salmastra (09-46686-04) Si&Si", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "93008", "name": "Fip25 Pompa Gövdesi (SH-DIN)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90345", "name": "Fip25 Fan/Impeller (09-836S-7) FDA EPDM", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90325", "name": "Fip25 Pompa Kapağı (01-35850) Cover SH", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90320", "name": "Fip25 Kapak Somunu (Cap screw 01-46505)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "90950", "name": "Fip25 Motor Flanşı (Paslanmaz+Demir)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "60003", "name": "Rakor Contası - Gasket - Nw 25 Dın - EPDM", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "96112", "name": "3/4\" Siyah Madde Verici Kimyasal Hortum (MT)", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 18-22 - Omal Vanalar, Aktüatörler, Switchbox
+    {"code": "90827", "name": "Omal DG451H005 3 Yollu L Port 3/4\" (DN20) PN40", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50155", "name": "Omal Aktüatör: DA030401S DA30 30Nm Flanş F03-F05", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96467", "name": "Omal Aktüatör: DAN0030411S DA30 30Nm F03-F05", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91603", "name": "Omal Vana: V451H405 3 Yollu L Port 3/4\" (DN20)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91035", "name": "Omal (Tamir) Takımı: KGBV4505 3/4\" (DN20)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90547", "name": "3 Yollu \"L\" Port 3/4\" Vana Küresi (545-II-F05)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "20031", "name": "Tork LS102M Switch Box", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90475", "name": "Autonics Kapasitif Sensör: CR18-8DN", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50160", "name": "Pnömatik rakor: 57116 1/2\"-10mm dirsek pirinç", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "91285", "name": "P00142140 U2 Çek Valf", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50606", "name": "Nipel 2010 - 1/2\"", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "91472", "name": "Solenoid Valf: L03Eb13 1/2\" S00100400", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50247", "name": "Valf bobini: B00126625 FGC1 24VDC 6W", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50249", "name": "Valf soketi: M1TS2L01 B0122TH25 24V ledli", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "15401", "name": "Tee rakor: 4000 1/4\" D-D-D", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41439", "name": "1/4\" Paslanmaz Tek Taraflı Nipel", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91633", "name": "Omal VIP Vana: VNC10004 NBR 1/2\" (DN15) PN10", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91448", "name": "Pnömatik rakor: 57116 1/8\"-6mm dirsek pirinç", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "42595", "name": "1/2\"x Ø16mm Pirinç Altıköşe Hortum Ağzı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "90861", "name": "Siyah Kauçuk Su Hortumu 16mm", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "90817", "name": "Omal Vana: DG424H405 3/4\" (DN20) PN65 15Nm", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96683", "name": "Omal Aktüatör: SRN0015401S SR15 15Nm F03-F05", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96097", "name": "DG424H405 Omal Aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91598", "name": "Omal Küresel Vana: V424H405 3/4\" Paslanmaz", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91037", "name": "Omal (Tamir) Takımı: KGBV6005 3/4\" (DN20)", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "40082", "name": "Krohne Optiflux 5300 Magnetik Flowmeter", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 23-26 - Flowmetre, Diyafram ve Silindirler
+    {"code": "91386", "name": "E/H DN25 (1/2\") mass Flowmetre (Promass40E15)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91488", "name": "V424H405 Vana Küresi 3/4\" RD", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90567", "name": "Diyafram 66 Mm Teflon Takviyeli Diyafram", "cat": "MEKATRONIK", "qty": 9, "loc": "ELIPS-DEPO"},
+    {"code": "90965", "name": "Manometre: G27-10-R1: AW10/AR10 için", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "40647", "name": "SMC CJPB15-10H6 Pin Silindir, Tek Etkili", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90715", "name": "Regülatör: AR10-M5H: 0-8 Bar", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50161", "name": "Nipel 2010 - M5", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50162", "name": "1021 Düz Erkek 6/4 M5", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "90828", "name": "Omal Vana: DG451H006 3Yollu L Port 1\" PN40", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90834", "name": "Omal Aktüatör: DA045402S Flanş: F03-F05", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96468", "name": "Omal Çift Etkili Aktüatör: DAN0045412S DA45", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91463", "name": "Eurotec Reducer - Kafa Adaptörü 11mm-9mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91604", "name": "V451H406 1\" Omal L Port Vana", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90548", "name": "3 Yollu \"L\" Port 1\" Vana Kuresi (545-II-F06)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91036", "name": "Kgbv4506 V451H006 Omal Vana Conta Takımı", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90832", "name": "Omal Aktüatör: DA0015411S DA15 15Nm F03", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "40634", "name": "BES0057: Balluff M12MI-NSC40B-BV03", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 27-31 - Çekvalfler, Nipeller, Rakorlar
+    {"code": "96412", "name": "1\" > 3/4\" Polietilen Dst Çek Valf Adaptörü", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90878", "name": "Dst16-23 Cekvalf (Yaylı Çekvalf Paslanmaz 3/4\")", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90881", "name": "Dst Cek Valf Yayı", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "90880", "name": "DST Çekvalf Teflonu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90879", "name": "Dst Cek Valf Oring 007.59*2.62 EPDM", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91284", "name": "Valf: P00112200 E1A/4: 3/2", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "14574", "name": "Nipel 2010 - 1/4\"", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "14541", "name": "Orantılı Nipel 2030 1/4\"-1/8\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "91332", "name": "Basınç Anahtarı: PE-1/8-1N: 1/8\" 0-8 bar", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "50219", "name": "Pnömatik rakor: 57116 1/4\"-10mm dirsek pirinç", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "54626", "name": "A03/0-24VDC B00123525: 5W 22mm bobin", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41441", "name": "57226 1/4\"x10 Döner Tee", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "91447", "name": "Pnömatik rakor: 57020 1/4\"-10mm düz erkek", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "50057", "name": "Pnömatik rakor: 57020 1/4\"-8mm: düz pirinç gövde", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "54612", "name": "Yıldız Başlı Cıvata: M4x30mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "50098", "name": "Manifold: SS5Y5-41-04-01F-Q: 4'lü", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50018", "name": "Valf: SY5140-5YO-Q: 5/2 tek bobin 24VDC", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "91594", "name": "Valf: SY5240-5YO-Q-5/2 Çift Bobin 1/8\" 24VDC", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "91590", "name": "Çek valf: U4: 1/4\"", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "15005", "name": "Kuyruklu dirsek: 5020 1/4\" erkek-dişi", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50549", "name": "Rediksiyon 2090 1/4\"<1/8\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "40085", "name": "Basınç anahtarı: PMN10A: 2-10 bar NO", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 32-37 - Valf Grupları, Raylar, Silindirler
+    {"code": "91451", "name": "57116 RDD 1/4-8 DİRSEK AIGNEP", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50023", "name": "KQ2S06-01AS: 1/8\"-6mm düz içten sıkmalı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50273", "name": "SS5Y5-41-05-01F-Q 5'li Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50021", "name": "Valf soketi: DIN 43650C-C/Led 24V", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41442", "name": "RD96 MU_22 Krom Kaplı Ray: Ø25 / 180 mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41404", "name": "RD96 MU_33 Krom Kaplı Ray: Ø25 / 267 mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "96517", "name": "Rd96_MU Z Polietilen Z eksen Piston Dayama Takozu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50257", "name": "Tek Etlkili Pnömatik Silindir CD75E32-80-B (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96501", "name": "SMC C76-32PS Sızdırmazlık Kiti", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90766", "name": "RD96 Aliminyum Lama Montaj Parcası", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "16016", "name": "Paslanmaz Altı köşe Civata M5 x10 mm", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "16039", "name": "Paslanmaz M5 Yaylı Rondela", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "16034", "name": "Paslanmaz M5 Pul", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "41403", "name": "Havşa Başlı İmbus Civata M8 x 10", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "90767", "name": "RD96 Cambaz Kolu Sacı", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91071", "name": "KQ2L04-01Ns Dirsek Rakor 1/8\" 4 Mm Nikel Kaplı", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "90762", "name": "Sensör tutucu: BM2-032: bant tipi 32mm çap", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90840", "name": "Piston sensörü: DC73L: reed 3m kablolu", "cat": "ELEKTRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41400", "name": "Rd96 MU Z ekseni Yataklama Pim leri 107*160 mm", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41401", "name": "Rd96 MU Z eksen Gijonları 292mm*M6", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "41300", "name": "RD96-Mu Cambaz Pistonu Polietilen (Yeşil) Takoz", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41402", "name": "Rd96 MU Z ekseni Paslanmaz Yataklama Plakası", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91277", "name": "RD96-Mu Polietilen Ağızlık", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "54516", "name": "Rd96 Full Z Axis Equipment", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90768", "name": "Cambaz Kutusu Dolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90769", "name": "RD96 Bos Cambaz Kutusu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90782", "name": "C85 Serisi Silindir C85C16 Eklem Yer Bağlantı", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "16032", "name": "Paslanmaz Altı köşe Civata M6 x10 mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16041", "name": "Paslanmaz M6 Yaylı Rondela", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16035", "name": "Paslanmaz M6 Pul", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "50260", "name": "Pnömatik Silindir CD85N16-50-B (SMC)", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "90759", "name": "Sensör tutucu: BJ2-016", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 38-46 - Mafsallar, Kızaklar, Kilitlemeler
+    {"code": "50138", "name": "Pnömatik rakor: KQ2L04-M5A: M5-4mm dirsek", "cat": "MEKATRONIK", "qty": 11, "loc": "ELIPS-DEPO"},
+    {"code": "91086", "name": "Pnömatik T rakor: KQ2T04-M5A: orta M5-4mm", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "91045", "name": "SMC Küresel Mafsal: KJ6D M6*1", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "90770", "name": "RD96 Cambaz Mekanizması", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "16043", "name": "Paslanmaz İmbus M5 Civata M5x20 mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "16030", "name": "Paslanmaz Altı köşe Civata M5 x20 mm", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "90765", "name": "RD96 Cambaz Kolu", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "11906", "name": "Altı Köşe Somun M6", "cat": "MEKATRONIK", "qty": 20, "loc": "ELIPS-DEPO"},
+    {"code": "12302", "name": "Fiberli Kör Somun M6", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "41444", "name": "Krom Ray: Ø25 / 1350 mm RD96-MU22-MU33 x ekseni", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91303", "name": "Paslanmaz Araba 4 Delikli Krom Kaplı Bilyalı Rexroth", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50263", "name": "Silindir: CD85N25-400C-B Çelik (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91044", "name": "SMC Küresel Mafsal: KJ10D M10*1,25", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "54510", "name": "Pnömatik rakor: KQ2VS04-01AS: 1/8\"-4mm dirsek", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90761", "name": "Sensör tutucu: BM2-025: bant tipi", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50262", "name": "Silindir: CD85N25-300C-B-XC6A (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41399", "name": "Pnömatik rakor: KQ2U04-00: 4mm Y bağlantı", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50259", "name": "Silindir CD85N16-200-B (SMC)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "50258", "name": "Silindir CD85N16-100-B (SMC)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "50261", "name": "Silindir 80 mm Strok CD85N16-80-B (SMC)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91269", "name": "RD96 X Ekseni mekanik yatak Kilidi", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91270", "name": "RD96 Y Ekseni mekanik yatak Kilidi", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50278", "name": "Manifold: SS5YJ3-S41-02-M5F-Q (3243 için 2'li Altlık)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50293", "name": "Valf: SYJ3243-5LOU-Q: 5/2 çift bobin", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "90725", "name": "Hız ayar valfi: ASN2-02: 1/8\" susturuculu", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 47-52 - Valfler ve Donanımlar
+    {"code": "50040", "name": "Dirsek Rakor 1/8x6mm / KQ2L06-01AS", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "41396", "name": "12'li Hareketli Kablo X3-X4 Pistonu Valf Kablosu", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41398", "name": "Soket ucu SY100-30-A 00044321", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "54630", "name": "SYJ3243 2'li full valf grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50270", "name": "Manifold: SS3Y1-S41-04-M5-Q: 4'lü Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50287", "name": "Valf: SY114-5LOU-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "91066", "name": "Pnömatik rakor: KQ2H06-M5A: M5-6mm altıgen", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "91064", "name": "Pnömatik rakor: KQ2H04-M5A: M5-4mm düz", "cat": "MEKATRONIK", "qty": 13, "loc": "ELIPS-DEPO"},
+    {"code": "41457", "name": "Kör Tapa: M-5P: M5x0,8 (SMC)", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "50238", "name": "Susturucu: AN120-M5 (SMC)", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50156", "name": "Pnömatik T rakor: KQ2T06-00A: 6mm", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91043", "name": "Valf Kablosu: SY114 için (EM)", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50269", "name": "Manifold: SS3Y1-S41-02-M5-Q: 2'li Altlık", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50289", "name": "Valf: SY3220-5LOU-M5-Q: çift bobin", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "50239", "name": "3220 İçin Braket", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50291", "name": "Valf: SYJ3143-5LOU-Q", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "90781", "name": "SMC C85-25Ps Piston Keçesi X3-X4", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 53-57 - Tablalar, Vanalar, Hortumlar ve Soketler
+    {"code": "41407P", "name": "RD96_MU22 PVC Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96404", "name": "RD96-MU22 Paslanmaz Çelik Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41406", "name": "RD96_MU33 PVC Tabla", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41405", "name": "RD96-MU33 Paslanmaz Çelik Tabla (304)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90484", "name": "3/4\" Kimyasal Vana / 3/4'' Kür.Vana+Elcik+Adaptör", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91490", "name": "3/4 RD Vana Adaptör Bağlantı O-ringi", "cat": "MEKATRONIK", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "91489", "name": "3/4' RD Vana Conta Takımı", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90930", "name": "EPDM Lastik Conta 25*40 Kare Oring", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91495", "name": "3/4\" Seffaf Kimyasal Hortum", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "54661", "name": "Rd96 Mu 22 Y eksen Kolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54662", "name": "Rd96 Mu 33 Y eksen Kolu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41437", "name": "Flowmetre Dönüşüm Flanşı (Micromotion>E/Hauser)", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90568", "name": "66 Mm Teflon Takviyeli Diyafram Pulu", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "50014", "name": "Susturucu: AN15-02: 1/4\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "91782", "name": "Rd96-33 Hareketli Kablo (EM)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91271", "name": "RD96-22 Hareketli Kablo (EM)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91268", "name": "Rd96 Mu Fırca", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90793", "name": "Loblu Pompa Conta (Teflon Giydirme)", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "90324", "name": "SLR1-40 Lob Anahtarı", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "16044", "name": "Yıldız Tornavida başlı M4 x 5 mm vida", "cat": "MEKATRONIK", "qty": 15, "loc": "ELIPS-DEPO"},
+    {"code": "14847", "name": "Klemp Kelepçesi: 1\" - Ø33.7mm Paslanmaz (316)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41290", "name": "Soket muhafazası: HAN24 B-AGG-QB", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41287", "name": "Socket Cover HDC HB 24TSVU 1/21 P", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41288", "name": "Soket: HDC-HE-24BS: 24 pin dişi", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "41289", "name": "Soket: HDC-HE-24SS: 24 pin erkek", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+
+    # Sayfa 58-63 - Purge Valfleri, Hortumlar ve Regülatörler
+    {"code": "54629", "name": "SY114 4'lü Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54628", "name": "SY114 2'li Full Valf Grubu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54627", "name": "Dst komple purge valfi komple", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50024", "name": "Hava hortumu: TU0604BU: 6mm dış çap; mavi", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "50025", "name": "Hava hortumu: TU0806BU: 8mm dış çap; mavi", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "91586", "name": "Hava hortumu: TU1065BU: 10mm dış çap; mavi", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "50027", "name": "Hava hortumu: TU0425BU: 4mm dış çap mavi", "cat": "MEKATRONIK", "qty": 25, "loc": "ELIPS-DEPO"},
+    {"code": "92038", "name": "Regülatör: AW30-F03DE-B: 3/8\" filtreli manometreli", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "54620", "name": "G36-P10-01-X30 Manometre", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "14577", "name": "Nipel: 2010 3/8\"", "cat": "MEKATRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
+    {"code": "14317", "name": "Pnömatik Tee rakor: 4000 3/8\" D-D-D", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "96449", "name": "Orantılı nipel: 2030 1/4\"-3/8\"", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "91950", "name": "Çek valf: U4: 1/4\"", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "96219", "name": "Küresel vana: 6310 3/8\" erkek dişi", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "91453", "name": "Pnömatik rakor: 57116 3/8\"-10mm: dirsek pirinç", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "50008", "name": "Tespit Elemanı AR30 / AW30 / AR30P-270AS", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50010", "name": "Tespit Elemanı : AW23P-270AS", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50046", "name": "Regülatör: AW20-F02C-B (SMC)", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50054", "name": "Küresel vana: 6310 1/4\" erkek dişi", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+
+    # Excel Tablosundan Gelen Kontrolörler ve Ekstra Parçalar
+    {"code": "Pd320", "name": "Eliar Pd320 Boya Kontrolörü", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "PD330", "name": "Eliar PD330 Boya Kontrolörü", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "Aim8-A", "name": "Aim8-A Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "Aim8-B", "name": "Aim8-B Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "Dim32", "name": "Dim32 Dijital Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "Dom16-PLC", "name": "Dom16-PLC Dijital Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
     {"code": "P44", "name": "P44 Panel Kartı", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "Pd300", "name": "Pd300 Kontrol Cihazı", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "Pd340", "name": "Pd340 Kontrol Cihazı", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "Pd350", "name": "Pd350 Kontrol Cihazı", "cat": "KONTROL", "qty": 10, "loc": "ELIPS-DEPO"},
-    {"code": "S400", "name": "S400 Kontrol Cihazı", "cat": "KONTROL", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "S42", "name": "S42 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "Pd300", "name": "Eliar Pd300 Boya Kontrol Cihazı", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "Pd340", "name": "Eliar Pd340 Boya Kontrolörü", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "Pd350", "name": "Eliar Pd350 Boya Kontrolörü", "cat": "KONTROL", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "S400", "name": "Eliar S400 Kontrol Cihazı", "cat": "KONTROL", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "S42", "name": "Eliar S42 Kontrol Cihazı", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "Umf-ILETISIM20", "name": "Umf-ILETISIM20 İletişim Kablosu", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "TBBPLC-F", "name": "TBBPLC-F Modülü", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "Edc T7000", "name": "Eliar Edc T7000 Kontrolör", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "Edc M7700", "name": "Eliar Edc M7700 Kontrolör", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "Edc T710", "name": "Eliar Edc T710 Kontrolör", "cat": "KONTROL", "qty": 9, "loc": "ELIPS-DEPO"},
+    {"code": "Edc T712", "name": "Eliar Edc T712 Kontrolör", "cat": "KONTROL", "qty": 8, "loc": "ELIPS-DEPO"},
+    {"code": "Powerfail", "name": "Powerfail Modülü", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "P42", "name": "P42 Panel Kartı", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "P300", "name": "P300 Panel Kartı", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "P40", "name": "P40 Panel Kartı", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "Edc T7701EX", "name": "Eliar Edc T7701EX Kontrolör", "cat": "KONTROL", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "Edc T7700", "name": "Eliar Edc T7700 Kontrolör", "cat": "KONTROL", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7700", "name": "Eliar T7700 Cihazı", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "P43", "name": "P43 Panel Kartı", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "AOM8", "name": "AOM8 Analog Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 7, "loc": "ELIPS-DEPO"},
+    {"code": "T7701 EX G", "name": "Eliar T7701 EX G Kontrolör", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "T7RACK 6 PLC", "name": "T7RACK 6 PLC Taşıyıcı", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "T7RACK 10 PLC", "name": "T7RACK 10 PLC Taşıyıcı", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-POWER 30", "name": "T7PAC-POWER 30 Güç Kaynağı", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-POWER 20", "name": "T7PAC-POWER 20 Güç Kaynağı", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-DIM32V5", "name": "T7PAC-DIM32V5 Giriş Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-DOM32V5", "name": "T7PAC-DOM32V5 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-DIM16V5", "name": "T7PAC-DIM16V5 Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AIO88SV1", "name": "T7PAC-AIO88SV1 Giriş/Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AI8SV1", "name": "T7PAC-AI8SV1 Analog Giriş Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-AO8SV1", "name": "T7PAC-AO8SV1 Analog Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
+    {"code": "PANELSET-T7701 ex", "name": "PANELSET-T7701 ex Ön Panel Seti", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "PANELSET-T7700", "name": "PANELSET-T7700 Ön Panel Seti", "cat": "KONTROL", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-T7CPURIO", "name": "T7PAC-T7CPURIO İşlemci Modülü", "cat": "KONTROL", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "T7PAC-DOM16V5", "name": "T7PAC-DOM16V5 Çıkış Modülü", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41835", "name": "Apexco Salmastra 7003TTG-20 TUC/TUC.G/Vit/G45", "cat": "MEKATRONIK", "qty": 5, "loc": "ELIPS-DEPO"},
     {"code": "1013", "name": "Vana TORK 3/4\" 3 yollu + aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "5022", "name": "Salmastra", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "1015", "name": "SLD Kanal Vanası Full 3/4\" TORK 2 yollu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "5022", "name": "Salmastra (Geylani ile geldi)", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "30010", "name": "EBARA 15MM SIL/SIL/VITON SALMASTRA", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "30076", "name": "SANTOPRENE DIAPHRAGM FOR POMKAR PK10", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
     {"code": "40597", "name": "BES005M BALLUFF Sensör", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "40647", "name": "Smc CJPB15-10H6 Tek Etkili Silindir", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "41300", "name": "RD96 - MU CAMBAZ PISTONU POLIETILEN TAKOZ", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "41316", "name": "Lab120 encoder", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
     {"code": "42184", "name": "PIPETLEME SIRINGA UCU", "cat": "MEKATRONIK", "qty": 200, "loc": "ELIPS-DEPO"},
-    {"code": "50014", "name": "SUSTURUCU: AN15-02: 1/4\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "50018", "name": "VALF: SY5140-5YO-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-    {"code": "50138", "name": "PNOMATIK RAKOR: KQ2L04-M5A", "cat": "MEKATRONIK", "qty": 11, "loc": "ELIPS-DEPO"},
-    {"code": "50257", "name": "TEK ETLKILI PNOMATIK SILINDIR CD75E32", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "50258", "name": "SILINDIR CD85N16-100-B (SMC)", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "50260", "name": "PISTON CD85N16-50-B", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-    {"code": "50289", "name": "VALF: SY3220-5LOU-M5-Q", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-    {"code": "50291", "name": "VALF: SYJ3143-5LOU-Q", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
-    {"code": "90416", "name": "SOLENOID VALF: 00125317 24VDC", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90567", "name": "66 Mm Teflon Takviyeli Diyafram", "cat": "MEKATRONIK", "qty": 9, "loc": "ELIPS-DEPO"},
-    {"code": "90715", "name": "REGULATOR: AR10-M5H: 0-8 BAR", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "90840", "name": "PISTON SENSORU: DC73L", "cat": "ELEKTRONIK", "qty": 6, "loc": "ELIPS-DEPO"},
-    {"code": "90880", "name": "DST Çekvalf Teflonu", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "90881", "name": "DST CEKVALF YAYI", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-    {"code": "90946", "name": "SLR1-40 FILTRE", "cat": "MEKATRONIK", "qty": 12, "loc": "ELIPS-DEPO"},
-    {"code": "91035", "name": "OMAL TAMIR TAKIMI 3/4\"", "cat": "MEKATRONIK", "qty": 4, "loc": "ELIPS-DEPO"},
-    {"code": "91071", "name": "1/8\"-4MM DIRSEK RAKOR KQ2L04", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
-    {"code": "91603", "name": "Omal Vana V451H405 3 Yollu L Port", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
-    {"code": "96412", "name": "1\" > 3/4\" POLIETILEN DST ADAPTOR", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
-    {"code": "96467", "name": "Omal Aktüatör: DAN0030411S", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"}
+    {"code": "50090", "name": "Tork Çift Etkili Aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "50227", "name": "KISICILI RAKOR: AS2201F-01-04SA 1/8\"-4MM", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50242", "name": "KISICILI RAKOR: AS2002F-06 6MM HAT TIPI", "cat": "MEKATRONIK", "qty": 7, "loc": "ELIPS-DEPO"},
+    {"code": "50292", "name": "VALF: SYJ3240-5LOU-Q", "cat": "ELEKTRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "50294", "name": "VALF: SYJ7120-5DZ-01F-Q", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "50295", "name": "VALF: SYJ7220-5DZ-01F-Q", "cat": "ELEKTRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "52156", "name": "PNOMATIK T RAKOR: KQ2T06-00A: 6MM", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "54654", "name": "LOP POMPA FILTRE ORINGI 30*3 MM EPDM", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "90416", "name": "SOLENOID VALF: 00125317 6013-A02 24VDC", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "90501", "name": "SMC C76-32PS PISTON KECESI", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90726", "name": "HIZ AYAR VALFI: ASN2-02 1/4\" Susturuculu", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90771", "name": "RD96 CAMBAZ MEKANIZMASI", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "91074", "name": "PNOMATIK RAKOR: KQ2L6M5N Dirsek", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "91088", "name": "T RAKOR: KQ2T08-06 8-6MM", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91406", "name": "FIP25 SALMASTRA", "cat": "MEKATRONIK", "qty": 3, "loc": "ELIPS-DEPO"},
+    {"code": "91502", "name": "LAB120 mikser kayışı", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "96496", "name": "Omal Çift Etkili Aktüatör: DAN0015411S DA15", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "96515", "name": "DST Polietilen Z Eksen dayama takozu", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "96516", "name": "DST Z Ekseni Polietilen Ağızlık", "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "96570", "name": "Ø19mm Şeffaf Telli Hortum (Mavi)", "cat": "MEKATRONIK", "qty": 10, "loc": "ELIPS-DEPO"},
+    {"code": "C-137161", "name": "Tuz rafinasyon filtre kapağı", "cat": "MEKATRONIK", "qty": 2, "loc": "ELIPS-DEPO"},
+    {"code": "90620", "name": "PH Sensörü: SPH-1-DJ-6M (Seko)", "cat": "ELEKTRONIK", "qty": 0, "loc": "ELIPS-DEPO"},
+    {"code": "SPU-PANO", "name": "Saha panosu (SPU su yok)", "cat": "ELEKTRONIK", "qty": 1, "loc": "ELIPS-DEPO"},
+    {"code": "RA032DA", "name": "RA032DA09036000 Aktüatör", "cat": "MEKATRONIK", "qty": 1, "loc": "ELIPS-DEPO"}
 ]
 
 class ClientHistoryState(StatesGroup):
@@ -333,16 +492,19 @@ def save_data(file_path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def sync_all_stocks_to_db():
+    """Tüm 170+ katalog ve excel parçasını diske zorunlu eşitler"""
     existing = load_data(STOCKS_FILE, [])
-    existing_codes = {s["code"].lower() for s in existing}
-    added = False
+    existing_map = {s["code"].lower(): s for s in existing}
+    
+    # Eksik olanları ekle
     for p in REAL_WAREHOUSE_STOCKS:
-        if p["code"].lower() not in existing_codes:
+        code_l = p["code"].lower()
+        if code_l not in existing_map:
             existing.append(p)
-            added = True
-    if added or not os.path.exists(STOCKS_FILE):
-        save_data(STOCKS_FILE, existing)
-        logging.info("✅ Tüm katalog parçaları (20031 dahil) envantere senkronize edildi.")
+            existing_map[code_l] = p
+            
+    save_data(STOCKS_FILE, existing)
+    logging.info(f"✅ TÜM KATALOG EŞİTLENDİ: {len(existing)} Kalem Parça Veritabanında Aktif!")
 
 load_stocks = lambda: load_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
 load_sales = lambda: load_data(SALES_FILE, [])
@@ -445,7 +607,7 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
                 x0 = 8 if col == 0 else (pw / 2.0 + 2)
                 x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
 
-                # DURUM 1: Başlık önceki sayfanın dibinde, kod ve resim bu sayfada (Örn: Pin Silindir 40647)
+                # DURUM 1: Başlık önceki sayfanın dibinde, resim bu sayfada (Örn: Pin Silindir 40647)
                 if r.y0 < 130 and p_idx > 0:
                     p_prev = doc[p_idx - 1]
                     rect_header = fitz.Rect(x0, ph - 62, x1, ph - 20)
@@ -501,7 +663,7 @@ def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
         for page in doc: full_text += page.get_text() + "\n"
     except Exception: pass
 
-    # 1. Müşteri Adı Tespiti (Hatasız)
+    # 1. Müşteri Adı Tespiti
     m_firm = re.search(r"Müşteri\s*Adı\s*:\s*([^\n\r]+)", full_text, re.IGNORECASE)
     if m_firm:
         val = m_firm.group(1).strip()
@@ -897,7 +1059,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     msg_text = (
         f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.{test_banner}\n"
         f"• Katalog PDF: <b>{pdf_info}</b>\n"
-        f"• Güncel Depo Kalem: <b>{len(stocks)} Çeşit Parça</b>\n\n"
+        f"• Güncel Depo Kalem: <b>{len(stocks)} Çeşit Parça (Tüm Katalog Aktif!)</b>\n\n"
         f"💡 <i>Menüden işlem seçebilir, teklif hazırlayabilir, parça/etiket fotoğrafı atabilir veya teklif PDF'i yükleyebilirsiniz.</i>"
     )
     await message.answer(msg_text, reply_markup=get_start_inline_keyboard(), parse_mode="HTML")
@@ -954,7 +1116,7 @@ async def send_catalog_pdf(message: types.Message):
         await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
 
 # ==============================================================================
-#      DÜZELTİLMİŞ FOTOĞRAF / ETİKET TANIMA (GEMINI 2.0 / 1.5 FLASH VISION)
+#      DÜZELTİLMİŞ FOTOĞRAF / ETİKET TANIMA (GEMINI VISION)
 # ==============================================================================
 @dp.message(F.photo)
 async def handle_photo_recognition(message: types.Message, state: FSMContext):
@@ -1053,7 +1215,7 @@ async def handle_photo_recognition(message: types.Message, state: FSMContext):
             )
 
     except Exception as e:
-        logging.error(f"Görsel analiz genel hatası: {e}")
+        logging.error(f"Görsel analiz hatası: {e}")
         try: await wait_msg.delete()
         except Exception: pass
         await message.answer("⚠️ Görsel taranırken bir hata oluştu. Parça kodunu manuel yazabilirsiniz.")
@@ -1796,7 +1958,7 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer("Teklif kaydedildi!")
 
-# ----------------- PARÇA LİSTESİ -----------------
+# ----------------- PARÇA LİSTESİ (170+ KALEM KATEGORİLİ VE SAYFALI) -----------------
 @dp.message(Command("stok", ignore_mention=True))
 @dp.message(F.text == "📦 Parça Listesi")
 async def show_stocks(message: types.Message):
@@ -1804,14 +1966,17 @@ async def show_stocks(message: types.Message):
     available = [s for s in stocks if s.get("qty", 0) > 0]
     out_of_stock = [s for s in stocks if s.get("qty", 0) == 0]
 
-    text = f"📦 <b>GÜNCEL ELİPS DEPO STOKLARI</b>\n"
-    text += f"📊 Toplam Kalem: <b>{len(stocks)}</b> | Stokta: <b>{len(available)}</b> | Tükendi: <b>{len(out_of_stock)}</b>\n"
-    text += "═══════════════════════════════\n\n"
+    text = (
+        f"📦 <b>ELİAR DEPO TAM ENVANTER LİSTESİ</b>\n"
+        f"📊 Toplam Kalem: <b>{len(stocks)} Çeşit</b> | Stokta: <b>{len(available)}</b> | Tükendi: <b>{len(out_of_stock)}</b>\n"
+        f"═══════════════════════════════\n\n"
+    )
 
     for s in available[:15]:
         text += f"• <code>[{s['code']}]</code> {html.escape(s['name'][:35])}\n  └ Stok: <b>{s['qty']} ADT</b> | {s['loc']}\n"
+    
     if len(available) > 15:
-        text += f"\n<i>...ve {len(available)-15} kalem ürün daha (Mini App'ten görebilirsiniz).</i>"
+        text += f"\n<i>...ve {len(available)-15} kalem ürün daha depoda kayıtlıdır. (Tüm 170+ kalemi Mini App'ten canlı yönetebilir veya arama yapabilirsiniz).</i>"
 
     await message.answer(text, parse_mode="HTML")
 
@@ -2008,9 +2173,12 @@ async def start_dummy_server():
     except Exception as e:
         logging.warning(f"Server başlatılamadı: {e}")
 
+# ==============================================================================
+#                               ANA ÇALIŞTIRICI
+# ==============================================================================
 async def main():
     try:
-        # Tüm 63 sayfalık katalog parçalarını envantere otomatik senkronize et
+        # 170+ Kalem parçanın tamamını veritabanına zorunlu eşitle
         sync_all_stocks_to_db()
 
         await bot.delete_webhook(drop_pending_updates=True)

@@ -158,11 +158,11 @@ async def cmd_start(msg: types.Message, state: FSMContext):
     welcome_text = (
         f"🏢 <b>ELİPS TEKSTİL OTOMASYON & DEPO YÖNETİMİ</b>\n"
         f"═══════════════════════════════\n"
-        f"Sayın <b>{user_title}</b>, sisteme hoş geldiniz.\n\n"
+        f" <b>{user_title}</b>, sisteme hoş geldiniz.\n\n"
         f"📊 <b>Depo Envanter Durumu:</b>\n"
         f"• Tanımlı Parça Çeşidi: <b>{len(stocks)} Kalem</b>\n"
         f"• Depoda Mevcut Ürün: <b>{in_stock} Çeşit</b>\n"
-        f"• Teknik Servis & Ekran Takibi: <b>Aktif</b>\n\n"
+        f"• Teknik Servis Takibi: <b>Aktif</b>\n\n"
         f"💡 <i>Aşağıdaki <b>'Eliar Mini App'</b> butonuna dokunarak canlı stokları görebilir, parça ekleyip düşebilir veya ekran tamir süreçlerini yönetebilirsiniz.</i>"
     )
     await msg.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")

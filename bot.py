@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
-# 1. ÖZBEKİSTAN SAAT DİLİMİ (Sessizce arka planda çalışır)
+# 1. ÖZBEKİSTAN SAAT DİLİMİ
 os.environ['TZ'] = 'Asia/Tashkent'
 if hasattr(time, 'tzset'):
     try: time.tzset()
@@ -36,9 +36,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-STOCKS_FILE = "stocks_db.json"
-SALES_FILE = "weekly_sales.json"
-QUOTES_FILE = "submitted_quotes.json"
+STOCKS_FILE, SALES_FILE, QUOTES_FILE = "stocks_db.json", "weekly_sales.json", "submitted_quotes.json"
 
 class QuoteState(StatesGroup):
     waiting_firm = State()
@@ -110,8 +108,11 @@ def find_best_matches(query: str):
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored
 
-async def notify_both(text: str, reply_markup=None):
-    recipients = {OMER_CHAT_ID} if TEST_MODE else {OMER_CHAT_ID, KAMIL_CHAT_ID}
+async def notify_both(text: str, reply_markup=None, is_test=False):
+    global TEST_MODE
+    recipients = {OMER_CHAT_ID} if (TEST_MODE or is_test) else {OMER_CHAT_ID, KAMIL_CHAT_ID}
+    if is_test or TEST_MODE:
+        text += "\n\n🧪 <i>[TEST MODU: Kamil'e bildirim gitmedi]</i>"
     for cid in recipients:
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception: pass
@@ -131,10 +132,10 @@ async def setup_bot_commands():
         BotCommand(command="start", description="Ana Menü / Durum"),
         BotCommand(command="stok", description="Depo Envanteri & Yeniler"),
         BotCommand(command="stokekle", description="Stok Ekle / Yeni Tanımla"),
-        BotCommand(command="stoksil", description="Parça Sil (Sessiz/Bildirimli)"),
+        BotCommand(command="stoksil", description="Parça Sil (Sadece Admin)"),
         BotCommand(command="teklif", description="Teklif Oluştur"),
         BotCommand(command="zraporu", description="Satış Z-Raporu"),
-        BotCommand(command="iptal", description="İşlemi İptal Et")
+        BotCommand(command="iptal", description="Açık İşlemi İptal Et")
     ])
 
 @dp.message(Command("iptal", "vazgec"), StateFilter("*"))
@@ -143,9 +144,6 @@ async def cmd_cancel(msg: types.Message, state: FSMContext):
     await state.clear()
     await msg.answer("❌ <b>İşlem iptal edildi.</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
 
-# ==============================================================================
-#            KURUMSAL KARŞILAMA EKRANI (/start)
-# ==============================================================================
 @dp.message(CommandStart(), StateFilter("*"))
 @dp.message(Command("start"), StateFilter("*"))
 async def cmd_start(msg: types.Message, state: FSMContext):
@@ -204,11 +202,10 @@ async def stock_add_q(msg: types.Message, state: FSMContext):
     await state.update_data(raw_q=q)
     matches = find_best_matches(q)
     if not matches:
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="➕ Yeni Parça Olarak Tanımla", callback_data="add_unlisted")],
-            [InlineKeyboardButton(text="❌ İptal", callback_data="cb_close")]
-        ])
-        await msg.answer(f"⚠️ <code>{html.escape(q)}</code> depoda yok. <b>[YENİ]</b> olarak eklensin mi?", reply_markup=kb, parse_mode="HTML")
+        new_p = {"code": q.upper() if len(q) <= 12 and " " not in q else "KODSUZ", "name": q, "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO", "is_new": True}
+        await state.update_data(target_part=new_p)
+        await state.set_state(StockAddState.waiting_qty)
+        await msg.answer(f"🆕 <b>Yeni Parça Tanımlanıyor:</b> <code>{html.escape(q)}</code>\n➕ Kaç adet eklenecek?", parse_mode="HTML")
         return
 
     top, _ = matches[0]
@@ -216,13 +213,12 @@ async def stock_add_q(msg: types.Message, state: FSMContext):
         await state.update_data(target_part=top)
         await state.set_state(StockAddState.waiting_qty)
         img = extract_part_image_from_pdf(top.get("code", ""))
-        if img:
-            await msg.answer_photo(BufferedInputFile(img, filename=f"{top.get('code')}.png"), caption=f"📸 <code>[{top.get('code')}]</code> {html.escape(top.get('name', ''))}")
+        if img: await msg.answer_photo(BufferedInputFile(img, filename=f"{top.get('code')}.png"), caption=f"📸 <code>[{top.get('code')}]</code>")
         await msg.answer(f"🎯 <code>[{top.get('code')}]</code> {html.escape(top.get('name', ''))}\n📦 Mevcut: <b>{safe_stock_qty(top.get('qty', 0))} ADT</b>\n\n➕ Kaç adet eklenecek?", parse_mode="HTML")
         return
 
     btns = [[InlineKeyboardButton(text=f"👉 [{p.get('code')}] {p.get('name', '')[:25]}", callback_data=f"sel_s:{p.get('code')}")] for p, _ in matches[:5]]
-    btns.append([InlineKeyboardButton(text="➕ Yeni Olarak Tanımla", callback_data="add_unlisted")])
+    btns.append([InlineKeyboardButton(text=f"➕ Yeni Olarak Ekle: '{q[:15]}'", callback_data="add_unlisted")])
     await msg.answer("🔍 Eşleşen parçalar:", reply_markup=InlineKeyboardMarkup(inline_keyboard=btns), parse_mode="HTML")
 
 @dp.callback_query(F.data == "add_unlisted")
@@ -232,7 +228,7 @@ async def on_add_unlisted(cb: types.CallbackQuery, state: FSMContext):
     new_p = {"code": q.upper() if len(q) <= 12 and " " not in q else "KODSUZ", "name": q, "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO", "is_new": True}
     await state.update_data(target_part=new_p)
     await state.set_state(StockAddState.waiting_qty)
-    await cb.message.edit_text(f"🆕 <b>Yeni Parça:</b> {html.escape(q)}\n➕ Kaç adet eklenecek?", parse_mode="HTML")
+    await cb.message.edit_text(f"🆕 <b>Yeni Parça Tanımlanıyor:</b> {html.escape(q)}\n➕ Kaç adet eklenecek?", parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("sel_s:"))
 async def on_sel_s(cb: types.CallbackQuery, state: FSMContext):
@@ -243,8 +239,7 @@ async def on_sel_s(cb: types.CallbackQuery, state: FSMContext):
         await state.update_data(target_part=part)
         await state.set_state(StockAddState.waiting_qty)
         img = extract_part_image_from_pdf(part.get("code", ""))
-        if img:
-            await cb.message.answer_photo(BufferedInputFile(img, filename=f"{part.get('code')}.png"), caption=f"📸 <code>[{part.get('code')}]</code> {html.escape(part.get('name', ''))}")
+        if img: await cb.message.answer_photo(BufferedInputFile(img, filename=f"{part.get('code')}.png"), caption=f"📸 <code>[{part.get('code')}]</code>")
         await cb.message.answer(f"🎯 <code>[{part.get('code')}]</code> {html.escape(part.get('name', ''))}\n➕ Kaç adet eklenecek?", parse_mode="HTML")
 
 @dp.message(StockAddState.waiting_qty, ~F.text.startswith("/"))
@@ -271,9 +266,14 @@ async def stock_add_process_qty(msg: types.Message, state: FSMContext):
     op = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
     await notify_both(f"📥 <b>STOK EKLENDİ!</b>\n⚙️ <code>[{p.get('code')}]</code> {html.escape(p.get('name', ''))}{tag}\n📈 <b>+{qty}</b> | Yeni Stok: <b>{new_q} ADT</b>\n👷‍♂️ Ekleyen: <b>{op}</b>")
 
-# --- SESSİZ VEYA BİLDİRİMLİ PARÇA SİLME ---
+# --- SADECE ÖMER'E ÖZEL SİLME KOMUTU ---
 @dp.message(Command("stoksil", ignore_mention=True))
 async def cmd_stock_delete(msg: types.Message):
+    # KAMİL ENGELİ: Kamil yazarsa engeller!
+    if msg.chat.id != OMER_CHAT_ID:
+        await msg.answer("🔒 <b>Yetkisiz İşlem:</b> Depodan parça silme yetkisi yalnızca yöneticiye (Ömer Bey'e) aittir.", parse_mode="HTML")
+        return
+
     parts = msg.text.split(maxsplit=1)
     if len(parts) < 2: await msg.answer("⚠️ Parça kodu girin. Örn: <code>/stoksil 90567</code>", parse_mode="HTML"); return
     code = parts[1].strip()
@@ -290,6 +290,10 @@ async def cmd_stock_delete(msg: types.Message):
 @dp.callback_query(F.data.startswith("del_p:"))
 async def on_del_p(cb: types.CallbackQuery):
     await cb.answer()
+    if cb.message.chat.id != OMER_CHAT_ID:
+        await cb.message.edit_text("🔒 Bu işlem sadece yöneticiye açıktır.")
+        return
+
     _, code, mode = cb.data.split(":")
     stocks = load_stocks()
     target = next((s for s in stocks if str(s.get("code", "")).lower() == code.lower()), None)
@@ -299,12 +303,10 @@ async def on_del_p(cb: types.CallbackQuery):
     save_stocks(stocks)
 
     if mode == "silent":
-        await cb.message.edit_text(f"🔕 <code>[{code}]</code> parçası <b>kimseye bildirim gitmeden</b> sessizce silindi.", parse_mode="HTML")
+        await cb.message.edit_text(f"🔕 <code>[{code}]</code> parçası depodan <b>kimseye bildirim gitmeden</b> sessizce silindi.", parse_mode="HTML")
     else:
-        op = "Ömer" if cb.message.chat.id == OMER_CHAT_ID else "Kamil"
-        msg = f"🗑️ <b>DEPO PARÇASI SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(target.get('name', ''))}\n👷‍♂️ Silen: <b>{op}</b>"
-        await notify_both(msg)
-        await cb.message.edit_text(msg, parse_mode="HTML")
+        await notify_both(f"🗑️ <b>DEPO PARÇASI SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(target.get('name', ''))}\n👷‍♂️ Silen: <b>Ömer</b>")
+        await cb.message.edit_text(f"🗑️ <code>[{code}]</code> silindi ve herkese bildirildi.", parse_mode="HTML")
 
 # --- PARÇA LİSTESİ ---
 @dp.message(Command("stok", ignore_mention=True))
@@ -371,8 +373,7 @@ async def quote_i(msg: types.Message, state: FSMContext):
     await state.update_data(sel_part=part)
     await state.set_state(QuoteState.waiting_qty)
     img = extract_part_image_from_pdf(part.get("code", ""))
-    if img:
-        await msg.answer_photo(BufferedInputFile(img, filename=f"{part.get('code')}.png"), caption=f"📸 <code>[{part.get('code')}]</code>")
+    if img: await msg.answer_photo(BufferedInputFile(img, filename=f"{part.get('code')}.png"), caption=f"📸 <code>[{part.get('code')}]</code>")
     await msg.answer(f"🎯 <code>[{part.get('code')}]</code> {html.escape(part.get('name', ''))}\n🔢 Kaç adet teklif istenecek?", parse_mode="HTML")
 
 @dp.message(QuoteState.waiting_qty, ~F.text.startswith("/"))
@@ -422,13 +423,22 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
     await notify_both(f"📥 <b>YENİ TEKLİF:</b> {firm} ({len(items)} kalem)")
     await state.clear()
 
-# --- WEBAPP VERİLERİ (Stok Değişimi, Sessiz Silme ve EKRAN TAMİR BİLDİRİMİ) ---
+# --- WEBAPP VERİLERİ (TEST MODU VE YETKİ KORUMALI) ---
 @dp.message(F.web_app_data)
 async def handle_webapp(msg: types.Message):
     try: p = json.loads(msg.web_app_data.data)
     except Exception: return
-    op = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
+    op = p.get("sender") or ("Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil")
+    is_test = bool(p.get("test_mode", False))
     dir_t = p.get("direction")
+
+    # TEST MODU AÇMA / KAPAMA
+    if dir_t == "TEST_MODE_TOGGLE":
+        global TEST_MODE
+        TEST_MODE = bool(p.get("active", False))
+        st_text = "AÇILDI (Kamil'e bildirim gitmez)" if TEST_MODE else "KAPATILDI (Canlı mod aktif)"
+        await bot.send_message(OMER_CHAT_ID, f"🧪 <b>TEST MODU BİLGİSİ:</b>\nSimülasyon modu arayüzden <b>{st_text}</b>.", parse_mode="HTML")
+        return
 
     # STOK DEĞİŞİMİ
     if dir_t == "STOCK_CHANGE":
@@ -437,9 +447,9 @@ async def handle_webapp(msg: types.Message):
         target = next((s for s in stocks if str(s.get("code", "")).lower() == code.lower()), None)
         if p.get("action") == "INCREASE":
             if target: target["qty"] = safe_stock_qty(target.get("qty", 0)) + delta; new_q = target["qty"]
-            else: new_q = delta; stocks.append({"code": code, "name": name, "cat": "MEKATRONIK", "qty": new_q, "loc": "ELIPS-DEPO", "is_new": bool(p.get("is_new", False))})
+            else: new_q = delta; stocks.append({"code": code, "name": name, "cat": p.get("category", "MEKATRONIK"), "qty": new_q, "loc": "ELIPS-DEPO", "is_new": bool(p.get("is_new", False))})
             save_stocks(stocks)
-            await notify_both(f"📥 <b>STOK ARTIRILDI</b>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📈 <b>+{delta}</b> | Yeni: <b>{new_q} ADT</b>\n👷‍♂️ Yapan: <b>{op}</b>")
+            await notify_both(f"📥 <b>STOK ARTIRILDI</b>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📈 <b>+{delta}</b> | Yeni: <b>{new_q} ADT</b>\n👷‍♂️ Yapan: <b>{op}</b>", is_test=is_test)
         elif p.get("action") == "DECREASE":
             dest = p.get("destination", "Bilinmeyen")
             if target: target["qty"] = max(0, safe_stock_qty(target.get("qty", 0)) - delta); new_q = target["qty"]
@@ -448,15 +458,15 @@ async def handle_webapp(msg: types.Message):
             sales = load_sales()
             sales.append({"id": f"SLS-{int(time.time())}", "firm": dest, "source": "ELIPS_DEPO", "items": [{"code": code, "name": name, "qty": delta}], "status": "APPROVED", "date": get_now_uz().strftime("%d.%m.%Y %H:%M"), "timestamp": get_now_uz().isoformat()})
             save_sales(sales)
-            await notify_both(f"📤 <b>STOK ÇIKIŞI / SATIŞ</b>\n🏢 {html.escape(dest)}\n⚙️ <code>[{code}]</code> (-{delta} Adet)\n📉 Kalan: <b>{new_q} ADT</b>\n👷‍♂️ Yapan: <b>{op}</b>")
+            await notify_both(f"📤 <b>STOK ÇIKIŞI / SATIŞ</b>\n🏢 {html.escape(dest)}\n⚙️ <code>[{code}]</code> (-{delta} Adet)\n📉 Kalan: <b>{new_q} ADT</b>\n👷‍♂️ Yapan: <b>{op}</b>", is_test=is_test)
 
-    # BİLDİRİMSİZ / BİLDİRİMLİ SİLME
+    # PARÇA SİLME (SADECE ÖMER'DEN GELİR)
     elif dir_t == "STOCK_DELETE":
         code, name, silent = str(p.get("code") or ""), str(p.get("name") or "İsimsiz"), bool(p.get("silent", False))
         stocks = [s for s in load_stocks() if str(s.get("code", "")).lower() != code.lower()]
         save_stocks(stocks)
         if not silent:
-            await notify_both(f"🗑️ <b>PARÇA SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n👷‍♂️ Yapan: <b>{op}</b>")
+            await notify_both(f"🗑️ <b>PARÇA SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n👷‍♂️ Yapan: <b>Ömer</b>", is_test=is_test)
 
     # EKRAN TAMİR BİLDİRİMİ
     elif dir_t == "REPAIR_UPDATE":
@@ -467,7 +477,8 @@ async def handle_webapp(msg: types.Message):
             f"📱 Model: <b>{html.escape(str(model))}</b> (SN: <code>{html.escape(str(sn))}</code>)\n"
             f"⚠️ Arıza: <i>{html.escape(str(issue))}</i>\n"
             f"📍 Durum: <b>{html.escape(str(st))}</b>\n"
-            f"👷‍♂️ Güncelleyen: <b>{op}</b>"
+            f"👷‍♂️ Güncelleyen: <b>{op}</b>",
+            is_test=is_test
         )
 
 # --- TELSİZ KÖPRÜSÜ ---
@@ -489,7 +500,7 @@ async def automated_scheduler():
         if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_week != today:
             last_week = today
             sales = [s for s in load_sales() if s.get("status") == "APPROVED"]
-            await notify_both("📢 <b>HAFTALIK Z-RAPORU (Cumartesi 12:30)</b>\n\n" + f"Toplam Satış Adedi: {sum([sum([i.get('qty',1) for i in s.get('items',[])]) for s in sales])} ADT")
+            await notify_both(f"📢 <b>HAFTALIK Z-RAPORU (Cumartesi 12:30)</b>\n\nToplam Satış Hareketi: {len(sales)} adet işlem.")
         await asyncio.sleep(25)
 
 async def start_dummy_server():

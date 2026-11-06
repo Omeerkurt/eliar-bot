@@ -463,6 +463,10 @@ class QuoteEditState(StatesGroup):
     waiting_item_idx = State()
     waiting_new_qty = State()
 
+class StockAddState(StatesGroup):
+    waiting_query = State()
+    waiting_qty = State()
+
 def normalize_tr(text: str) -> str:
     if not text: return ""
     m = {'ı':'i','İ':'i','I':'i','ş':'s','Ş':'s','ğ':'g','Ğ':'g','ü':'u','Ü':'u','ö':'o','Ö':'o','ç':'c','Ç':'c'}
@@ -584,7 +588,7 @@ def crop_slot_from_page(page, slot: int) -> bytes:
     row_bounds = [
         (25, 285),
         (288, 550),
-        (550, 815)   # Slot 5 & 6 (90567 Diyafram)
+        (550, 815)
     ]
     y0, y1 = row_bounds[row]
 
@@ -1014,7 +1018,7 @@ def get_main_keyboard():
         keyboard=[
             [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
             [KeyboardButton(text="📝 Eliar'dan Teklif Al"), KeyboardButton(text="📦 Parça Listesi")],
-            [KeyboardButton(text="📊 Z-Raporu Al"), KeyboardButton(text="📅 Tarihli Rapor Al")],
+            [KeyboardButton(text="📥 Depoya Stok Ekle"), KeyboardButton(text="📊 Z-Raporu Al")],
             [KeyboardButton(text="⏳ Bekleyen Teklifler"), KeyboardButton(text="✅ Tamamlanan Teklifler")],
             [KeyboardButton(text="📂 Verilen Teklifler"), KeyboardButton(text="🏢 Tesis Geçmişi")],
             [KeyboardButton(text="📖 Kataloğu Gönder")]
@@ -1029,16 +1033,17 @@ def get_start_inline_keyboard():
         inline_keyboard=[
             [InlineKeyboardButton(text="⚡ Eliar Mini App'i Aç", web_app=WebAppInfo(url=WEBAPP_URL))],
             [InlineKeyboardButton(text="📝 Eliar'dan Teklif Al", callback_data="btn_teklif_hazirla")],
-            [InlineKeyboardButton(text="📦 Parça Listesi", callback_data="btn_parca_listesi"), InlineKeyboardButton(text="📊 Z-Raporu Al", callback_data="btn_z_raporu")],
-            [InlineKeyboardButton(text="⏳ Bekleyen Teklifler", callback_data="btn_bekleyenler"), InlineKeyboardButton(text="✅ Tamamlanan Teklifler", callback_data="btn_tamamlananlar")],
-            [InlineKeyboardButton(text="📂 Verilen Teklifler", callback_data="btn_verilenler"), InlineKeyboardButton(text="🏢 Tesis Geçmişi", callback_data="btn_tesis_gecmisi")],
-            [InlineKeyboardButton(text="📖 Kataloğu İndir", callback_data="btn_katalog_indir")]
+            [InlineKeyboardButton(text="📥 Depoya Stok Ekle", callback_data="btn_stok_ekle"), InlineKeyboardButton(text="📦 Parça Listesi", callback_data="btn_parca_listesi")],
+            [InlineKeyboardButton(text="📊 Z-Raporu Al", callback_data="btn_z_raporu"), InlineKeyboardButton(text="⏳ Bekleyen Teklifler", callback_data="btn_bekleyenler")],
+            [InlineKeyboardButton(text="✅ Tamamlanan Teklifler", callback_data="btn_tamamlananlar"), InlineKeyboardButton(text="📂 Verilen Teklifler", callback_data="btn_verilenler")],
+            [InlineKeyboardButton(text="🏢 Tesis Geçmişi", callback_data="btn_tesis_gecmisi"), InlineKeyboardButton(text="📖 Kataloğu İndir", callback_data="btn_katalog_indir")]
         ]
     )
 
 async def setup_bot_commands():
     commands = [
         BotCommand(command="start", description="Başlat / Ana Menü"),
+        BotCommand(command="stokekle", description="Depoya Stok Ekle / Güncelle"),
         BotCommand(command="teklif", description="Eliar'dan Teklif İste"),
         BotCommand(command="stok", description="Parça Listesi (174 Kalem)"),
         BotCommand(command="bekleyenler", description="Bekleyen Teklifler"),
@@ -1108,12 +1113,17 @@ async def cmd_start(message: types.Message, state: FSMContext):
         f"👋 Selam {name}! <b>Elips Depo</b> Robotu Aktif.{test_banner}\n"
         f"• Katalog PDF: <b>{pdf_info}</b>\n"
         f"• Güncel Depo Kalem: <b>{len(stocks)} Çeşit Parça (Kataloğun Tamamı Aktif!)</b>\n\n"
-        f"💡 <i>Menüden işlem seçebilir, teklif hazırlayabilir, parça/etiket fotoğrafı atabilir veya teklif PDF'i yükleyebilirsiniz.</i>"
+        f"💡 <i>Menüden işlem seçebilir, stok ekleyebilir, teklif hazırlayabilir veya Mini App'i açabilirsiniz.</i>"
     )
     await message.answer(msg_text, reply_markup=get_start_inline_keyboard(), parse_mode="HTML")
     await message.answer("👇 <b>Menü Butonları:</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
 
 # ----------------- INLINE BUTON KÖPRÜLERİ -----------------
+@dp.callback_query(F.data == "btn_stok_ekle")
+async def cb_btn_stok_ekle(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await start_stock_add_flow(callback.message, state)
+
 @dp.callback_query(F.data == "btn_teklif_hazirla")
 async def cb_btn_teklif(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
@@ -1162,6 +1172,208 @@ async def send_catalog_pdf(message: types.Message):
         await message.answer_document(FSInputFile(cat_path), caption="📖 <b>Elips Depo - Yedek Parça Kataloğu</b>", parse_mode="HTML")
     else:
         await message.answer("⚠️ Sunucuda <code>Katalog.pdf</code> bulunamadı.", parse_mode="HTML")
+
+# ==============================================================================
+#      TANIMSIZ PARÇALARI DA DESTEKLEYEN STOK EKLEME SİHİRBAZI (/stokekle)
+# ==============================================================================
+@dp.message(Command("stokekle", ignore_mention=True))
+@dp.message(F.text == "📥 Depoya Stok Ekle")
+async def start_stock_add_flow(message: types.Message, state: FSMContext):
+    args = message.text.split() if message.text else []
+    if len(args) >= 3 and args[0].lower().startswith("/stokekle"):
+        code_input = args[1].strip()
+        try:
+            qty_input = parse_qty_safe(args[2])
+            stocks = load_stocks()
+            target = next((s for s in stocks if str(s.get("code", "")).strip().lower() == code_input.lower()), None)
+
+            if target:
+                old_q = safe_stock_qty(target.get("qty", 0))
+                target["qty"] = old_q + qty_input
+                new_q = target["qty"]
+                p_name = target.get("name", "Parça")
+                tag = ""
+            else:
+                new_q = qty_input
+                target = {
+                    "code": code_input,
+                    "name": f"Yeni Parça ({code_input})",
+                    "cat": "MEKATRONIK",
+                    "qty": new_q,
+                    "loc": "ELIPS-DEPO"
+                }
+                stocks.append(target)
+                p_name = target["name"]
+                tag = " <i>(Yeni Tanımlandı)</i>"
+
+            save_stocks(stocks)
+            op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
+            msg = (
+                f"📥 <b>DEPOYA STOK EKLENDİ!</b>\n"
+                f"═══════════════════════════════\n"
+                f"⚙️ <code>[{code_input}]</code> <b>{html.escape(p_name)}</b>{tag}\n"
+                f"📈 Eklenen: <b>+{qty_input} Adet</b>\n"
+                f"📊 Yeni Depo Stoğu: <b>{new_q} ADT</b>\n"
+                f"📍 Konum: <code>ELIPS-DEPO</code>\n"
+                f"👷‍♂️ Ekleyen: <b>{op}</b>"
+            )
+            await notify_both(msg)
+            return
+        except Exception:
+            pass
+
+    await state.clear()
+    await state.set_state(StockAddState.waiting_query)
+    await message.answer(
+        "📥 <b>DEPOYA STOK EKLEME</b>\n"
+        "Stoğunu artırmak istediğiniz parçanın <b>kodunu</b> veya <b>ismini</b> yazın:\n"
+        "(Örn: <code>90567</code>, <code>diyafram</code> veya yeni bir kod)\n\n"
+        "💡 <i>Parça depoda kayıtlı olmasa bile sıfırdan eklemenize izin verilir.</i>",
+        parse_mode="HTML"
+    )
+
+@dp.message(StockAddState.waiting_query, ~F.text.startswith("/"))
+async def process_stock_add_query(message: types.Message, state: FSMContext):
+    query = message.text.strip()
+    await state.update_data(raw_query=query)
+    matches = find_best_matches(query)
+
+    if not matches:
+        kb_new = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"➕ Bu İsimle/Kodla Yeni Ekle: '{query[:18]}'", callback_data="add_unlisted_part")],
+            [InlineKeyboardButton(text="❌ İptal Et", callback_data="cb_close_card")]
+        ])
+        await message.answer(
+            f"⚠️ <code>{html.escape(query)}</code> mevcut depoda bulunamadı.\n\n"
+            f"❓ Bu parçayı sıfırdan <b>yeni parça olarak</b> depoya tanımlamak ister misiniz?",
+            reply_markup=kb_new,
+            parse_mode="HTML"
+        )
+        return
+
+    top_part, _ = matches[0]
+    if query.lower() == str(top_part.get('code', '')).lower():
+        await state.update_data(target_part=top_part)
+        await state.set_state(StockAddState.waiting_qty)
+        cur_q = safe_stock_qty(top_part.get('qty', 0))
+        await message.answer(
+            f"🎯 <b>Seçilen Parça:</b> <code>[{top_part.get('code')}]</code> {html.escape(top_part.get('name', ''))}\n"
+            f"📦 Mevcut Depo Stoğu: <b>{cur_q} ADT</b>\n\n"
+            f"➕ Depoya kaç <b>adet eklenecek?</b> (Örn: <code>5</code>):",
+            parse_mode="HTML"
+        )
+        return
+
+    buttons = []
+    for p, _ in matches[:5]:
+        p_code = p.get('code', 'KODSUZ')
+        p_name = p.get('name', '')[:28]
+        p_qty = safe_stock_qty(p.get('qty', 0))
+        buttons.append([InlineKeyboardButton(text=f"👉 [{p_code}] {p_name} ({p_qty} Adt)", callback_data=f"sel_add_stock:{p_code}")])
+
+    buttons.append([InlineKeyboardButton(text=f"➕ Listede Yok, Yeni Tanımla: '{query[:18]}'", callback_data="add_unlisted_part")])
+
+    await message.answer(
+        f"🔍 <b>'{html.escape(query)}' için bulunan parçalar:</b>\n"
+        f"Mevcutlardan birini seçebilir veya en alttan yeni olarak tanımlayabilirsiniz:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data == "add_unlisted_part")
+async def on_add_unlisted_part(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    data = await state.get_data()
+    q_name = data.get("raw_query", "Özel Parça")
+
+    new_part = {
+        "code": q_name.upper() if len(q_name) <= 12 and not " " in q_name else "KODSUZ",
+        "name": q_name,
+        "cat": "MEKATRONIK",
+        "qty": 0,
+        "loc": "ELIPS-DEPO",
+        "is_new": True
+    }
+    await state.update_data(target_part=new_part)
+    await state.set_state(StockAddState.waiting_qty)
+    await callback.message.edit_text(
+        f"🆕 <b>Yeni Parça Tanımlanıyor:</b> <b>{html.escape(q_name)}</b>\n\n"
+        f"➕ Depoya ilk etapta kaç <b>adet eklenecek?</b> (Örn: <code>10</code>):",
+        parse_mode="HTML"
+    )
+
+@dp.callback_query(F.data.startswith("sel_add_stock:"))
+async def on_select_stock_add_part(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    code = callback.data.split(":")[1]
+    stocks = load_stocks()
+    part = next((p for p in stocks if str(p.get("code", "")).lower() == code.lower()), None)
+    if not part:
+        await callback.answer("Parça bulunamadı.", show_alert=True)
+        return
+
+    await state.update_data(target_part=part)
+    await state.set_state(StockAddState.waiting_qty)
+    cur_q = safe_stock_qty(part.get('qty', 0))
+    await callback.message.edit_text(
+        f"🎯 <b>Seçilen:</b> <code>[{part.get('code')}]</code> {html.escape(part.get('name', ''))}\n"
+        f"📦 Mevcut Depo Stoğu: <b>{cur_q} ADT</b>\n\n"
+        f"➕ Depoya kaç <b>adet eklenecek?</b> (Örn: <code>5</code> veya <code>10 adet</code>):",
+        parse_mode="HTML"
+    )
+
+@dp.message(StockAddState.waiting_qty, ~F.text.startswith("/"))
+async def process_stock_add_quantity(message: types.Message, state: FSMContext):
+    try:
+        qty = parse_qty_safe(message.text)
+        if qty <= 0:
+            raise ValueError()
+    except Exception:
+        await message.answer("⚠️ Lütfen geçerli bir sayı girin (Örn: <code>5</code> veya <code>10 adet</code>):", parse_mode="HTML")
+        return
+
+    data = await state.get_data()
+    target_part = data.get("target_part")
+    if not target_part:
+        await state.clear()
+        await message.answer("⚠️ Oturum zaman aşımına uğradı. Lütfen /stokekle ile baştan başlayın.")
+        return
+
+    code = str(target_part.get("code", "KODSUZ")).strip()
+    stocks = load_stocks()
+    p = next((s for s in stocks if str(s.get("code", "")).lower() == code.lower() and code != "KODSUZ"), None)
+
+    tag = ""
+    if p:
+        old_q = safe_stock_qty(p.get("qty", 0))
+        p["qty"] = old_q + qty
+        new_q = p["qty"]
+    else:
+        new_q = qty
+        p = {
+            "code": code,
+            "name": target_part.get("name", "İsimsiz Parça"),
+            "cat": target_part.get("cat", "MEKATRONIK"),
+            "qty": new_q,
+            "loc": "ELIPS-DEPO"
+        }
+        stocks.append(p)
+        tag = " <i>(Yeni Tanımlandı)</i>"
+
+    save_stocks(stocks)
+    await state.clear()
+
+    op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
+    broadcast = (
+        f"📥 <b>DEPOYA STOK EKLENDİ / ARTIRILDI!</b>\n"
+        f"═══════════════════════════════\n"
+        f"⚙️ <code>[{p.get('code')}]</code> <b>{html.escape(p.get('name', ''))}</b>{tag}\n"
+        f"📈 Eklenen: <b>+{qty} Adet</b>\n"
+        f"📊 Yeni Depo Stoğu: <b>{new_q} ADT</b>\n"
+        f"📍 Konum: <code>{html.escape(p.get('loc', 'ELIPS-DEPO'))}</code>\n"
+        f"👷‍♂️ Ekleyen: <b>{op}</b>"
+    )
+    await notify_both(broadcast)
 
 # ==============================================================================
 #      FOTOĞRAF / ETİKET TANIMA (GEMINI VISION)
@@ -1314,7 +1526,6 @@ async def handle_document_upload(message: types.Message):
     save_path = os.path.join(PDF_STORAGE_DIR, saved_filename)
     await bot.download(doc, destination=save_path)
 
-    # Katalog ise kırpıcıyı tazele
     if "katalog" in doc_name or "rd96" in doc_name or "catalog" in doc_name:
         try:
             import shutil
@@ -1334,7 +1545,6 @@ async def handle_document_upload(message: types.Message):
     items = parsed_data.get("items", [])
     is_nilay = parsed_data.get("is_nilay", False)
 
-    # Hem firma hem parça eşleşmesi kontrolü
     quotes = load_quotes()
     matched_quote = None
 
@@ -1379,7 +1589,6 @@ async def handle_document_upload(message: types.Message):
     await render_quote_verification_screen(message, new_quote, is_nilay=is_nilay, matched_quote=matched_quote)
 
 async def render_quote_verification_screen(target_msg, quote_data, is_nilay=False, matched_quote=None):
-    """Kullanıcıya ürünlerin ve adetlerin uygun olup olmadığını soran onay/düzeltme ekranı"""
     quote_id = quote_data["id"]
     firm = quote_data["firm"]
     ref_no = quote_data["ref_no"]
@@ -1564,7 +1773,6 @@ async def on_quote_route_selected(callback: types.CallbackQuery):
         })
         save_sales(sales)
 
-        # KAMİL'E TR KARGO / PAKETLEME TALİMATI ATILIR
         tr_kargo_msg = (
             f"📦 <b>KAMİL BEY - YENİ TR SEVKİYAT / KARGO EMRİ</b>\n"
             f"═══════════════════════════════\n"
@@ -1751,7 +1959,6 @@ async def on_quote_delete_confirm(callback: types.CallbackQuery):
     target_q = next((x for x in quotes if x["id"] == quote_id), None)
 
     if target_q:
-        # Varsa sunucudaki PDF'i sil
         if target_q.get("pdf_file") and os.path.exists(target_q["pdf_file"]):
             try: os.remove(target_q["pdf_file"])
             except Exception as e: logging.error(f"PDF silme hatası: {e}")
@@ -1934,7 +2141,6 @@ async def on_quote_view_details(callback: types.CallbackQuery):
     if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
         buttons.append([InlineKeyboardButton(text="📄 Orijinal PDF Belgesini İndir", callback_data=f"q_send_pdf:{quote_id}")])
 
-    # SİLME VE KAPATMA BUTONLARI
     buttons.append([
         InlineKeyboardButton(text="🗑️ Teklifi Kalıcı Olarak Sil", callback_data=f"q_delete_prompt:{quote_id}"),
         InlineKeyboardButton(text="❌ Kapat", callback_data="cb_close_card")
@@ -2009,7 +2215,7 @@ async def on_quote_send_pdf(callback: types.CallbackQuery):
     else:
         await callback.answer("Orijinal PDF dosyası bulunamadı.", show_alert=True)
 
-# ----------------- ELİAR'DAN TEKLİF ALMA SİHİRBAZI (SERBEST GİRİŞLİ) -----------------
+# ----------------- ELİAR'DAN TEKLİF ALMA SİHİRBAZI -----------------
 @dp.message(Command("teklif", ignore_mention=True))
 @dp.message(F.text == "📝 Eliar'dan Teklif Al")
 async def start_quote_wizard(message: types.Message, state: FSMContext):
@@ -2186,19 +2392,16 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
     user_text = message.text.strip().lower()
     skip_keywords = {"0", "iptal", "vazgeç", "vazgec", "geç", "gec", "atla", "pas", "yok"}
 
-    # Butonlar (Teklifi bitirme veya başka parça ekleme)
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Başka Parça Ekle", callback_data="qb_more")],
         [InlineKeyboardButton(text="🏁 Teklifi Bitir ve Metni Al", callback_data="qb_done")]
     ])
 
-    # KULLANICI ATLAMAK / İPTAL ETMEK İSTERSE (0 veya İptal Kelimeleri)
     if user_text in skip_keywords:
         data = await state.get_data()
         part = data.get("selected_part", {})
         part_name = part.get("name", "Seçilen parça")
-        
-        # Parça listeye eklenmez, state confirm_more'a çekilir
+
         await state.set_state(QuoteBuilderState.confirm_more)
         await message.answer(
             f"ℹ️ <b>{html.escape(part_name)}</b> teklif sepetine eklenmedi (atlandı).\n"
@@ -2208,7 +2411,6 @@ async def process_quote_quantity(message: types.Message, state: FSMContext):
         )
         return
 
-    # NORMAL ADET KONTROLÜ
     try:
         qty = parse_qty_safe(message.text)
         if qty <= 0:
@@ -2251,7 +2453,6 @@ async def on_quote_completed(callback: types.CallbackQuery, state: FSMContext):
         await state.clear()
         return
 
-    # Nilay Hanım hitabı kusursuz korunur
     formatted_quote = (
         f"Merhaba Nilay Hanım\n\n"
         f"{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
@@ -2326,10 +2527,11 @@ async def show_stocks(message: types.Message):
         loc = str(s.get("loc") or "ELIPS-DEPO").strip()
         qty = s.get("_safe_qty", 0)
         text += f"• <code>[{code}]</code> {html.escape(name[:35])}\n  └ Stok: <b>{qty} ADT</b> | {html.escape(loc)}\n"
-    
-    if len(available) > 15:
-        text += f"\n<i>...ve {len(available)-15} kalem ürün daha depoda kayıtlıdır. (Tüm parçaları Mini App'ten canlı yönetebilir veya arama yapabilirsiniz).</i>"
 
+    if len(available) > 15:
+        text += f"\n<i>...ve {len(available)-15} kalem ürün daha depoda kayıtlıdır. (Tüm parçaları Mini App'ten canlı yönetebilir veya arama yapabilirsiniz).</i>\n\n"
+
+    text += "💡 <i>Hızlı stok eklemek için:</i> <code>/stokekle [kod] [adet]</code>"
     await message.answer(text, parse_mode="HTML")
 
 # ----------------- Z-RAPORU MENÜSÜ & İŞLEMLERİ -----------------
@@ -2461,27 +2663,92 @@ async def process_client_history_input(message: types.Message, state: FSMContext
     await state.clear()
     await message.answer(get_client_history_text(message.text.strip()), parse_mode="HTML")
 
-# ----------------- WEBAPP VERİLERİ -----------------
+# ==============================================================================
+#      WEBAPP VERİLERİ (HEM STOK ARTIRMA HEM STOK DÜŞME EŞİTLEMESİ)
+# ==============================================================================
 @dp.message(F.web_app_data)
 async def handle_webapp_payload(message: types.Message):
-    try: p = json.loads(message.web_app_data.data)
-    except Exception: return
+    try:
+        p = json.loads(message.web_app_data.data)
+    except Exception:
+        return
+
     op = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
     ref_id = f"REF-{message.message_id}"
     dir_type = p.get("direction")
+    action = p.get("action")
 
-    if dir_type == "STOCK_CHANGE" and p.get("action") == "DECREASE":
-        dest = p.get("destination", "Bilinmeyen")
-        code, name, qty = p.get("code"), p.get("name"), safe_stock_qty(p.get("delta", 1), default=1)
-        sales = load_sales()
-        sales.append({
-            "id": ref_id, "firm": dest, "source": "ELIPS_DEPO", "ref_no": "MANUEL-ÇIKIŞ",
-            "items": [{"code": code, "name": name, "qty": qty}], "status": "APPROVED",
-            "date": get_now_uz().strftime("%d.%m.%Y %H:%M"), "timestamp": get_now_uz().isoformat()
-        })
-        save_sales(sales)
-        msg = f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n🏢 Firma: <code>{html.escape(dest)}</code>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n📉 Adet: <b>-{qty}</b> | Kalan: <code>{p.get('current_qty', 0)} ADT</code>\n👷‍♂️ Çıkış Yapan: {op}"
-        await notify_both(msg)
+    if dir_type == "STOCK_CHANGE":
+        code = str(p.get("code") or "").strip()
+        name = str(p.get("name") or "İsimsiz Parça").strip()
+        delta = safe_stock_qty(p.get("delta", 1), default=1)
+        loc = str(p.get("loc") or "ELIPS-DEPO").strip()
+        stocks = load_stocks()
+
+        target = next((s for s in stocks if str(s.get("code", "")).strip().lower() == code.lower()), None)
+
+        # ✅ STOK ARTIRMA İŞLEMİ (Web App "+" butonu)
+        if action == "INCREASE":
+            if target:
+                old_q = safe_stock_qty(target.get("qty", 0))
+                target["qty"] = old_q + delta
+                new_q = target["qty"]
+            else:
+                new_q = delta
+                target = {
+                    "code": code,
+                    "name": name,
+                    "cat": p.get("category", "MEKATRONIK"),
+                    "qty": new_q,
+                    "loc": loc
+                }
+                stocks.append(target)
+
+            save_stocks(stocks)
+            msg = (
+                f"📥 <b>DEPOYA STOK EKLENDİ / ARTIRILDI!</b>\n"
+                f"═══════════════════════════════\n"
+                f"⚙️ <code>[{code}]</code> <b>{html.escape(name)}</b>\n"
+                f"📈 Eklenen: <b>+{delta} Adet</b>\n"
+                f"📊 Güncel Depo Stoğu: <b>{new_q} ADT</b>\n"
+                f"📍 Konum: <code>{html.escape(loc)}</code>\n"
+                f"👷‍♂️ İşlemi Yapan: <b>{op}</b>"
+            )
+            await notify_both(msg)
+
+        # ✅ STOK DÜŞME İŞLEMİ (Web App "-" / Satış butonu)
+        elif action == "DECREASE":
+            dest = p.get("destination", "Bilinmeyen")
+            if target:
+                old_q = safe_stock_qty(target.get("qty", 0))
+                target["qty"] = max(0, old_q - delta)
+                new_q = target["qty"]
+            else:
+                new_q = safe_stock_qty(p.get("current_qty", 0))
+
+            save_stocks(stocks)
+            sales = load_sales()
+            sales.append({
+                "id": ref_id,
+                "firm": dest,
+                "source": "ELIPS_DEPO",
+                "ref_no": "MANUEL-ÇIKIŞ",
+                "items": [{"code": code, "name": name, "qty": delta}],
+                "status": "APPROVED",
+                "date": get_now_uz().strftime("%d.%m.%Y %H:%M"),
+                "timestamp": get_now_uz().isoformat()
+            })
+            save_sales(sales)
+
+            msg = (
+                f"📤 <b>PARÇA SATILDI / DEPO ÇIKIŞI!</b>\n"
+                f"═══════════════════════════════\n"
+                f"🏢 Firma: <code>{html.escape(dest)}</code>\n"
+                f"⚙️ <code>[{code}]</code> {html.escape(name)}\n"
+                f"📉 Düşülen: <b>-{delta} Adet</b> | Kalan: <code>{new_q} ADT</code>\n"
+                f"👷‍♂️ Çıkış Yapan: <b>{op}</b>"
+            )
+            await notify_both(msg)
 
 # ----------------- SOHBET KÖPRÜSÜ (TELSİZ) -----------------
 @dp.message(~F.text.startswith("/"))
@@ -2489,7 +2756,7 @@ async def chat_bridge(message: types.Message):
     if TEST_MODE:
         return
 
-    menu_buttons = ["📦 Parça Listesi", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanan Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Eliar'dan Teklif Al", "📖 Kataloğu Gönder"]
+    menu_buttons = ["📦 Parça Listesi", "📥 Depoya Stok Ekle", "📊 Z-Raporu Al", "📅 Tarihli Rapor Al", "⏳ Bekleyen Teklifler", "✅ Tamamlanan Teklifler", "📂 Verilen Teklifler", "🏢 Tesis Geçmişi", "📝 Eliar'dan Teklif Al", "📖 Kataloğu Gönder"]
     if message.text in menu_buttons: return
     tid = KAMIL_CHAT_ID if message.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if message.chat.id == KAMIL_CHAT_ID else None)
     sender = "Ömer" if message.chat.id == OMER_CHAT_ID else "Kamil"
@@ -2506,8 +2773,7 @@ async def automated_scheduler():
         now = get_now_uz()
         today = now.strftime("%Y-%m-%d")
 
-        # ✅ Haftalık Z-Raporu: Her Cumartesi günü saat tam 12:30'da (Özbekistan Saati)
-        # weekday() == 5 -> Cumartesi
+        # Haftalık Z-Raporu: Her Cumartesi günü saat tam 12:30'da (Özbekistan Saati)
         if now.weekday() == 5 and now.hour == 12 and now.minute == 30 and last_week != today:
             last_week = today
             sales = filter_sales_by_range(now - timedelta(days=7), now)
@@ -2517,8 +2783,6 @@ async def automated_scheduler():
                 f_pdf = generate_pdf_z_report(sales, "Haftalik")
                 if f_xls: await bot.send_document(OMER_CHAT_ID, FSInputFile(f_xls))
                 if f_pdf: await bot.send_document(OMER_CHAT_ID, FSInputFile(f_pdf))
-
-        # ❌ Her gece 23:59 otomatik yedekleme kaldırıldı.
 
         await asyncio.sleep(25)
 

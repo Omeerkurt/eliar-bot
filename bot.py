@@ -3,12 +3,15 @@ from datetime import datetime, timedelta
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types, BaseMiddleware
 from aiogram.filters import Command, CommandStart, StateFilter
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, BotCommand, FSInputFile, BufferedInputFile
+from aiogram.types import (
+    InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
+    ReplyKeyboardMarkup, WebAppInfo, BotCommand, FSInputFile, BufferedInputFile
+)
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
-# 1. ÖZBEKİSTAN SAAT DİLİMİ
+# 1. ÖZBEKİSTAN SAAT DİLİMİ (Arka planda çalışır, ekrana teknik yazı basmaz)
 os.environ['TZ'] = 'Asia/Tashkent'
 if hasattr(time, 'tzset'):
     try: time.tzset()
@@ -26,6 +29,9 @@ def get_now_uz() -> datetime:
         except Exception: pass
     return datetime.now()
 
+# ==============================================================================
+#                     CANLI YAPILANDIRMA
+# ==============================================================================
 BOT_TOKEN = "9212674639:AAGVES4GiQRUlwrXfFy6iu4IsXKYo-4jzUY"
 OMER_CHAT_ID = 6915998444
 KAMIL_CHAT_ID = 35013468
@@ -36,7 +42,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-STOCKS_FILE, SALES_FILE, QUOTES_FILE = "stocks_db.json", "weekly_sales.json", "submitted_quotes.json"
+STOCKS_FILE = "stocks_db.json"
+SALES_FILE = "weekly_sales.json"
+QUOTES_FILE = "submitted_quotes.json"
 
 class QuoteState(StatesGroup):
     waiting_firm = State()
@@ -48,53 +56,308 @@ class StockAddState(StatesGroup):
     waiting_query = State()
     waiting_qty = State()
 
-# ----------------- KATALOG KOORDİNAT HARİTASI -----------------
-CATALOG_GRID_MAP = {
-    "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
-    "41370": (3, 3), "41381": (3, 5), "91514": (3, 6), "91410": (4, 1), "91411": (4, 2), "41436": (4, 3),
-    "41435": (4, 4), "96469": (4, 5), "60002": (4, 6), "90338": (5, 1), "91128": (5, 2), "91516": (5, 4),
-    "41538": (5, 5), "41407": (5, 6), "41420": (6, 1), "93041": (6, 2), "93035": (6, 3), "60020": (6, 4),
-    "91517": (7, 1), "41430": (7, 2), "41408": (7, 3), "41415": (7, 4), "41419": (7, 5), "41414": (7, 6),
-    "41425": (8, 1), "41427": (8, 2), "41426": (8, 3), "93039": (8, 4), "93040": (8, 5), "41413": (9, 2),
-    "41418": (9, 3), "41411": (9, 4), "41428": (9, 5), "41429": (9, 6), "93043": (10, 1), "93042": (10, 2),
-    "93037": (10, 3), "93036": (10, 4), "60044": (11, 1), "41434": (11, 2), "90946": (11, 3), "41432": (11, 4),
-    "41409": (11, 5), "41424": (11, 6), "41433": (12, 1), "41416": (12, 2), "41417": (12, 3), "41533": (12, 4),
-    "96541": (12, 5), "96540": (12, 6), "90951": (13, 2), "41384": (13, 5), "41383": (13, 6), "90310": (14, 1),
-    "90952": (14, 2), "90332": (14, 3), "90328": (14, 4), "90949": (14, 5), "90947": (14, 6), "90321": (15, 3),
-    "16073": (15, 4), "90490": (15, 5), "91238": (15, 6), "90333": (16, 1), "90948": (16, 2), "91407": (16, 3),
-    "93008": (16, 4), "90345": (16, 5), "90325": (16, 6), "90320": (17, 1), "90950": (17, 2), "60003": (17, 3),
-    "96112": (17, 4), "90827": (17, 5), "50155": (17, 6), "96467": (18, 1), "91603": (18, 2), "91035": (18, 3),
-    "90547": (18, 4), "20031": (18, 5), "90475": (18, 6), "50160": (19, 1), "91285": (19, 2), "50606": (19, 3),
-    "91472": (19, 4), "50247": (19, 5), "50249": (19, 6), "15401": (20, 3), "41439": (20, 4), "91633": (20, 5),
-    "91448": (20, 6), "42595": (21, 1), "90861": (21, 3), "90817": (21, 6), "96683": (22, 1), "96097": (22, 2),
-    "91598": (22, 4), "91037": (22, 5), "40082": (22, 6), "91386": (23, 3), "91488": (23, 4), "90567": (23, 5),
-    "90965": (23, 6), "40647": (24, 1), "90715": (24, 2), "50161": (24, 3), "50162": (24, 4), "90828": (24, 5),
-    "90834": (24, 6), "96468": (25, 1), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
-    "90832": (26, 4), "40634": (26, 6), "96412": (27, 1), "90878": (27, 2), "90881": (27, 3), "90880": (27, 4),
-    "90879": (27, 5), "91284": (28, 3), "14574": (28, 4), "14541": (28, 6), "91332": (29, 1), "50219": (29, 2),
-    "54626": (29, 3), "41441": (29, 5), "91447": (29, 6), "50057": (30, 1), "54612": (30, 2), "50098": (30, 3),
-    "50018": (30, 4), "91594": (30, 5), "91590": (31, 3), "15005": (31, 4), "50549": (31, 5), "40085": (31, 6),
-    "91451": (32, 1), "50023": (32, 2), "50273": (32, 3), "50021": (32, 4), "41442": (32, 5), "41404": (32, 6),
-    "96517": (33, 3), "50257": (33, 4), "96501": (33, 5), "90766": (33, 6), "16016": (34, 1), "16039": (34, 2),
-    "16034": (34, 3), "41403": (34, 4), "90767": (34, 5), "91071": (34, 6), "90762": (35, 1), "90840": (35, 2),
-    "41400": (35, 3), "41401": (35, 4), "41300": (35, 5), "41402": (35, 6), "91277": (36, 1), "54516": (36, 2),
-    "90768": (36, 3), "90769": (36, 4), "90782": (36, 5), "16032": (36, 6), "16041": (37, 3), "16035": (37, 4),
-    "50260": (37, 5), "90759": (37, 6), "50138": (38, 2), "91086": (38, 3), "91045": (38, 4), "90770": (38, 5),
-    "16043": (38, 6), "16030": (39, 1), "90765": (39, 4), "11906": (39, 6), "12302": (40, 1), "41444": (40, 2),
-    "91303": (40, 3), "50263": (40, 4), "91044": (40, 5), "54510": (41, 3), "90761": (41, 4), "50262": (41, 6),
-    "41399": (42, 5), "50259": (42, 6), "50258": (43, 6), "50261": (44, 6), "91269": (45, 6), "91270": (46, 3),
-    "50278": (46, 4), "50293": (46, 5), "90725": (46, 6), "50040": (47, 2), "41396": (47, 3), "41398": (47, 5),
-    "54630": (47, 6), "50270": (48, 1), "50287": (48, 2), "91066": (48, 3), "91064": (48, 4), "41457": (48, 5),
-    "50238": (48, 6), "50156": (49, 1), "91043": (49, 2), "50269": (49, 3), "50289": (50, 6), "50239": (51, 4),
-    "50291": (52, 1), "90781": (52, 5), "41407P": (53, 1), "96404": (53, 2), "41406": (53, 3), "41405": (53, 4),
-    "90484": (53, 5), "91490": (53, 6), "91489": (54, 1), "90930": (54, 5), "91495": (54, 6), "54661": (55, 3),
-    "54662": (55, 4), "41437": (55, 5), "90568": (55, 6), "50014": (56, 1), "91782": (56, 2), "91271": (56, 3),
-    "91268": (56, 4), "90793": (56, 5), "90324": (56, 6), "16044": (57, 1), "14847": (57, 2), "41290": (57, 3),
-    "41287": (57, 4), "41288": (57, 5), "41289": (57, 6), "54629": (58, 1), "54628": (58, 2), "54627": (58, 3),
-    "50024": (58, 5), "50025": (58, 6), "91586": (59, 3), "50027": (59, 4), "92038": (59, 5), "54620": (59, 6),
-    "14577": (60, 1), "14317": (60, 2), "96449": (60, 3), "91950": (60, 4), "96219": (60, 6), "91453": (61, 1),
-    "50008": (61, 2), "50010": (61, 3), "50046": (61, 4), "50054": (62, 3), "15005": (63, 3)
-}
+# ----------------- 174 KALEMLİK FABRİKA KATALOG VERİSİ (ENVANTER SIFIRLANMASINI ENGELLER) -----------------
+RAW_CATALOG_DATA = [
+    ("Pd320", "Eliar Pd320 Boya Kontrolörü", "KONTROL", 4, "ELIPS-DEPO"),
+    ("PD330", "Eliar PD330 Boya Kontrolörü", "KONTROL", 4, "ELIPS-DEPO"),
+    ("Pd300", "Eliar Pd300 Boya Kontrol Cihazı", "KONTROL", 2, "ELIPS-DEPO"),
+    ("Pd340", "Eliar Pd340 Boya Kontrolörü", "KONTROL", 2, "ELIPS-DEPO"),
+    ("Pd350", "Eliar Pd350 Boya Kontrolörü", "KONTROL", 10, "ELIPS-DEPO"),
+    ("S400", "Eliar S400 Kontrol Cihazı", "KONTROL", 3, "ELIPS-DEPO"),
+    ("S42", "Eliar S42 Kontrol Cihazı", "KONTROL", 4, "ELIPS-DEPO"),
+    ("Edc T7000", "Eliar Edc T7000 Kontrolör", "KONTROL", 2, "ELIPS-DEPO"),
+    ("Edc M7700", "Eliar Edc M7700 Kontrolör", "KONTROL", 1, "ELIPS-DEPO"),
+    ("Edc T710", "Eliar Edc T710 Kontrolör", "KONTROL", 9, "ELIPS-DEPO"),
+    ("Edc T712", "Eliar Edc T712 Kontrolör", "KONTROL", 8, "ELIPS-DEPO"),
+    ("Edc T7701EX", "Eliar Edc T7701EX Kontrolör", "KONTROL", 10, "ELIPS-DEPO"),
+    ("Edc T7700", "Eliar Edc T7700 Kontrolör", "KONTROL", 4, "ELIPS-DEPO"),
+    ("T7700", "Eliar T7700 Cihazı", "KONTROL", 1, "ELIPS-DEPO"),
+    ("T7701 EX G", "Eliar T7701 EX G Cihazı", "KONTROL", 1, "ELIPS-DEPO"),
+    ("PANELSET-T7701 ex", "PANELSET-T7701 ex Ön Panel Seti", "KONTROL", 1, "ELIPS-DEPO"),
+    ("PANELSET-T7700", "PANELSET-T7700 Ön Panel Seti", "KONTROL", 1, "ELIPS-DEPO"),
+    ("T7PAC-T7CPURIO", "T7PAC-T7CPURIO İşlemci Modülü", "KONTROL", 2, "ELIPS-DEPO"),
+    ("40642", "Omron PLC CPU: CJ1M-CPU21", "KONTROL", 1, "ELIPS-DEPO"),
+    ("CQM1H-CPU21", "Omron CQM1H-CPU21 Modül", "KONTROL", 1, "ELIPS-DEPO"),
+    ("40025", "Delta PLC CPU: DVP12SA211R 8DI 4DO", "KONTROL", 1, "ELIPS-DEPO"),
+    ("Aim8-A", "Aim8-A Analog Giriş Modülü", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("Aim8-B", "Aim8-B Analog Giriş Modülü", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("Dim32", "Dim32 Dijital Giriş Modülü", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("Dom16-PLC", "Dom16-PLC Dijital Çıkış Modülü", "ELEKTRONIK", 6, "ELIPS-DEPO"),
+    ("AOM8", "AOM8 Analog Çıkış Modülü", "ELEKTRONIK", 7, "ELIPS-DEPO"),
+    ("P44", "P44 Panel Elektronik Kartı", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("P42", "P42 Panel Elektronik Kartı", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("P300", "P300 Panel Elektronik Kartı", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("P40", "P40 Panel Elektronik Kartı", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("P43", "P43 Panel Elektronik Kartı", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("Umf-ILETISIM20", "Umf-ILETISIM20 İletişim Kablosu", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("TBBPLC-F", "TBBPLC-F Haberleşme Modülü", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("Powerfail", "Powerfail Güç Koruma Modülü", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("T7RACK 6 PLC", "T7RACK 6 PLC Taşıyıcı Rack", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("T7RACK 10 PLC", "T7RACK 10 PLC Taşıyıcı Rack", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("T7PAC-POWER 30", "T7PAC-POWER 30 Güç Kaynağı", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("T7PAC-POWER 20", "T7PAC-POWER 20 Güç Kaynağı", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("T7PAC-DIM32V5", "T7PAC-DIM32V5 Dijital Giriş Modülü", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("T7PAC-DOM32V5", "T7PAC-DOM32V5 Dijital Çıkış Modülü", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("T7PAC-DIM16V5", "T7PAC-DIM16V5 Dijital Giriş Modülü", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("T7PAC-DOM16V5", "T7PAC-DOM16V5 Dijital Çıkış Modülü", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("T7PAC-AIO88SV1", "T7PAC-AIO88SV1 Analog Giriş/Çıkış", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("T7PAC-AI8SV1", "T7PAC-AI8SV1 Analog Giriş Modülü", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("T7PAC-AO8SV1", "T7PAC-AO8SV1 Analog Çıkış Modülü", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("40645", "Güç kaynağı: CJ1W-PA202", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("40643", "Dijital giriş modülü: CJ1W-ID211", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("40644", "Dijital çıkış modülü: CJ1W-OC211", "ELEKTRONIK", 6, "ELIPS-DEPO"),
+    ("90802", "Güç Kaynağı: CQM1-PA203 (omron)", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("CQM1-ID211", "Omron CQM1-ID211 Input Modül", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("41370", "Plc Çıkış Modülü: CQM1-OC222 (Omron)", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("20031", "Tork LS102M Switch Box", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("90475", "Autonics Kapasitif Sensör: CR18-8DN", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("40597", "BES005M BALLUFF Sensör", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("40634", "BES0057: Balluff M12MI-NSC40B-BV03", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("90840", "Piston sensörü: DC73L reed 3m kablolu", "ELEKTRONIK", 6, "ELIPS-DEPO"),
+    ("90620", "PH Sensörü: SPH-1-DJ-6M (Seko)", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("41316", "Lab120 encoder", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("40082", "Krohne Optiflux 5300 Debimetre", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91386", "E/H DN25 (1/2\") mass Flowmetre", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("40085", "Basınç anahtarı: PMN10A 2-10 bar NO", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91332", "Basınç Anahtarı: PE-1/8-1N 1/8\" 0-8 bar", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("SPU-PANO", "Saha panosu (SPU su yok)", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91514", "Rd96 SLR1-40 AISI 316L Loblu Pompa", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90951", "Rd96 Fip25 Pompa + Motor+ Flanş", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90310", "Fip25 1\"/1\" Esnek Çarklı Pompa", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90952", "Fip25 Pompa Gövde+Kapak+Oring", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91410", "Wat 3 faz Motor 2,2 kW 3 HP 1000 d/d", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91411", "WAT Motor Ayağı (Q2E112M6C)", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41381", "Rd96 22 Li Pompa Altı Paslanmaz Tava", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90567", "Diyafram 66 Mm Teflon Takviyeli", "MEKATRONIK", 9, "ELIPS-DEPO"),
+    ("90568", "66 Mm Teflon Takviyeli Diyafram Pulu", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("30076", "SANTOPRENE DIAPHRAGM PK10", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("41835", "Apexco Salmastra 7003TTG-20", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("30010", "EBARA 15MM SIL/SIL/VITON SALMASTRA", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("91407", "Fip25 Salmastra Si&Si", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("91406", "FIP25 SALMASTRA", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("5022", "Salmastra (Geylani ile geldi)", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("91128", "SLR 1-40 Mec. Seal Si.Carbon/Si.Carbide", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("90338", "SLR1-40 ASI 316L Salmastra Bileziği", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("90416", "SOLENOID VALF: 00125317 24VDC", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91472", "Solenoid Valf: L03Eb13 1/2\"", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50018", "Valf: SY5140-5YO-Q: 5/2 tek bobin 24VDC", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("91594", "Valf: SY5240-5YO-Q-5/2 Çift Bobin 24VDC", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("50287", "Valf: SY114-5LOU-Q", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("50289", "Valf: SY3220-5LOU-M5-Q: çift bobin", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("50291", "Valf: SYJ3143-5LOU-Q", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("50292", "VALF: SYJ3240-5LOU-Q", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("50293", "Valf: SYJ3243-5LOU-Q: 5/2 çift bobin", "ELEKTRONIK", 0, "ELIPS-DEPO"),
+    ("50294", "VALF: SYJ7120-5DZ-01F-Q", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("50295", "VALF: SYJ7220-5DZ-01F-Q", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("91284", "Valf: P00112200 E1A/4: 3/2", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("54629", "SY114 4'lü Full Valf Grubu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("54628", "SY114 2'li Full Valf Grubu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("54630", "SYJ3243 2'li full valf grubu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("54627", "Dst komple purge valfi komple", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("1013", "Vana TORK 3/4\" 3 yollu + aktüatör", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("1015", "SLD Kanal Vanası Full 3/4\" TORK 2 yollu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91633", "Omal VIP Vana: VNC10004 1/2\" PN10", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90817", "Omal Vana: DG424H405 3/4\" DN20 PN65", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91598", "Omal Küresel Vana: V424H405 3/4\" Paslanmaz", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90827", "Omal DG451H005 3 Yollu L Port 3/4\" PN40", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90828", "Omal Vana: DG451H006 3Yollu L Port 1\" PN40", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91603", "Omal Vana: V451H405 3 Yollu L Port 3/4\"", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91604", "V451H406 1\" Omal L Port Vana", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90484", "3/4\" Kimyasal Vana / Kür. Vana + Elcik + Adaptör", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("96219", "Küresel vana: 6310 3/8\" erkek dişi", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50054", "Küresel vana: 6310 1/4\" erkek dişi", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91035", "Omal (Tamir) Takımı: KGBV4505 3/4\"", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("91036", "Kgbv4506 V451H006 Omal Vana Conta Takımı", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("91037", "Omal (Tamir) Takımı: KGBV6005 3/4\"", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("91489", "3/4' RD Vana Conta Takımı", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("90547", "3 Yollu \"L\" Port 3/4\" Vana Küresi", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90548", "3 Yollu \"L\" Port 1\" Vana Kuresi", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91488", "V424H405 Vana Küresi 3/4\" RD", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50090", "Tork Çift Etkili Aktüatör", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50155", "Omal Aktüatör: DA030401S 30Nm", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96467", "Omal Aktüatör: DAN0030411S DA30", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96468", "Omal Çift Etkili Aktüatör: DAN0045412S", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96496", "Omal Çift Etkili Aktüatör: DAN0015411S", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96683", "Omal Aktüatör: SRN0015401S 15Nm", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96097", "DG424H405 Omal Aktüatör", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90832", "Omal Aktüatör: DA0015411S 15Nm", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90834", "Omal Aktüatör: DA045402S", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("RA032DA", "RA032DA09036000 Aktüatör", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("40647", "SMC CJPB15-10H6 Pin Silindir Tek Etkili", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50257", "Tek Etkili Pnömatik Silindir CD75E32-80-B", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50258", "Silindir CD85N16-100-B (SMC)", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("50259", "Silindir CD85N16-200-B (SMC)", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("50260", "Pnömatik Silindir CD85N16-50-B (SMC)", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("50261", "Silindir 80 mm Strok CD85N16-80-B", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("50262", "Silindir: CD85N25-300C-B (SMC)", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50263", "Silindir: CD85N25-400C-B Çelik (SMC)", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96185", "PISTON: CD76E32-50-B", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90501", "SMC C76-32PS PISTON KECESI", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("96501", "SMC C76-32PS Sızdırmazlık Kiti", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90781", "SMC C85-25Ps Piston Keçesi X3-X4", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90782", "C85 Serisi Silindir Eklem Bağlantı", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("91044", "SMC Küresel Mafsal: KJ10D M10*1,25", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91045", "SMC Küresel Mafsal: KJ6D M6*1", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("90715", "Regülatör: AR10-M5H: 0-8 Bar", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("92038", "Regülatör: AW30-F03DE-B: 3/8\"", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50046", "Regülatör: AW20-F02C-B (SMC)", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90725", "Hız ayar valfi: ASN2-02: 1/8\" susturuculu", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90726", "HIZ AYAR VALFI: ASN2-02 1/4\"", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50227", "KISICILI RAKOR: AS2201F-01-04SA 1/8\"-4MM", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50242", "KISICILI RAKOR: AS2002F-06 6MM HAT TIPI", "MEKATRONIK", 7, "ELIPS-DEPO"),
+    ("90965", "Manometre: G27-10-R1: 0-10 Bar", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("54620", "G36-P10-01-X30 Manometre", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91285", "P00142140 U2 Çek Valf", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91590", "Çek valf: U4: 1/4\"", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91950", "Çek valf: U4: 1/4\"", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90878", "Dst16-23 Cekvalf Paslanmaz 3/4\"", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90881", "Dst Cek Valf Yayı", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("90880", "DST Çekvalf Teflonu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90879", "Dst Cek Valf Oring EPDM", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("96412", "1\" > 3/4\" Polietilen Dst Çek Valf Adaptörü", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41437", "Flowmetre Dönüşüm Flanşı", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91463", "Eurotec Reducer - Kafa Adaptörü 11-9mm", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41300", "RD96-Mu Cambaz Pistonu Polietilen Takoz", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("96515", "DST Polietilen Z Eksen dayama takozu", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("96516", "DST Z Ekseni Polietilen Ağızlık", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("96517", "Rd96_MU Z Polietilen Dayama Takozu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91277", "RD96-Mu Polietilen Ağızlık", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("90770", "RD96 Cambaz Mekanizması", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90771", "RD96 CAMBAZ MEKANIZMASI", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90765", "RD96 Cambaz Kolu", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("90767", "RD96 Cambaz Kolu Sacı", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90768", "Cambaz Kutusu Dolu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90769", "RD96 Bos Cambaz Kutusu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90766", "RD96 Aliminyum Lama Montaj Parcası", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("54516", "Rd96 Full Z Axis Equipment", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("54661", "Rd96 Mu 22 Y eksen Kolu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("54662", "Rd96 Mu 33 Y eksen Kolu", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91269", "RD96 X Ekseni mekanik yatak Kilidi", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91270", "RD96 Y Ekseni mekanik yatak Kilidi", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("41400", "Rd96 MU Z ekseni Yataklama Pim leri", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41401", "Rd96 MU Z eksen Gijonları 292mm*M6", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41402", "Rd96 MU Z ekseni Paslanmaz Plaka", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41442", "RD96 MU_22 Krom Kaplı Ray: Ø25 / 180 mm", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41404", "RD96 MU_33 Krom Kaplı Ray: Ø25 / 267 mm", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41444", "Krom Ray: Ø25 / 1350 mm x ekseni", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91303", "Paslanmaz Araba 4 Delikli Rexroth", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("41407P", "RD96_MU22 PVC Tabla", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("96404", "RD96-MU22 Paslanmaz Çelik Tabla", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("41406", "RD96_MU33 PVC Tabla", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("41405", "RD96-MU33 Paslanmaz Çelik Tabla", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("91268", "Rd96 Mu Fırca", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("91502", "LAB120 mikser kayışı", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("42184", "PIPETLEME SIRINGA UCU", "MEKATRONIK", 200, "ELIPS-DEPO"),
+    ("C-137161", "Tuz rafinasyon filtre kapağı", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90324", "SLR1-40 Lob Anahtarı", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("90793", "Loblu Pompa Conta Teflon", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("91490", "3/4 RD Vana Adaptör Bağlantı O-ringi", "MEKATRONIK", 8, "ELIPS-DEPO"),
+    ("90930", "EPDM Lastik Conta 25*40 Kare Oring", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("96469", "Rakor Contası - Gasket - Nw 40 Dın", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("60002", "Klemp Contası: EPDM (DN25) 1''", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("60003", "Rakor Contası - Gasket - Nw 25 Dın", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("54654", "LOP POMPA FILTRE ORINGI 30*3 MM", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("96541", "23-35 Paslanmaz Hortum Kelepçesi", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("96540", "13-19 mm Paslanmaz Hortum Kelepçesi", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("14847", "Klemp Kelepçesi: 1\" Paslanmaz 316", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("90861", "Siyah Kauçuk Su Hortumu 16mm", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("96112", "3/4\" Siyah Kimyasal Hortum", "MEKATRONIK", 15, "ELIPS-DEPO"),
+    ("91495", "3/4\" Seffaf Kimyasal Hortum", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("96570", "Ø19mm Şeffaf Telli Hortum (Mavi)", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("50024", "Hava hortumu: TU0604BU: 6mm mavi", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("50025", "Hava hortumu: TU0806BU: 8mm mavi", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("91586", "Hava hortumu: TU1065BU: 10mm mavi", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("50027", "Hava hortumu: TU0425BU: 4mm mavi", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("50138", "Pnömatik rakor: KQ2L04-M5A 4mm", "MEKATRONIK", 11, "ELIPS-DEPO"),
+    ("91071", "KQ2L04-01Ns Dirsek Rakor 1/8\" 4 Mm", "MEKATRONIK", 0, "ELIPS-DEPO"),
+    ("91074", "PNOMATIK RAKOR: KQ2L6M5N Dirsek", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("50040", "Dirsek Rakor 1/8x6mm / KQ2L06-01AS", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("91451", "57116 RDD 1/4-8 DİRSEK AIGNEP", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("91453", "Pnömatik rakor: 57116 3/8\"-10mm dirsek", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("50219", "Pnömatik rakor: 57116 1/4\"-10mm dirsek", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("50160", "Pnömatik rakor: 57116 1/2\"-10mm dirsek", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("91448", "Pnömatik rakor: 57116 1/8\"-6mm dirsek", "MEKATRONIK", 8, "ELIPS-DEPO"),
+    ("54510", "Pnömatik rakor: KQ2VS04-01AS 4mm", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("91064", "Pnömatik rakor: KQ2H04-M5A 4mm düz", "MEKATRONIK", 13, "ELIPS-DEPO"),
+    ("91066", "Pnömatik rakor: KQ2H06-M5A 6mm düz", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("50023", "KQ2S06-01AS: 1/8\"-6mm düz", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("91447", "Pnömatik rakor: 57020 1/4\"-10mm düz", "MEKATRONIK", 8, "ELIPS-DEPO"),
+    ("50057", "Pnömatik rakor: 57020 1/4\"-8mm düz", "MEKATRONIK", 8, "ELIPS-DEPO"),
+    ("50162", "1021 Düz Erkek 6/4 M5", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("42595", "1/2\"x Ø16mm Pirinç Hortum Ağzı", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("15401", "Tee rakor: 4000 1/4\" D-D-D", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("14317", "Pnömatik Tee rakor: 4000 3/8\"", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("91086", "Pnömatik T rakor: KQ2T04-M5A", "MEKATRONIK", 10, "ELIPS-DEPO"),
+    ("50156", "Pnömatik T rakor: KQ2T06-00A 6mm", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("91088", "T RAKOR: KQ2T08-06 8-6MM", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("41441", "57226 1/4\"x10 Döner Tee", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("41399", "Pnömatik rakor: KQ2U04-00 4mm Y", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("15005", "Kuyruklu dirsek: 5020 1/4\" E-D", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("50161", "Nipel 2010 - M5", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("14574", "Nipel 2010 - 1/4\"", "MEKATRONIK", 8, "ELIPS-DEPO"),
+    ("14577", "Nipel: 2010 3/8\"", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("50606", "Nipel 2010 - 1/2\"", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("41439", "1/4\" Paslanmaz Tek Taraflı Nipel", "MEKATRONIK", 3, "ELIPS-DEPO"),
+    ("14541", "Orantılı Nipel 2030 1/4\"-1/8\"", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("96449", "Orantılı nipel: 2030 1/4\"-3/8\"", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("50549", "Redüksiyon 2090 1/4\"<1/8\"", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("41457", "Kör Tapa: M-5P: M5x0,8 (SMC)", "MEKATRONIK", 6, "ELIPS-DEPO"),
+    ("50014", "Susturucu: AN15-02: 1/4\"", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("50238", "Susturucu: AN120-M5 (SMC)", "MEKATRONIK", 5, "ELIPS-DEPO"),
+    ("50098", "Manifold: SS5Y5-41-04-01F-Q 4'lü", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50273", "SS5Y5-41-05-01F-Q 5'li Altlık", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50269", "Manifold: SS3Y1-S41-02-M5-Q 2'li", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50270", "Manifold: SS3Y1-S41-04-M5-Q 4'lü", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50278", "Manifold: SS5YJ3-S41-02-M5F-Q 2'li", "MEKATRONIK", 1, "ELIPS-DEPO"),
+    ("50239", "3220 İçin Braket", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50008", "Tespit Elemanı AR30 / AW30", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("50010", "Tespit Elemanı : AW23P-270AS", "MEKATRONIK", 2, "ELIPS-DEPO"),
+    ("90759", "Sensör tutucu: BJ2-016", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("90761", "Sensör tutucu: BM2-025 bant tipi", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("90762", "Sensör tutucu: BM2-032 32mm çap", "MEKATRONIK", 4, "ELIPS-DEPO"),
+    ("41396", "12'li Hareketli Kablo X3-X4 Pistonu", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91782", "Rd96-33 Hareketli Kablo (EM)", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91271", "RD96-22 Hareketli Kablo (EM)", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("91043", "Valf Kablosu: SY114 için (EM)", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("41398", "Soket ucu SY100-30-A", "ELEKTRONIK", 5, "ELIPS-DEPO"),
+    ("41290", "Soket muhafazası: HAN24 B-AGG-QB", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("41287", "Socket Cover HDC HB 24TSVU", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("41288", "Soket: HDC-HE-24BS 24 pin dişi", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("41289", "Soket: HDC-HE-24SS 24 pin erkek", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("50247", "Valf bobini: B00126625 24VDC 6W", "ELEKTRONIK", 2, "ELIPS-DEPO"),
+    ("54626", "A03/0-24VDC B00123525 5W 22mm", "ELEKTRONIK", 1, "ELIPS-DEPO"),
+    ("50249", "Valf soketi: M1TS2L01 24V ledli", "ELEKTRONIK", 4, "ELIPS-DEPO"),
+    ("50021", "Valf soketi: DIN 43650C-C/Led 24V", "ELEKTRONIK", 3, "ELIPS-DEPO"),
+    ("16016", "Paslanmaz Civata M5 x10 mm", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("16030", "Paslanmaz Civata M5 x20 mm", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("16032", "Paslanmaz Civata M6 x10 mm", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("16043", "Paslanmaz İmbus M5 Civata M5x20 mm", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("41403", "Havşa Başlı İmbus Civata M8 x 10", "MEKATRONIK", 15, "ELIPS-DEPO"),
+    ("54612", "Yıldız Başlı Cıvata: M4x30mm", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("16044", "Yıldız Başlı M4 x 5 mm vida", "MEKATRONIK", 15, "ELIPS-DEPO"),
+    ("16039", "Paslanmaz M5 Yaylı Rondela", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("16041", "Paslanmaz M6 Yaylı Rondela", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("16034", "Paslanmaz M5 Pul", "MEKATRONIK", 25, "ELIPS-DEPO"),
+    ("16035", "Paslanmaz M6 Pul", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("11906", "Altı Köşe Somun M6", "MEKATRONIK", 20, "ELIPS-DEPO"),
+    ("12302", "Fiberli Kör Somun M6", "MEKATRONIK", 15, "ELIPS-DEPO")
+]
+
+REAL_WAREHOUSE_STOCKS = [
+    {"code": c, "name": n, "cat": ct, "qty": q, "loc": l}
+    for c, n, ct, q, l in RAW_CATALOG_DATA
+]
+
+def sync_all_stocks_to_db():
+    existing = load_data(STOCKS_FILE, [])
+    existing_map = {str(s.get("code", "")).strip().lower(): s for s in existing}
+    for p in REAL_WAREHOUSE_STOCKS:
+        code_l = str(p.get("code", "")).strip().lower()
+        if code_l not in existing_map:
+            existing.append(p)
+            existing_map[code_l] = p
+    save_data(STOCKS_FILE, existing)
+    logging.info(f"✅ Envanter Doğrulandı: {len(existing)} Kalem Parça Aktif!")
 
 def normalize_tr(text: str) -> str:
     if not text: return ""
@@ -126,7 +389,7 @@ def save_data(path, data):
     with open(tmp, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
 
-load_stocks = lambda: load_data(STOCKS_FILE, [])
+load_stocks = lambda: load_data(STOCKS_FILE, REAL_WAREHOUSE_STOCKS)
 load_sales = lambda: load_data(SALES_FILE, [])
 load_quotes = lambda: load_data(QUOTES_FILE, [])
 save_stocks = lambda d: save_data(STOCKS_FILE, d) if not TEST_MODE else None
@@ -138,14 +401,14 @@ def get_catalog_pdf_file():
         if os.path.exists(name): return name
     return None
 
-def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
+def extract_part_image_from_pdf(code: str) -> bytes:
     pdf_path = get_catalog_pdf_file()
     if not pdf_path: return None
     try:
         import fitz
         doc = fitz.open(pdf_path)
         code_str = str(code).strip()
-        for p_idx, page in enumerate(doc):
+        for page in doc:
             rects = page.search_for(code_str)
             if rects:
                 pw, ph = page.rect.width, page.rect.height
@@ -155,16 +418,6 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
                 x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
                 clip_rect = fitz.Rect(x0, max(10, r.y0 - 30), x1, min(ph - 10, r.y0 + 260))
                 return page.get_pixmap(clip=clip_rect, dpi=180).tobytes("png")
-        if code_str in CATALOG_GRID_MAP:
-            page_no, slot = CATALOG_GRID_MAP[code_str]
-            if page_no - 1 < len(doc):
-                page = doc[page_no - 1]
-                col = 0 if slot in [1, 3, 5] else 1
-                row = 0 if slot in [1, 2] else (1 if slot in [3, 4] else 2)
-                x0 = 8 if col == 0 else (page.rect.width / 2.0 + 2)
-                x1 = (page.rect.width / 2.0 - 2) if col == 0 else (page.rect.width - 8)
-                y0, y1 = [(25, 285), (288, 550), (550, 815)][row]
-                return page.get_pixmap(clip=fitz.Rect(x0, y0, x1, y1), dpi=180).tobytes("png")
         return None
     except Exception:
         return None
@@ -201,13 +454,13 @@ def get_main_keyboard():
 
 async def setup_bot_commands():
     await bot.set_my_commands([
-        BotCommand(command="start", description="Ana Menü"),
+        BotCommand(command="start", description="Ana Menü / Durum"),
         BotCommand(command="stok", description="Depo Envanteri & Yeniler"),
         BotCommand(command="stokekle", description="Stok Ekle / Yeni Tanımla"),
         BotCommand(command="stoksil", description="Parça Sil (Sessiz/Bildirimli)"),
-        BotCommand(command="teklif", description="Teklif Sihirbazı"),
+        BotCommand(command="teklif", description="Teklif Oluştur"),
         BotCommand(command="zraporu", description="Satış Z-Raporu"),
-        BotCommand(command="iptal", description="İşlemi İptal Et")
+        BotCommand(command="iptal", description="Açık İşlemi İptal Et")
     ])
 
 @dp.message(Command("iptal", "vazgec"), StateFilter("*"))
@@ -216,14 +469,33 @@ async def cmd_cancel(msg: types.Message, state: FSMContext):
     await state.clear()
     await msg.answer("❌ <b>İşlem iptal edildi.</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
 
+# ==============================================================================
+#            KURUMSAL VE TEMİZ KARŞILAMA EKRANI (/start)
+# ==============================================================================
 @dp.message(CommandStart(), StateFilter("*"))
 @dp.message(Command("start"), StateFilter("*"))
 async def cmd_start(msg: types.Message, state: FSMContext):
     await state.clear()
+    user_id = msg.chat.id
+    u_name = html.escape(msg.from_user.first_name if msg.from_user else "Yetkili")
+    user_title = "Ömer Bey" if user_id == OMER_CHAT_ID else ("Kamil Bey" if user_id == KAMIL_CHAT_ID else u_name)
+    
     stocks = load_stocks()
-    await msg.answer(f"👋 <b>Elips Depo</b> Aktif.\n• Depodaki Kalem: <b>{len(stocks)} Çeşit</b>\n• Saat Dilimi: <b>Asia/Tashkent</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
+    in_stock = len([s for s in stocks if safe_stock_qty(s.get("qty", 0)) > 0])
+    
+    welcome_text = (
+        f"🏢 <b>ELİPS TEKSTİL OTOMASYON & DEPO YÖNETİMİ</b>\n"
+        f"═══════════════════════════════\n"
+        f"Sayın <b>{user_title}</b>, sisteme hoş geldiniz.\n\n"
+        f"📊 <b>Depo Envanter Durumu:</b>\n"
+        f"• Tanımlı Parça Çeşidi: <b>{len(stocks)} Kalem</b>\n"
+        f"• Depoda Mevcut Ürün: <b>{in_stock} Çeşit</b>\n"
+        f"• Teknik Servis & Ekran Takibi: <b>Aktif</b>\n\n"
+        f"💡 <i>Aşağıdaki <b>'Eliar Mini App'</b> butonuna dokunarak canlı stokları görebilir, parça ekleyip düşebilir veya ekran tamir süreçlerini yönetebilirsiniz.</i>"
+    )
+    await msg.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
 
-# --- STOK EKLEME (Kayıtlı veya YENİ) ---
+# --- STOK EKLEME ---
 @dp.message(Command("stokekle", ignore_mention=True))
 @dp.message(F.text == "📥 Depoya Stok Ekle")
 async def start_stock_add(msg: types.Message, state: FSMContext):
@@ -370,7 +642,7 @@ async def show_stocks(msg: types.Message):
     if only_new: stocks = [s for s in stocks if isinstance(s, dict) and s.get("is_new")]
 
     available = [s for s in stocks if isinstance(s, dict) and safe_stock_qty(s.get("qty", 0)) > 0]
-    text = f"📦 <b>{'✨ YENİ PARÇALAR' if only_new else 'ELİAR DEPO ENVANTERİ'}</b>\nToplam: <b>{len(stocks)}</b> | Stokta: <b>{len(available)}</b>\n═══════════════════════════════\n\n"
+    text = f"📦 <b>{'✨ YENİ PARÇALAR' if only_new else 'ELİAR DEPO ENVANTERİ'}</b>\nToplam: <b>{len(stocks)} Kalem</b> | Stokta: <b>{len(available)}</b>\n═══════════════════════════════\n\n"
     for s in available[:15]:
         tag = " 🆕 [YENİ]" if s.get("is_new") else ""
         text += f"• <code>[{s.get('code', 'KODSUZ')}]</code> {html.escape(str(s.get('name', ''))[:28])}{tag} ➔ <b>{safe_stock_qty(s.get('qty', 0))} ADT</b>\n"
@@ -392,7 +664,7 @@ async def cb_stk_actions(cb: types.CallbackQuery, state: FSMContext):
     stocks = load_stocks()
     if only_new: stocks = [s for s in stocks if isinstance(s, dict) and s.get("is_new")]
     available = [s for s in stocks if isinstance(s, dict) and safe_stock_qty(s.get("qty", 0)) > 0]
-    text = f"📦 <b>{'✨ YENİ PARÇALAR' if only_new else 'ELİAR DEPO ENVANTERİ'}</b>\nToplam: <b>{len(stocks)}</b> | Stokta: <b>{len(available)}</b>\n═══════════════════════════════\n\n"
+    text = f"📦 <b>{'✨ YENİ PARÇALAR' if only_new else 'ELİAR DEPO ENVANTERİ'}</b>\nToplam: <b>{len(stocks)} Kalem</b> | Stokta: <b>{len(available)}</b>\n═══════════════════════════════\n\n"
     for s in available[:15]:
         tag = " 🆕 [YENİ]" if s.get("is_new") else ""
         text += f"• <code>[{s.get('code', 'KODSUZ')}]</code> {html.escape(str(s.get('name', ''))[:28])}{tag} ➔ <b>{safe_stock_qty(s.get('qty', 0))} ADT</b>\n"
@@ -476,7 +748,7 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
     await notify_both(f"📥 <b>YENİ TEKLİF:</b> {firm} ({len(items)} kalem)")
     await state.clear()
 
-# --- WEBAPP VERİLERİ (Stok & Ekran Tamir Bildirimleri) ---
+# --- WEBAPP VERİLERİ (Stok Değişimi, Sessiz Silme ve EKRAN TAMİR BİLDİRİMİ) ---
 @dp.message(F.web_app_data)
 async def handle_webapp(msg: types.Message):
     try: p = json.loads(msg.web_app_data.data)
@@ -484,6 +756,7 @@ async def handle_webapp(msg: types.Message):
     op = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
     dir_t = p.get("direction")
 
+    # STOK DEĞİŞİMİ
     if dir_t == "STOCK_CHANGE":
         code, name, delta = str(p.get("code") or ""), str(p.get("name") or "İsimsiz"), safe_stock_qty(p.get("delta", 1), 1)
         stocks = load_stocks()
@@ -503,6 +776,7 @@ async def handle_webapp(msg: types.Message):
             save_sales(sales)
             await notify_both(f"📤 <b>STOK ÇIKIŞI / SATIŞ</b>\n🏢 {html.escape(dest)}\n⚙️ <code>[{code}]</code> (-{delta} Adet)\n📉 Kalan: <b>{new_q} ADT</b>\n👷‍♂️ Yapan: <b>{op}</b>")
 
+    # BİLDİRİMSİZ / BİLDİRİMLİ SİLME
     elif dir_t == "STOCK_DELETE":
         code, name, silent = str(p.get("code") or ""), str(p.get("name") or "İsimsiz"), bool(p.get("silent", False))
         stocks = [s for s in load_stocks() if str(s.get("code", "")).lower() != code.lower()]
@@ -510,6 +784,7 @@ async def handle_webapp(msg: types.Message):
         if not silent:
             await notify_both(f"🗑️ <b>PARÇA SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(name)}\n👷‍♂️ Yapan: <b>{op}</b>")
 
+    # EKRAN TAMİR BİLDİRİMİ (Özellikle Türkiye'ye Gönderildiğinde Kamil'e Ulaşır)
     elif dir_t == "REPAIR_UPDATE":
         f_name, model, sn, st, issue = p.get("firm"), p.get("model"), p.get("sn"), p.get("status_text"), p.get("issue")
         await notify_both(
@@ -553,11 +828,12 @@ async def start_dummy_server():
 
 async def main():
     try:
+        sync_all_stocks_to_db()
         await bot.delete_webhook(drop_pending_updates=True)
         await setup_bot_commands()
         await start_dummy_server()
         asyncio.create_task(automated_scheduler())
-        logging.info(">>> BOT AKTIF (Asia/Tashkent) <<<")
+        logging.info(">>> ELIPS DEPO BOTU AKTIF <<<")
         await dp.start_polling(bot)
     except Exception as e: logging.error(f"Hata: {e}")
 

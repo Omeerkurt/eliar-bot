@@ -29,7 +29,7 @@ def get_user_keyboard(user_id: int):
             resize_keyboard=True, is_persistent=False
         )
 
-@dp_cancel = router.message(Command("iptal", "vazgec"), StateFilter("*"))
+@router.message(Command("iptal", "vazgec"), StateFilter("*"))
 @router.message(F.text.casefold().in_(["iptal", "vazgeç", "vazgec"]), StateFilter("*"))
 async def cmd_cancel(msg: types.Message, state: FSMContext):
     await state.clear()
@@ -56,7 +56,7 @@ async def cmd_start(msg: types.Message, state: FSMContext):
     )
     await msg.answer(welcome_text, reply_markup=get_user_keyboard(user_id), parse_mode="HTML")
 
-# TELSİZ / SOHBET KÖPRÜSÜ
+# TELSİZ KÖPRÜSÜ
 @router.message(~F.text.startswith("/"))
 async def chat_bridge(msg: types.Message):
     if TEST_MODE or msg.text in ["📦 Parça Listesi", "📥 Depoya Stok Ekle", "🗑️ Parça Sil", "📝 Eliar'dan Teklif Al", "📊 Z-Raporu Al"]: return

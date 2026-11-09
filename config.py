@@ -37,7 +37,7 @@ os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 # ORTAK BOT NESNESİ
 bot = Bot(token=BOT_TOKEN)
 
-# ORTAK DURUMLAR (FSM)
+# TÜM MODÜLLERİN KULLANDIĞI ORTAK DURUMLAR (FSM)
 class QuoteState(StatesGroup):
     waiting_firm = State()
     waiting_item_query = State()

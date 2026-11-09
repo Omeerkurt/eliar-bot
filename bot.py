@@ -5,13 +5,13 @@ from aiogram import Bot, Dispatcher, F, types, BaseMiddleware
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import (
     InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
-    ReplyKeyboardMarkup, WebAppInfo, BotCommand, BufferedInputFile
+    ReplyKeyboardMarkup, WebAppInfo, BotCommand, BufferedInputFile, FSInputFile
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
-# 1. ÖZBEKİSTAN SAAT DİLİMİ
+# 1. ÖZBEKİSTAN SAAT DİLİMİ (Asia/Tashkent)
 os.environ['TZ'] = 'Asia/Tashkent'
 if hasattr(time, 'tzset'):
     try: time.tzset()
@@ -30,11 +30,9 @@ def get_now_uz() -> datetime:
     return datetime.now()
 
 # ==============================================================================
-#                     CANLI YAPILANDIRMA & TOKEN
+#                     YENİ BOT TOKENİ & AYARLAR
 # ==============================================================================
-# BOTFATHER'DAN REVOKE EDİP ALDIĞIN YENİ TOKEN'I BURAYA YAPIŞTIR:
 BOT_TOKEN = "9212674639:AAE3H17yvghBQmbbq86_kLwI-L5787KzwXQ"
-
 OMER_CHAT_ID = 6915998444
 KAMIL_CHAT_ID = 35013468
 WEBAPP_URL = "https://omeerkurt.github.io/eliar-depo/"
@@ -47,6 +45,8 @@ dp = Dispatcher(storage=MemoryStorage())
 STOCKS_FILE = "stocks_db.json"
 SALES_FILE = "weekly_sales.json"
 QUOTES_FILE = "submitted_quotes.json"
+PDF_STORAGE_DIR = "stored_quotes_pdf"
+os.makedirs(PDF_STORAGE_DIR, exist_ok=True)
 
 class QuoteState(StatesGroup):
     waiting_firm = State()
@@ -60,55 +60,42 @@ class StockAddState(StatesGroup):
 
 # ----------------- KATALOG KOORDİNAT HARİTASI (RD96) -----------------
 CATALOG_GRID_MAP = {
-    "91661": (2, 1), "40642": (2, 2), "40645": (2, 3), "40643": (2, 4), "40644": (2, 5), "90802": (2, 6),
-    "41370": (3, 3), "41381": (3, 5), "91514": (3, 6), "91410": (4, 1), "91411": (4, 2), "41436": (4, 3),
-    "41435": (4, 4), "96469": (4, 5), "60002": (4, 6), "90338": (5, 1), "91128": (5, 2), "91516": (5, 4),
-    "41538": (5, 5), "41407": (5, 6), "41420": (6, 1), "93041": (6, 2), "93035": (6, 3), "60020": (6, 4),
-    "91517": (7, 1), "41430": (7, 2), "41408": (7, 3), "41415": (7, 4), "41419": (7, 5), "41414": (7, 6),
-    "41425": (8, 1), "41427": (8, 2), "41426": (8, 3), "93039": (8, 4), "93040": (8, 5), "41413": (9, 2),
-    "41418": (9, 3), "41411": (9, 4), "41428": (9, 5), "41429": (9, 6), "93043": (10, 1), "93042": (10, 2),
-    "93037": (10, 3), "93036": (10, 4), "60044": (11, 1), "41434": (11, 2), "90946": (11, 3), "41432": (11, 4),
-    "41409": (11, 5), "41424": (11, 6), "41433": (12, 1), "41416": (12, 2), "41417": (12, 3), "41533": (12, 4),
-    "96541": (12, 5), "96540": (12, 6), "90951": (13, 2), "41384": (13, 5), "41383": (13, 6), "90310": (14, 1),
-    "90952": (14, 2), "90332": (14, 3), "90328": (14, 4), "90949": (14, 5), "90947": (14, 6), "90321": (15, 3),
-    "16073": (15, 4), "90490": (15, 5), "91238": (15, 6), "90333": (16, 1), "90948": (16, 2), "91407": (16, 3),
-    "93008": (16, 4), "90345": (16, 5), "90325": (16, 6), "90320": (17, 1), "90950": (17, 2), "60003": (17, 3),
-    "96112": (17, 4), "90827": (17, 5), "50155": (17, 6), "96467": (18, 1), "91603": (18, 2), "91035": (18, 3),
-    "90547": (18, 4), "20031": (18, 5), "90475": (18, 6), "50160": (19, 1), "91285": (19, 2), "50606": (19, 3),
-    "91472": (19, 4), "50247": (19, 5), "50249": (19, 6), "15401": (20, 3), "41439": (20, 4), "91633": (20, 5),
-    "91448": (20, 6), "42595": (21, 1), "90861": (21, 3), "90817": (21, 6), "96683": (22, 1), "96097": (22, 2),
-    "91598": (22, 4), "91037": (22, 5), "40082": (22, 6), "91386": (23, 3), "91488": (23, 4), "90567": (23, 5),
-    "90965": (23, 6), "40647": (24, 1), "90715": (24, 2), "50161": (24, 3), "50162": (24, 4), "90828": (24, 5),
-    "90834": (24, 6), "96468": (25, 1), "91463": (25, 3), "91604": (25, 4), "90548": (25, 5), "91036": (25, 6),
-    "90832": (26, 4), "40634": (26, 6), "96412": (27, 1), "90878": (27, 2), "90881": (27, 3), "90880": (27, 4),
-    "90879": (27, 5), "91284": (28, 3), "14574": (28, 4), "14541": (28, 6), "91332": (29, 1), "50219": (29, 2),
-    "54626": (29, 3), "41441": (29, 5), "91447": (29, 6), "50057": (30, 1), "54612": (30, 2), "50098": (30, 3),
-    "50018": (30, 4), "91594": (30, 5), "91590": (31, 3), "15005": (31, 4), "50549": (31, 5), "40085": (31, 6),
-    "91451": (32, 1), "50023": (32, 2), "50273": (32, 3), "50021": (32, 4), "41442": (32, 5), "41404": (32, 6),
-    "96517": (33, 3), "50257": (33, 4), "96501": (33, 5), "90766": (33, 6), "16016": (34, 1), "16039": (34, 2),
-    "16034": (34, 3), "41403": (34, 4), "90767": (34, 5), "91071": (34, 6), "90762": (35, 1), "90840": (35, 2),
-    "41400": (35, 3), "41401": (35, 4), "41300": (35, 5), "41402": (35, 6), "91277": (36, 1), "54516": (36, 2),
-    "90768": (36, 3), "90769": (36, 4), "90782": (36, 5), "16032": (36, 6), "16041": (37, 3), "16035": (37, 4),
-    "50260": (37, 5), "90759": (37, 6), "50138": (38, 2), "91086": (38, 3), "91045": (38, 4), "90770": (38, 5),
-    "16043": (38, 6), "16030": (39, 1), "90765": (39, 4), "11906": (39, 6), "12302": (40, 1), "41444": (40, 2),
-    "91303": (40, 3), "50263": (40, 4), "91044": (40, 5), "54510": (41, 3), "90761": (41, 4), "50262": (41, 6),
-    "41399": (42, 5), "50259": (42, 6), "50258": (43, 6), "50261": (44, 6), "91269": (45, 6), "91270": (46, 3),
-    "50278": (46, 4), "50293": (46, 5), "90725": (46, 6), "50040": (47, 2), "41396": (47, 3), "41398": (47, 5),
-    "54630": (47, 6), "50270": (48, 1), "50287": (48, 2), "91066": (48, 3), "91064": (48, 4), "41457": (48, 5),
-    "50238": (48, 6), "50156": (49, 1), "91043": (49, 2), "50269": (49, 3), "50289": (50, 6), "50239": (51, 4),
-    "50291": (52, 1), "90781": (52, 5), "41407P": (53, 1), "96404": (53, 2), "41406": (53, 3), "41405": (53, 4),
-    "90484": (53, 5), "91490": (53, 6), "91489": (54, 1), "90930": (54, 5), "91495": (54, 6), "54661": (55, 3),
-    "54662": (55, 4), "41437": (55, 5), "90568": (55, 6), "50014": (56, 1), "91782": (56, 2), "91271": (56, 3),
-    "91268": (56, 4), "90793": (56, 5), "90324": (56, 6), "16044": (57, 1), "14847": (57, 2), "41290": (57, 3),
-    "41287": (57, 4), "41288": (57, 5), "41289": (57, 6), "54629": (58, 1), "54628": (58, 2), "54627": (58, 3),
-    "50024": (58, 5), "50025": (58, 6), "91586": (59, 3), "50027": (59, 4), "92038": (59, 5), "54620": (59, 6),
-    "14577": (60, 1), "14317": (60, 2), "96449": (60, 3), "91950": (60, 4), "96219": (60, 6), "91453": (61, 1),
-    "50008": (61, 2), "50010": (61, 3), "50046": (61, 4), "50054": (62, 3), "15005": (63, 3)
+    "91661":(2,1),"40642":(2,2),"40645":(2,3),"40643":(2,4),"40644":(2,5),"90802":(2,6),"41370":(3,3),"41381":(3,5),
+    "91514":(3,6),"91410":(4,1),"91411":(4,2),"41436":(4,3),"41435":(4,4),"96469":(4,5),"60002":(4,6),"90338":(5,1),
+    "91128":(5,2),"91516":(5,4),"41538":(5,5),"41407":(5,6),"41420":(6,1),"93041":(6,2),"93035":(6,3),"60020":(6,4),
+    "91517":(7,1),"41430":(7,2),"41408":(7,3),"41415":(7,4),"41419":(7,5),"41414":(7,6),"41425":(8,1),"41427":(8,2),
+    "41426":(8,3),"93039":(8,4),"93040":(8,5),"41413":(9,2),"41418":(9,3),"41411":(9,4),"41428":(9,5),"41429":(9,6),
+    "93043":(10,1),"93042":(10,2),"93037":(10,3),"93036":(10,4),"60044":(11,1),"41434":(11,2),"90946":(11,3),"41432":(11,4),
+    "41409":(11,5),"41424":(11,6),"41433":(12,1),"41416":(12,2),"41417":(12,3),"41533":(12,4),"96541":(12,5),"96540":(12,6),
+    "90951":(13,2),"41384":(13,5),"41383":(13,6),"90310":(14,1),"90952":(14,2),"90332":(14,3),"90328":(14,4),"90949":(14,5),
+    "90947":(14,6),"90321":(15,3),"16073":(15,4),"90490":(15,5),"91238":(15,6),"90333":(16,1),"90948":(16,2),"91407":(16,3),
+    "93008":(16,4),"90345":(16,5),"90325":(16,6),"90320":(17,1),"90950":(17,2),"60003":(17,3),"96112":(17,4),"90827":(17,5),
+    "50155":(17,6),"96467":(18,1),"91603":(18,2),"91035":(18,3),"90547":(18,4),"20031":(18,5),"90475":(18,6),"50160":(19,1),
+    "91285":(19,2),"50606":(19,3),"91472":(19,4),"50247":(19,5),"50249":(19,6),"15401":(20,3),"41439":(20,4),"91633":(20,5),
+    "91448":(20,6),"42595":(21,1),"90861":(21,3),"90817":(21,6),"96683":(22,1),"96097":(22,2),"91598":(22,4),"91037":(22,5),
+    "40082":(22,6),"91386":(23,3),"91488":(23,4),"90567":(23,5),"90965":(23,6),"40647":(24,1),"90715":(24,2),"50161":(24,3),
+    "50162":(24,4),"90828":(24,5),"90834":(24,6),"96468":(25,1),"91463":(25,3),"91604":(25,4),"90548":(25,5),"91036":(25,6),
+    "90832":(26,4),"40634":(26,6),"96412":(27,1),"90878":(27,2),"90881":(27,3),"90880":(27,4),"90879":(27,5),"91284":(28,3),
+    "14574":(28,4),"14541":(28,6),"91332":(29,1),"50219":(29,2),"54626":(29,3),"41441":(29,5),"91447":(29,6),"50057":(30,1),
+    "54612":(30,2),"50098":(30,3),"50018":(30,4),"91594":(30,5),"91590":(31,3),"15005":(31,4),"50549":(31,5),"40085":(31,6),
+    "91451":(32,1),"50023":(32,2),"50273":(32,3),"50021":(32,4),"41442":(32,5),"41404":(32,6),"96517":(33,3),"50257":(33,4),
+    "96501":(33,5),"90766":(33,6),"16016":(34,1),"16039":(34,2),"16034":(34,3),"41403":(34,4),"90767":(34,5),"91071":(34,6),
+    "90762":(35,1),"90840":(35,2),"41400":(35,3),"41401":(35,4),"41300":(35,5),"41402":(35,6),"91277":(36,1),"54516":(36,2),
+    "90768":(36,3),"90769":(36,4),"90782":(36,5),"16032":(36,6),"16041":(37,3),"16035":(37,4),"50260":(37,5),"90759":(37,6),
+    "50138":(38,2),"91086":(38,3),"91045":(38,4),"90770":(38,5),"16043":(38,6),"16030":(39,1),"90765":(39,4),"11906":(39,6),
+    "12302":(40,1),"41444":(40,2),"91303":(40,3),"50263":(40,4),"91044":(40,5),"54510":(41,3),"90761":(41,4),"50262":(41,6),
+    "41399":(42,5),"50259":(42,6),"50258":(43,6),"50261":(44,6),"91269":(45,6),"91270":(46,3),"50278":(46,4),"50293":(46,5),
+    "90725":(46,6),"50040":(47,2),"41396":(47,3),"41398":(47,5),"54630":(47,6),"50270":(48,1),"50287":(48,2),"91066":(48,3),
+    "91064":(48,4),"41457":(48,5),"50238":(48,6),"50156":(49,1),"91043":(49,2),"50269":(49,3),"50289":(50,6),"50239":(51,4),
+    "50291":(52,1),"90781":(52,5),"41407P":(53,1),"96404":(53,2),"41406":(53,3),"41405":(53,4),"90484":(53,5),"91490":(53,6),
+    "91489":(54,1),"90930":(54,5),"91495":(54,6),"54661":(55,3),"54662":(55,4),"41437":(55,5),"90568":(55,6),"50014":(56,1),
+    "91782":(56,2),"91271":(56,3),"91268":(56,4),"90793":(56,5),"90324":(56,6),"16044":(57,1),"14847":(57,2),"41290":(57,3),
+    "41287":(57,4),"41288":(57,5),"41289":(57,6),"54629":(58,1),"54628":(58,2),"54627":(58,3),"50024":(58,5),"50025":(58,6),
+    "91586":(59,3),"50027":(59,4),"92038":(59,5),"54620":(59,6),"14577":(60,1),"14317":(60,2),"96449":(60,3),"91950":(60,4),
+    "96219":(60,6),"91453":(61,1),"50008":(61,2),"50010":(61,3),"50046":(61,4),"50054":(62,3),"15005":(63,3)
 }
 
-# ==============================================================================
-#      KUSURSUZ MİLİMETRİK GÖRSEL KIRPICI (SAYFAYI BÜTÜN ATMAZ, KUTUYU KESER)
-# ==============================================================================
+# ----------------- MİLİMETRİK GÖRSEL KIRPICI -----------------
 def crop_slot_from_page(page, slot: int) -> bytes:
     pw, ph = page.rect.width, page.rect.height
     col = 0 if slot in [1, 3, 5] else 1
@@ -120,10 +107,8 @@ def crop_slot_from_page(page, slot: int) -> bytes:
     try:
         import fitz
         clip_rect = fitz.Rect(max(0, x0), max(0, y0), min(pw, x1), min(ph, y1))
-        pix = page.get_pixmap(clip=clip_rect, dpi=200)
-        return pix.tobytes("png")
-    except Exception as e:
-        logging.error(f"Kırpma hatası: {e}")
+        return page.get_pixmap(clip=clip_rect, dpi=200).tobytes("png")
+    except Exception:
         return None
 
 def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
@@ -137,14 +122,12 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
         doc = fitz.open(pdf_path)
         code_str = str(code).strip()
 
-        # 1. Koordinat Haritasından Doğrudan Slot Kırpma (Jilet gibi tek kutuyu keser)
         if code_str in CATALOG_GRID_MAP:
             page_no, slot = CATALOG_GRID_MAP[code_str]
             p_idx = page_no - 1
             if p_idx < len(doc):
                 return crop_slot_from_page(doc[p_idx], slot)
 
-        # 2. Koordinatta yoksa metin arayarak koordinat kırpma
         for p_idx, page in enumerate(doc):
             rects = page.search_for(code_str)
             if rects:
@@ -155,22 +138,18 @@ def extract_part_image_from_pdf(code: str, name: str = "") -> bytes:
                 x1 = (pw / 2.0 - 2) if col == 0 else (pw - 8)
                 clip_rect = fitz.Rect(x0, max(10, r.y0 - 32), x1, min(ph - 10, r.y0 + 265))
                 return page.get_pixmap(clip=clip_rect, dpi=200).tobytes("png")
-
         return None
-    except Exception as e:
-        logging.error(f"Görsel çıkarma hatası: {e}")
+    except Exception:
         return None
 
-# ==============================================================================
-#            YAZIM HATASI TOLERANSLI AKILLI PARÇA ARAMA MOTORU
-# ==============================================================================
+# ----------------- YAZIM HATASI TOLERANSLI ARAMA -----------------
 def normalize_tr(text: str) -> str:
     if not text: return ""
     m = {'ı':'i','İ':'i','I':'i','ş':'s','Ş':'s','ğ':'g','Ğ':'g','ü':'u','Ü':'u','ö':'o','Ö':'o','ç':'c','Ç':'c'}
     res = str(text).lower()
     for k, v in m.items(): res = res.replace(k, v)
-    # Yaygın yazım hatalarını düzelt (diayfram -> diyafram)
-    res = res.replace("diayfram", "diyafram").replace("diafram", "diyafram")
+    res = res.replace("diayfram", "diyafram").replace("diafram", "diyafram").replace("dayfram", "diyafram")
+    res = res.replace("cekvalf", "çekvalf").replace("selonoid", "solenoid")
     return res
 
 def calculate_similarity(query: str, part: dict) -> float:
@@ -214,9 +193,9 @@ def load_data(path, default):
     except Exception: return default
 
 def save_data(path, data):
-    tmp = f"{path}.tmp_{int(time.time()*1000)}"
-    with open(tmp, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
+    tmp_file = f"{path}.tmp_{int(time.time()*1000)}"
+    with open(tmp_file, "w", encoding="utf-8") as f: json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_file, path)
 
 load_stocks = lambda: load_data(STOCKS_FILE, [])
 load_sales = lambda: load_data(SALES_FILE, [])
@@ -234,15 +213,29 @@ async def notify_both(text: str, reply_markup=None, is_test=False):
         try: await bot.send_message(chat_id=cid, text=text, parse_mode="HTML", reply_markup=reply_markup)
         except Exception: pass
 
-def get_main_keyboard():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
-            [KeyboardButton(text="📦 Parça Listesi"), KeyboardButton(text="📥 Depoya Stok Ekle")],
-            [KeyboardButton(text="📝 Eliar'dan Teklif Al"), KeyboardButton(text="📊 Z-Raporu Al")]
-        ],
-        resize_keyboard=True, is_persistent=False
-    )
+# ==============================================================================
+#            MENÜ AYRIMI (SİLME SADECE ÖMER'DE)
+# ==============================================================================
+def get_user_keyboard(user_id: int):
+    if user_id == OMER_CHAT_ID:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
+                [KeyboardButton(text="📦 Parça Listesi"), KeyboardButton(text="📥 Depoya Stok Ekle")],
+                [KeyboardButton(text="🗑️ Parça Sil"), KeyboardButton(text="📝 Eliar'dan Teklif Al")],
+                [KeyboardButton(text="📊 Z-Raporu Al")]
+            ],
+            resize_keyboard=True, is_persistent=False
+        )
+    else:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⚡ Eliar Mini App", web_app=WebAppInfo(url=WEBAPP_URL))],
+                [KeyboardButton(text="📦 Parça Listesi"), KeyboardButton(text="📥 Depoya Stok Ekle")],
+                [KeyboardButton(text="📝 Eliar'dan Teklif Al"), KeyboardButton(text="📊 Z-Raporu Al")]
+            ],
+            resize_keyboard=True, is_persistent=False
+        )
 
 async def setup_bot_commands():
     await bot.set_my_commands([
@@ -259,11 +252,8 @@ async def setup_bot_commands():
 @dp.message(F.text.casefold().in_(["iptal", "vazgeç", "vazgec"]), StateFilter("*"))
 async def cmd_cancel(msg: types.Message, state: FSMContext):
     await state.clear()
-    await msg.answer("❌ <b>İşlem iptal edildi.</b>", reply_markup=get_main_keyboard(), parse_mode="HTML")
+    await msg.answer("❌ <b>İşlem iptal edildi.</b>", reply_markup=get_user_keyboard(msg.chat.id), parse_mode="HTML")
 
-# ==============================================================================
-#            SADE VE NET KARŞILAMA EKRANI (/start)
-# ==============================================================================
 @dp.message(CommandStart(), StateFilter("*"))
 @dp.message(Command("start"), StateFilter("*"))
 async def cmd_start(msg: types.Message, state: FSMContext):
@@ -284,10 +274,169 @@ async def cmd_start(msg: types.Message, state: FSMContext):
         f"• Ekran Servis Takibi: <b>Aktif</b>\n\n"
         f"💡 <i>Aşağıdaki <b>'Eliar Mini App'</b> butonuna basarak depoyu açabilir veya menüden işlem seçebilirsin.</i>"
     )
-    await msg.answer(welcome_text, reply_markup=get_main_keyboard(), parse_mode="HTML")
+    await msg.answer(welcome_text, reply_markup=get_user_keyboard(user_id), parse_mode="HTML")
 
 # ==============================================================================
-#      TEKLİF SİHİRBAZI (SEÇENEK SUNAN AKILLI MOTOR + RESMİ KIRPAN SİSTEM)
+#      NİLAY HANIM'DAN GELEN PDF TEKLİFİ OKUYUCU MOTORU
+# ==============================================================================
+def parse_eliar_pdf_locally(pdf_path: str, original_filename: str = "") -> dict:
+    full_text, items, firm, ref_no, grand_total, currency = "", [], None, "BELİRTİLMEDİ", "-", "EUR"
+    try:
+        import fitz
+        doc = fitz.open(pdf_path)
+        for page in doc: full_text += page.get_text() + "\n"
+    except Exception: pass
+
+    m_firm = re.search(r"Müşteri\s*Adı\s*:\s*([^\n\r]+)", full_text, re.IGNORECASE)
+    if m_firm:
+        val = re.split(r"(?:İlgili|Tel|Adres)", m_firm.group(1).strip(), flags=re.IGNORECASE)[0].strip()
+        if len(val) >= 3 and val.upper() != "ADI:": firm = val.upper()
+
+    if not firm or firm == "ADI:":
+        clean_fn = re.sub(r"(fiyat|teklif|\.pdf|\.jpg)", "", original_filename, flags=re.IGNORECASE).strip()
+        firm = clean_fn.upper() if len(clean_fn) >= 3 else "BİLİNMEYEN FİRMA"
+
+    m_ref = re.search(r"Ref\s*No\s*:\s*([A-Za-z0-9\-]+)", full_text, re.IGNORECASE)
+    if m_ref: ref_no = m_ref.group(1).strip()
+
+    m_tot = re.search(r"TOPLAM\s*:\s*([\d\.,]+)\s*([€$£]|EUR|USD)?", full_text, re.IGNORECASE)
+    if m_tot: grand_total, currency = m_tot.group(1).strip(), (m_tot.group(2) or "EUR")
+
+    try:
+        import pdfplumber
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                tables = page.extract_tables() or []
+                for table in tables:
+                    for row in table:
+                        if not row or len(row) < 3: continue
+                        clean_row = [str(c).replace('\n', ' ').strip() if c else '' for c in row]
+                        row_str = " ".join(clean_row)
+                        if "Ürün Kodu" in row_str or "TOPLAM" in row_str: continue
+                        c0, c1 = clean_row[0], clean_row[1] if len(clean_row) > 1 else ""
+                        if re.match(r"^\d{4,7}$", c0) or (len(c0) >= 3 and re.match(r"^[A-Za-z0-9\-_./]+$", c0)):
+                            q = 1
+                            for cell in clean_row[2:]:
+                                digits = re.sub(r"[^\d]", "", cell)
+                                if digits and 0 < int(digits) < 10000: q = int(digits); break
+                            items.append({"code": c0, "name": c1, "qty": q, "unit_price": clean_row[3] if len(clean_row) > 3 else "-"})
+    except Exception: pass
+
+    return {"firm": firm, "ref_no": ref_no, "date": get_now_uz().strftime("%d.%m.%Y"), "currency": currency, "grand_total": grand_total, "items": items}
+
+@dp.message(F.document)
+async def handle_pdf_upload(msg: types.Message):
+    doc = msg.document
+    if not (doc.file_name or "").lower().endswith(".pdf"):
+        await msg.answer("⚠️ Lütfen PDF formatında teklif belgesi yükleyin.")
+        return
+
+    save_path = os.path.join(PDF_STORAGE_DIR, f"{int(time.time())}_{doc.file_name}")
+    await bot.download(doc, destination=save_path)
+
+    wait = await msg.answer("⏳ <i>PDF taranıyor, parçalar Elips deposuyla eşleştiriliyor...</i>", parse_mode="HTML")
+    parsed = parse_eliar_pdf_locally(save_path, doc.file_name)
+    await wait.delete()
+
+    quote_id = f"TK-{int(time.time())}"
+    quote_data = {
+        "id": quote_id, "firm": parsed["firm"], "ref_no": parsed["ref_no"],
+        "date": parsed["date"], "currency": parsed["currency"], "grand_total": parsed["grand_total"],
+        "status": "PENDING", "items": parsed["items"], "pdf_file": save_path
+    }
+    quotes = load_quotes()
+    quotes.append(quote_data)
+    save_quotes(quotes)
+
+    stocks = load_stocks()
+    analysis_lines = []
+    for idx, itm in enumerate(parsed["items"], 1):
+        p = next((s for s in stocks if str(s.get("code", "")).lower() == str(itm["code"]).lower()), None)
+        avail = safe_stock_qty(p.get("qty", 0)) if p else 0
+        req = itm["qty"]
+        stat = f"🟢 Depoda Var ({avail} ADT)" if avail >= req else (f"🟡 Kısmi ({avail} ADT)" if avail > 0 else "🔴 Depoda YOK (TR'den İstenmeli)")
+        analysis_lines.append(f"<b>{idx}.</b> <code>[{itm['code']}]</code> {html.escape(itm['name'])} ➔ {req} Adet ({stat})")
+
+    text = (
+        f"📄 <b>NİLAY HANIM'DAN GELEN TEKLİF DOĞRULANDI!</b>\n"
+        f"═══════════════════════════════\n"
+        f"🏢 <b>Firma:</b> <b>{html.escape(parsed['firm'])}</b>\n"
+        f"🔖 <b>Ref No:</b> <code>{parsed['ref_no']}</code> | 💰 <b>Tutar:</b> {parsed['grand_total']} {parsed['currency']}\n\n"
+        f"<b>📦 ÖZBEKİSTAN (ELİPS) DEPO ANALİZİ:</b>\n" +
+        ("\n".join(analysis_lines) if analysis_lines else "⚠️ <i>Kalemler ayrıştırılamadı.</i>") +
+        f"\n\n❓ <b>Bu teklif nereden karşılanacak?</b>"
+    )
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🇺🇿 Özbek (Elips) Depodan Karşıla", callback_data=f"qroute:{quote_id}:ELIPS")],
+        [InlineKeyboardButton(text="🇹🇷 Eliar TR'den Gelecek (Kamil'e Bildir)", callback_data=f"qroute:{quote_id}:TR")],
+        [InlineKeyboardButton(text="🔕 Bildirimsiz Sil", callback_data=f"qdel:{quote_id}")]
+    ])
+    await msg.answer(text, reply_markup=kb, parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("qroute:"))
+async def on_quote_route(cb: types.CallbackQuery):
+    await cb.answer()
+    _, qid, route = cb.data.split(":")
+    quotes = load_quotes()
+    q = next((x for x in quotes if x["id"] == qid), None)
+    if not q: await cb.message.edit_text("⚠️ Teklif bulunamadı."); return
+
+    if route == "TR":
+        q["status"], q["source"] = "APPROVED", "TR_DEPO"
+        save_quotes(quotes)
+        sales = load_sales()
+        sales.append({"id": f"SLS-{int(time.time())}", "firm": q["firm"], "source": "TR_DEPO", "items": q["items"], "status": "APPROVED", "date": get_now_uz().strftime("%d.%m.%Y %H:%M")})
+        save_sales(sales)
+
+        tr_msg = (
+            f"📦 <b>KAMİL - YENİ TR SEVKİYAT / KARGO EMRİ</b>\n"
+            f"═══════════════════════════════\n"
+            f"🏭 <b>Müşteri:</b> <b>{html.escape(q['firm'])}</b>\n"
+            f"🔖 <b>Ref No:</b> <code>{q.get('ref_no','YOK')}</code>\n\n"
+            f"<b>Paketlenecek Parçalar:</b>\n" +
+            "\n".join([f"• [{i.get('code')}] {i.get('name')} ➔ <b>{i.get('qty')} Adet</b>" for i in q["items"]]) +
+            "\n\n✈️ <i>Lütfen Özbekistan sevkiyat kolisine ekle.</i>"
+        )
+        if not TEST_MODE:
+            try: await bot.send_message(KAMIL_CHAT_ID, tr_msg, parse_mode="HTML")
+            except Exception: pass
+
+        await cb.message.edit_text(f"🇹🇷 <b>TEKLİF ONAYLANDI (TÜRKİYE'DEN GELECEK)</b>\nKamil'e kargo ve paketleme talimatı iletildi. Elips depo stoğuna dokunulmadı.", parse_mode="HTML")
+        return
+
+    # ELIPS DEPO ÇIKIŞI
+    q["status"], q["source"] = "APPROVED", "ELIPS_DEPO"
+    save_quotes(quotes)
+    stocks = load_stocks()
+    sales = load_sales()
+    deducted = []
+
+    for itm in q["items"]:
+        code, req_q = str(itm.get("code")).lower(), itm.get("qty", 1)
+        p = next((s for s in stocks if str(s.get("code")).lower() == code), None)
+        if p and p.get("qty", 0) > 0:
+            act = min(p["qty"], req_q)
+            p["qty"] -= act
+            deducted.append(f"• <code>[{p['code']}]</code> {p['name']}: <b>-{act} Adet</b> (Kalan: {p['qty']})")
+
+    save_stocks(stocks)
+    sales.append({"id": f"SLS-{int(time.time())}", "firm": q["firm"], "source": "ELIPS_DEPO", "items": q["items"], "status": "APPROVED", "date": get_now_uz().strftime("%d.%m.%Y %H:%M")})
+    save_sales(sales)
+
+    await notify_both(f"📦 <b>ELİPS DEPO STOK ÇIKIŞI!</b>\n🏢 {html.escape(q['firm'])}\n" + "\n".join(deducted))
+    await cb.message.edit_text("✅ <b>Teklif onaylandı ve Özbekistan Elips stoğundan düşüldü.</b>", parse_mode="HTML")
+
+@dp.callback_query(F.data.startswith("qdel:"))
+async def on_quote_del(cb: types.CallbackQuery):
+    await cb.answer()
+    qid = cb.data.split(":")[1]
+    quotes = [x for x in load_quotes() if x["id"] != qid]
+    save_quotes(quotes)
+    await cb.message.edit_text("🔕 Teklif kaydı sessizce silindi.")
+
+# ==============================================================================
+#      TEKLİF HAZIRLAMA SİHİRBAZI (KULLANICI SEÇİMLİ AKILLI ARAMA)
 # ==============================================================================
 @dp.message(Command("teklif", ignore_mention=True))
 @dp.message(F.text == "📝 Eliar'dan Teklif Al")
@@ -332,13 +481,12 @@ async def quote_item_search(msg: types.Message, state: FSMContext):
 
     if not matches:
         kb_custom = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"➕ Bu İsimle Teklife Ekle", callback_data="qb_add_custom")],
+            [InlineKeyboardButton(text="➕ Bu İsimle Teklife Ekle", callback_data="qb_add_custom")],
             [InlineKeyboardButton(text="🔍 Tekrar Ara", callback_data="qb_retry")]
         ])
         await msg.answer(f"⚠️ <code>{html.escape(query)}</code> stokta veya katalogda bulunamadı.\nSerbest kalem olarak eklensin mi?", reply_markup=kb_custom, parse_mode="HTML")
         return
 
-    # SADECE VE SADECE tam kod eşleşirse direkt seç
     top_part, score = matches[0]
     if query.lower() == str(top_part.get('code', '')).lower():
         await state.update_data(sel_part=top_part)
@@ -355,7 +503,6 @@ async def quote_item_search(msg: types.Message, state: FSMContext):
         await msg.answer(f"🎯 <b>Seçilen:</b> <code>[{top_part.get('code')}]</code> {html.escape(top_part.get('name', ''))}{tag}\n📦 <b>{stock_text}</b>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
         return
 
-    # Kelime aramalarında (örn: "diyafram" / "diayfram") ASLA kafana göre parça seçme, listeyi sun!
     await state.update_data(search_matches=matches)
     text, kb = render_search_page(matches, 0, query)
     await msg.answer(text, reply_markup=kb, parse_mode="HTML")
@@ -379,9 +526,7 @@ async def on_qb_part_select(cb: types.CallbackQuery, state: FSMContext):
     await cb.answer()
     code = cb.data.split(":")[1]
     part = next((p for p in load_stocks() if str(p.get("code", "")).lower() == code.lower()), None)
-    if not part:
-        await cb.answer("Parça bulunamadı.", show_alert=True)
-        return
+    if not part: await cb.answer("Parça bulunamadı.", show_alert=True); return
 
     await state.update_data(sel_part=part)
     await state.set_state(QuoteState.waiting_qty)
@@ -403,7 +548,6 @@ async def on_qb_custom(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteState.waiting_qty)
     await cb.message.answer(f"🎯 <b>Seçilen:</b> {html.escape(q)} <i>(Katalog Dışı)</i>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
 
-# --- ADET ALICI: 0 / İPTAL MANTIĞI EKSİKSİZ KORUNDU ---
 @dp.message(QuoteState.waiting_qty, ~F.text.startswith("/"))
 async def quote_process_qty(msg: types.Message, state: FSMContext):
     text = msg.text.strip().lower()
@@ -414,14 +558,11 @@ async def quote_process_qty(msg: types.Message, state: FSMContext):
 
     if text in {"0", "iptal", "vazgeç", "vazgec", "geç", "gec", "atla"}:
         await state.set_state(QuoteState.confirm_more)
-        await msg.answer("ℹ️ Bu parça teklif sepetine eklenmedi (atlandı).\nDevam etmek için seçim yapın:", reply_markup=kb, parse_mode="HTML")
+        await msg.answer("ℹ️ Bu parça atlandı. Devam etmek için seçim yapın:", reply_markup=kb, parse_mode="HTML")
         return
 
-    try:
-        qty = parse_qty_safe(msg.text)
-    except Exception:
-        await msg.answer("⚠️ Lütfen sayı girin (Vazgeçmek için <b>0</b> veya <b>iptal</b> yazabilirsiniz):", parse_mode="HTML")
-        return
+    try: qty = parse_qty_safe(msg.text)
+    except Exception: await msg.answer("⚠️ Lütfen sayı girin (Vazgeçmek için <b>0</b> veya <b>iptal</b>):", parse_mode="HTML"); return
 
     data = await state.get_data()
     p = data.get("sel_part", {})
@@ -443,10 +584,7 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
     await cb.answer()
     data = await state.get_data()
     firm, items = data.get("firm", "MÜŞTERİ"), data.get("quote_items", [])
-    if not items:
-        await cb.message.edit_text("⚠️ Teklifte hiç parça yok.")
-        await state.clear()
-        return
+    if not items: await cb.message.edit_text("⚠️ Teklifte hiç parça yok."); await state.clear(); return
 
     fmt = f"Merhaba Nilay Hanım\n\n{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
     for itm in items:
@@ -464,7 +602,7 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
     await state.clear()
 
 # ==============================================================================
-#      STOK EKLEME (/stokekle)
+#      STOK EKLEME & SİLME MOTORU
 # ==============================================================================
 @dp.message(Command("stokekle", ignore_mention=True))
 @dp.message(F.text == "📥 Depoya Stok Ekle")
@@ -496,37 +634,48 @@ async def start_stock_add(msg: types.Message, state: FSMContext):
 
 @dp.message(StockAddState.waiting_query, ~F.text.startswith("/"))
 async def stock_add_q(msg: types.Message, state: FSMContext):
-    q = msg.text.strip()
-    await state.update_data(raw_q=q)
-    matches = find_best_matches(q)
+    query = msg.text.strip()
+    await state.update_data(raw_query=query)
+    matches = find_best_matches(query)
+
     if not matches:
-        new_p = {"code": q.upper() if len(q) <= 12 and " " not in q else "KODSUZ", "name": q, "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO", "is_new": True}
+        new_p = {"code": query.upper() if len(query) <= 12 and " " not in query else "KODSUZ", "name": query, "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO", "is_new": True}
         await state.update_data(target_part=new_p)
         await state.set_state(StockAddState.waiting_qty)
-        await msg.answer(f"🆕 <b>Yeni Parça Tanımlanıyor:</b> <code>{html.escape(q)}</code>\n➕ Depoya kaç adet eklenecek?", parse_mode="HTML")
+        await msg.answer(f"🆕 <b>Yeni Parça Tanımlanıyor:</b> <code>{html.escape(query)}</code>\n➕ Depoya kaç adet eklenecek?", parse_mode="HTML")
         return
 
-    top, _ = matches[0]
-    if q.lower() == str(top.get('code', '')).lower():
-        await state.update_data(target_part=top)
+    top_part, _ = matches[0]
+    if query.lower() == str(top_part.get('code', '')).lower():
+        await state.update_data(target_part=top_part)
         await state.set_state(StockAddState.waiting_qty)
-        img = extract_part_image_from_pdf(top.get("code", ""))
-        if img: await msg.answer_photo(BufferedInputFile(img, filename=f"{top.get('code')}.png"), caption=f"📸 <code>[{top.get('code')}]</code>", parse_mode="HTML")
-        await msg.answer(f"🎯 <code>[{top.get('code')}]</code> {html.escape(top.get('name', ''))}\n📦 Mevcut: <b>{safe_stock_qty(top.get('qty', 0))} ADT</b>\n\n➕ Kaç adet eklenecek?", parse_mode="HTML")
+        img_bytes = extract_part_image_from_pdf(top_part.get("code", ""), top_part.get("name", ""))
+        if img_bytes:
+            photo = BufferedInputFile(img_bytes, filename=f"{top_part.get('code')}.png")
+            await msg.answer_photo(photo, caption=f"📸 <code>[{top_part.get('code')}]</code> {html.escape(top_part.get('name', ''))}", parse_mode="HTML")
+        cur_q = safe_stock_qty(top_part.get('qty', 0))
+        tag = " 🆕 [YENİ]" if top_part.get("is_new") else ""
+        await msg.answer(f"🎯 <b>Seçilen:</b> <code>[{top_part.get('code')}]</code> {html.escape(top_part.get('name', ''))}{tag}\n📦 Mevcut: <b>{cur_q} ADT</b>\n\n➕ Kaç adet eklenecek?", parse_mode="HTML")
         return
 
-    btns = [[InlineKeyboardButton(text=f"👉 [{p.get('code')}] {p.get('name', '')[:25]}", callback_data=f"sel_s:{p.get('code')}")] for p, _ in matches[:5]]
-    btns.append([InlineKeyboardButton(text=f"➕ Yeni Olarak Ekle: '{q[:15]}'", callback_data="add_unlisted")])
+    btns = []
+    for p, _ in matches[:5]:
+        p_code = p.get('code', 'KODSUZ')
+        p_name = p.get('name', '')[:25]
+        p_qty = safe_stock_qty(p.get('qty', 0))
+        tag = "🆕 " if p.get("is_new") else ""
+        btns.append([InlineKeyboardButton(text=f"👉 {tag}[{p_code}] {p_name} ({p_qty} Adt)", callback_data=f"sel_s:{p_code}")])
+    btns.append([InlineKeyboardButton(text=f"➕ Listede Yok, Yeni Tanımla: '{query[:15]}'", callback_data="add_unlisted_part")])
     await msg.answer("🔍 Eşleşen parçalar:", reply_markup=InlineKeyboardMarkup(inline_keyboard=btns), parse_mode="HTML")
 
-@dp.callback_query(F.data == "add_unlisted")
-async def on_add_unlisted(cb: types.CallbackQuery, state: FSMContext):
-    await cb.answer()
-    q = (await state.get_data()).get("raw_q", "Özel Parça").strip()
+@dp.callback_query(F.data == "add_unlisted_part")
+async def on_add_unlisted_part(callback: types.CallbackQuery, state: FSMContext):
+    await callback.answer()
+    q = (await state.get_data()).get("raw_query", "Özel Parça").strip()
     new_p = {"code": q.upper() if len(q) <= 12 and " " not in q else "KODSUZ", "name": q, "cat": "MEKATRONIK", "qty": 0, "loc": "ELIPS-DEPO", "is_new": True}
     await state.update_data(target_part=new_p)
     await state.set_state(StockAddState.waiting_qty)
-    await cb.message.edit_text(f"🆕 <b>Yeni Parça Tanımlanıyor:</b> {html.escape(q)}\n➕ Kaç adet eklenecek?")
+    await callback.message.edit_text(f"🆕 <b>Yeni Parça Tanımlanıyor:</b> {html.escape(q)}\n➕ Depoya kaç adet eklenecek?")
 
 @dp.callback_query(F.data.startswith("sel_s:"))
 async def on_sel_s(cb: types.CallbackQuery, state: FSMContext):
@@ -536,8 +685,10 @@ async def on_sel_s(cb: types.CallbackQuery, state: FSMContext):
     if part:
         await state.update_data(target_part=part)
         await state.set_state(StockAddState.waiting_qty)
-        img = extract_part_image_from_pdf(part.get("code", ""))
-        if img: await cb.message.answer_photo(BufferedInputFile(img, filename=f"{part.get('code')}.png"), caption=f"📸 <code>[{part.get('code')}]</code>", parse_mode="HTML")
+        img_bytes = extract_part_image_from_pdf(part.get("code", ""), part.get("name", ""))
+        if img_bytes:
+            photo = BufferedInputFile(img_bytes, filename=f"{part.get('code')}.png")
+            await cb.message.answer_photo(photo, caption=f"📸 <code>[{part.get('code')}]</code> {html.escape(part.get('name', ''))}", parse_mode="HTML")
         await cb.message.answer(f"🎯 <code>[{part.get('code')}]</code> {html.escape(part.get('name', ''))}\n➕ Kaç adet eklenecek?", parse_mode="HTML")
 
 @dp.message(StockAddState.waiting_qty, ~F.text.startswith("/"))
@@ -564,17 +715,19 @@ async def stock_add_process_qty(msg: types.Message, state: FSMContext):
     op = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
     await notify_both(f"📥 <b>STOK EKLENDİ!</b>\n⚙️ <code>[{p.get('code')}]</code> {html.escape(p.get('name', ''))}{tag}\n📈 <b>+{qty}</b> | Yeni Stok: <b>{new_q} ADT</b>\n👷‍♂️ Ekleyen: <b>{op}</b>")
 
-# ==============================================================================
-#      SADECE ÖMER'E ÖZEL SİLME MOTORU (/stoksil)
-# ==============================================================================
+# --- SADECE ÖMER'E ÖZEL SİLME MOTORU (/stoksil) ---
 @dp.message(Command("stoksil", ignore_mention=True))
+@dp.message(F.text == "🗑️ Parça Sil")
 async def cmd_stock_delete(msg: types.Message):
     if msg.chat.id != OMER_CHAT_ID:
         await msg.answer("🔒 <b>Yetkisiz İşlem:</b> Depodan parça silme yetkisi yalnızca Ömer'e aittir.", parse_mode="HTML")
         return
 
     parts = msg.text.split(maxsplit=1)
-    if len(parts) < 2: await msg.answer("⚠️ Parça kodu girin. Örn: <code>/stoksil 90567</code>", parse_mode="HTML"); return
+    if len(parts) < 2 or parts[1].strip() == "Sil":
+        await msg.answer("⚠️ Silmek istediğin parça kodunu belirt.\nÖrnek: <code>/stoksil 90567</code>", parse_mode="HTML")
+        return
+
     code = parts[1].strip()
     target = next((s for s in load_stocks() if str(s.get("code", "")).lower() == code.lower()), None)
     if not target: await msg.answer(f"⚠️ <code>{html.escape(code)}</code> bulunamadı."); return
@@ -590,7 +743,7 @@ async def cmd_stock_delete(msg: types.Message):
 async def on_del_p(cb: types.CallbackQuery):
     await cb.answer()
     if cb.message.chat.id != OMER_CHAT_ID:
-        await cb.message.edit_text("🔒 Bu işlem sadece yöneticiye açıktır.")
+        await cb.message.edit_text("🔒 Bu işlem sadece Ömer'e açıktır.")
         return
 
     _, code, mode = cb.data.split(":")
@@ -602,7 +755,7 @@ async def on_del_p(cb: types.CallbackQuery):
     save_stocks(stocks)
 
     if mode == "silent":
-        await cb.message.edit_text(f"🔕 <code>[{code}]</code> parçası <b>kimseye bildirim gitmeden</b> sessizce silindi.", parse_mode="HTML")
+        await cb.message.edit_text(f"🔕 <code>[{code}]</code> parçası depodan <b>kimseye bildirim gitmeden</b> sessizce silindi.", parse_mode="HTML")
     else:
         await notify_both(f"🗑️ <b>DEPO PARÇASI SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(target.get('name', ''))}\n👷‍♂️ Silen: <b>Ömer</b>")
         await cb.message.edit_text(f"🗑️ <code>[{code}]</code> silindi ve herkese bildirildi.", parse_mode="HTML")
@@ -649,7 +802,7 @@ async def cb_stk_actions(cb: types.CallbackQuery, state: FSMContext):
     ])
     await cb.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
-# --- WEBAPP VERİLERİ ---
+# --- WEBAPP VERİLERİ (Stok, Sessiz Silme ve Ekran Tamir) ---
 @dp.message(F.web_app_data)
 async def handle_webapp(msg: types.Message):
     try: p = json.loads(msg.web_app_data.data)
@@ -706,7 +859,7 @@ async def handle_webapp(msg: types.Message):
 # --- SOHBET / TELSİZ KÖPRÜSÜ ---
 @dp.message(~F.text.startswith("/"))
 async def chat_bridge(msg: types.Message):
-    if TEST_MODE or msg.text in ["📦 Parça Listesi", "📥 Depoya Stok Ekle", "📝 Eliar'dan Teklif Al", "📊 Z-Raporu Al"]: return
+    if TEST_MODE or msg.text in ["📦 Parça Listesi", "📥 Depoya Stok Ekle", "🗑️ Parça Sil", "📝 Eliar'dan Teklif Al", "📊 Z-Raporu Al"]: return
     tid = KAMIL_CHAT_ID if msg.chat.id == OMER_CHAT_ID else (OMER_CHAT_ID if msg.chat.id == KAMIL_CHAT_ID else None)
     sender = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
     if tid and msg.text:

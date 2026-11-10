@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile, FSInputFile
 from config import (
-    PDF_STORAGE_DIR, KAMIL_CHAT_ID, TEST_MODE, get_now_uz, notify_both, bot, QuoteState
+    PDF_STORAGE_DIR, OMER_CHAT_ID, KAMIL_CHAT_ID, TEST_MODE, get_now_uz, notify_both, bot, QuoteState
 )
 from database import (
     load_stocks, save_stocks, load_quotes, save_quotes, load_sales, save_sales,
@@ -15,7 +15,7 @@ from pdf_tools import extract_part_image_from_pdf, parse_eliar_pdf_locally
 router = Router()
 
 # ==============================================================================
-#      1. PDF TEKLİF YÜKLEME (OTOMATİK TANIMA & BEKLEYENLERE ALMA)
+#      1. PDF TEKLİF YÜKLEME (KAMİL YÜKLEYİNCE ÖMER'E ANINDA BİLDİRİM GİDER)
 # ==============================================================================
 @router.message(F.document)
 async def handle_pdf_upload(msg: types.Message):
@@ -26,7 +26,7 @@ async def handle_pdf_upload(msg: types.Message):
         await msg.answer("⚠️ Lütfen PDF formatında bir teklif belgesi yükleyin.")
         return
 
-    # Orijinal PDF'i benzersiz dosya adıyla arşiv klasörüne kaydet
+    # Orijinal PDF'i sunucu arşivine kaydet
     save_path = os.path.join(PDF_STORAGE_DIR, f"{int(time.time())}_{doc.file_name}")
     await bot.download(doc, destination=save_path)
 
@@ -42,7 +42,7 @@ async def handle_pdf_upload(msg: types.Message):
         "date": parsed.get("date", get_now_uz().strftime("%d.%m.%Y")),
         "currency": parsed.get("currency", "EUR"),
         "grand_total": parsed.get("grand_total", "-"),
-        "status": "PENDING",  # Otomatik olarak 'Bekleyenler' durumuna alınır
+        "status": "PENDING",
         "items": parsed.get("items", []),
         "pdf_file": save_path
     }
@@ -51,10 +51,20 @@ async def handle_pdf_upload(msg: types.Message):
     quotes.append(quote_data)
     save_quotes(quotes)
 
+    # Yükleyen kişiye kartı göster
     await render_quote_card(msg, quote_data, is_new=True)
 
+    # ✅ EĞER YÜKLEYEN KAMİL İSE: Ömer'e anında tam teklif kartıyla bildirim gönder!
+    if msg.chat.id == KAMIL_CHAT_ID:
+        await render_quote_card(
+            OMER_CHAT_ID,
+            quote_data,
+            is_new=True,
+            extra_header="📥 <b>KAMİL YENİ BİR TEKLİF PDF'İ YÜKLEDİ!</b>"
+        )
+
 # TEKLİF DETAY KARTINI VE İŞLEM BUTONLARINI ÇİZEN MERKEZİ FONKSİYON
-async def render_quote_card(target, q, is_new=False):
+async def render_quote_card(target, q, is_new=False, extra_header=""):
     quote_id = q["id"]
     status_map = {
         "PENDING": "⏳ Beklemede (Müşteri Düşünüyor)",
@@ -74,7 +84,9 @@ async def render_quote_card(target, q, is_new=False):
         stat = f"🟢 Depoda Var ({avail} ADT)" if avail >= req_q else (f"🟡 Kısmi ({avail} ADT)" if avail > 0 else "🔴 Depoda YOK (TR'den İstenmeli)")
         analysis_lines.append(f"<b>{idx}.</b> <code>[{code}]</code> {html.escape(itm.get('name', ''))} ➔ <b>{req_q} Adet</b> ({stat})")
 
-    title_header = "📄 <b>NİLAY HANIM'DAN YENİ TEKLİF ALINDI!</b>" if is_new else "📄 <b>TEKLİF DOSYA KARTI</b>"
+    default_header = "📄 <b>NİLAY HANIM'DAN YENİ TEKLİF ALINDI!</b>" if is_new else "📄 <b>TEKLİF DOSYA KARTI</b>"
+    title_header = extra_header if extra_header else default_header
+
     text = (
         f"{title_header}\n"
         f"═══════════════════════════════\n"
@@ -97,7 +109,7 @@ async def render_quote_card(target, q, is_new=False):
         ]
     ]
 
-    # Orijinal PDF varsa indirme butonu
+    # Orijinal PDF dosyası varsa indirme butonu
     if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
         buttons.append([InlineKeyboardButton(text="📄 Orijinal PDF'i Geri İndir", callback_data=f"q_download_pdf:{quote_id}")])
 
@@ -107,12 +119,16 @@ async def render_quote_card(target, q, is_new=False):
     ])
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-    if hasattr(target, "answer"):
+    
+    # Hedef ister chat_id olsun, ister callback, ister mesaj nesnesi; hatasız gönderir
+    if isinstance(target, int):
+        await bot.send_message(chat_id=target, text=text, reply_markup=kb, parse_mode="HTML")
+    elif hasattr(target, "answer"):
         await target.answer(text, reply_markup=kb, parse_mode="HTML")
     else:
         await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
-# TEDARİK YERİ SEÇİM EKRANI (Özbek Depo vs. TR Eliar)
+# TEDARİK YERİ SEÇİMİ (Özbek Depo vs. TR Eliar)
 @router.callback_query(F.data.startswith("q_prompt_route:"))
 async def on_prompt_route(cb: types.CallbackQuery):
     await cb.answer()
@@ -201,7 +217,6 @@ async def on_apply_route(cb: types.CallbackQuery):
     save_sales(sales)
 
     await notify_both(
-        bot,
         f"📦 <b>ELİPS DEPO - STOK ÇIKIŞI YAPILDI!</b>\n"
         f"═══════════════════════════════\n"
         f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n\n" +
@@ -209,7 +224,7 @@ async def on_apply_route(cb: types.CallbackQuery):
     )
     await cb.message.edit_text("✅ <b>Teklif kabul edildi, Elips stoğundan düşüldü ve Tamamlananlar'a kaydedildi.</b>", parse_mode="HTML")
 
-# DURUMU SONRADAN DEĞİŞTİRME (Ret veya Beklemede yapma)
+# DURUMU SONRADAN DEĞİŞTİRME
 @router.callback_query(F.data.startswith("q_set_status:"))
 async def on_set_quote_status(cb: types.CallbackQuery):
     await cb.answer()
@@ -281,7 +296,7 @@ async def on_quote_do_delete(cb: types.CallbackQuery):
         await cb.message.edit_text("⚠️ Teklif zaten silinmiş.")
 
 # ==============================================================================
-#      3. GEÇMİŞİ LİSTELEME VE İNCELEME (BEKLEYENLER / TAMAMLANANLAR / TÜMÜ)
+#      3. GEÇMİŞİ LİSTELEME VE İNCELEME
 # ==============================================================================
 @router.message(Command("bekleyenler", ignore_mention=True))
 @router.message(F.text == "⏳ Bekleyen Teklifler")
@@ -329,7 +344,7 @@ async def on_quote_view(cb: types.CallbackQuery):
     await render_quote_card(cb.message, q, is_new=False)
 
 # ==============================================================================
-#      4. MANUEL TEKLİF HAZIRLAMA SİHİRBAZI (NİLAY HANIM İÇİN METİN ALMA)
+#      4. MANUEL TEKLİF HAZIRLAMA SİHİRBAZI (NİLAY HANIM METNİ)
 # ==============================================================================
 @router.message(Command("teklif", ignore_mention=True))
 @router.message(F.text == "📝 Eliar'dan Teklif Al")
@@ -505,5 +520,5 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
 
     text = f"📋 <b>KOPYALAMAYA HAZIR ELİAR TEKLİF METNİ:</b>\n═══════════════════════════════\n\n<code>{html.escape(fmt)}</code>\n\n═══════════════════════════════\n💡 <i>Metne dokunarak kopyalayabilir, Nilay Hanım'a gönderebilirsin.</i>"
     await cb.message.edit_text(text, parse_mode="HTML")
-    await notify_both(bot, f"📥 <b>YENİ TEKLİF TALEBİ:</b> {firm} ({len(items)} kalem)")
+    await notify_both(f"📥 <b>YENİ TEKLİF TALEBİ:</b> {firm} ({len(items)} kalem)")
     await state.clear()

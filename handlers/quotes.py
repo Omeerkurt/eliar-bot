@@ -3,7 +3,7 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
-# ✅ DÜZELTİLDİ: QuoteState doğrudan config'den çekiliyor
+# ✅ DÜZELTİLDİ: QuoteState config'den güvenle çekiliyor
 from config import (
     PDF_STORAGE_DIR, KAMIL_CHAT_ID, TEST_MODE, get_now_uz, notify_both, bot, QuoteState
 )
@@ -245,4 +245,59 @@ async def on_qb_custom(cb: types.CallbackQuery, state: FSMContext):
 # --- ADET ALICI: 0 / İPTAL MANTIĞI ---
 @router.message(QuoteState.waiting_qty, ~F.text.startswith("/"))
 async def quote_process_qty(msg: types.Message, state: FSMContext):
-    text
+    text = msg.text.strip().lower()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Başka Parça Ekle", callback_data="q_more")],
+        [InlineKeyboardButton(text="🏁 Teklifi Bitir ve Metni Al", callback_data="q_done")]
+    ])
+
+    if text in {"0", "iptal", "vazgeç", "vazgec", "geç", "gec", "atla"}:
+        await state.set_state(QuoteState.confirm_more)
+        await msg.answer("ℹ️ Bu parça teklif sepetine eklenmedi (atlandı).\nDevam etmek için seçim yapın:", reply_markup=kb, parse_mode="HTML")
+        return
+
+    try:
+        qty = parse_qty_safe(msg.text)
+    except Exception:
+        await msg.answer("⚠️ Lütfen sayı girin (Vazgeçmek için <b>0</b> veya <b>iptal</b>):", parse_mode="HTML")
+        return
+
+    data = await state.get_data()
+    p = data.get("sel_part", {})
+    items = data.get("quote_items", [])
+    items.append({"code": p.get("code", "KODSUZ"), "name": p.get("name", "Parça"), "qty": qty})
+    await state.update_data(quote_items=items)
+
+    await state.set_state(QuoteState.confirm_more)
+    await msg.answer(f"✅ <b>{qty} Adet</b> <code>[{p.get('code', 'KODSUZ')}]</code> eklendi!\nNe yapmak istersin?", reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "q_more")
+async def on_q_more(cb: types.CallbackQuery, state: FSMContext):
+    await cb.answer()
+    await state.set_state(QuoteState.waiting_item_query)
+    await cb.message.edit_text("🔍 Yeni parçanın kodunu veya adını yazın:")
+
+@router.callback_query(F.data == "q_done")
+async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
+    await cb.answer()
+    data = await state.get_data()
+    firm, items = data.get("firm", "MÜŞTERİ"), data.get("quote_items", [])
+    if not items:
+        await cb.message.edit_text("⚠️ Teklifte hiç parça yok.")
+        await state.clear()
+        return
+
+    fmt = f"Merhaba Nilay Hanım\n\n{firm} için aşağıdaki listedeki parçalar için fiyat teklifi verebilir misiniz?\n\n"
+    for itm in items:
+        prefix = f"{itm['code']} - " if itm.get('code') != "KODSUZ" else ""
+        fmt += f"• {prefix}{itm['name']} - {itm['qty']} Adet\n"
+    fmt += "\nİyi çalışmalar."
+
+    quotes = load_quotes()
+    quotes.append({"id": f"TK-{int(time.time())}", "firm": firm, "date": get_now_uz().strftime("%d.%m.%Y %H:%M"), "status": "PENDING", "items": items})
+    save_quotes(quotes)
+
+    text = f"📋 <b>KOPYALAMAYA HAZIR ELİAR TEKLİF METNİ:</b>\n═══════════════════════════════\n\n<code>{html.escape(fmt)}</code>\n\n═══════════════════════════════\n💡 <i>Metne tıklayarak tek dokunuşla kopyalayabilirsin.</i>"
+    await cb.message.edit_text(text, parse_mode="HTML")
+    await notify_both(f"📥 <b>YENİ TEKLİF TALEBİ:</b> {firm} ({len(items)} kalem)")
+    await state.clear()

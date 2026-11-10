@@ -3,7 +3,11 @@ from aiogram import Router, F, types
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
-from config import OMER_CHAT_ID, KAMIL_CHAT_ID, WEBAPP_URL, TEST_MODE, bot
+# ✅ QuoteState ve StockAddState köprüsü kuruldu
+from config import (
+    OMER_CHAT_ID, KAMIL_CHAT_ID, WEBAPP_URL, TEST_MODE, bot,
+    QuoteState, StockAddState
+)
 from database import load_stocks, safe_stock_qty
 
 router = Router()

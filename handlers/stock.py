@@ -3,13 +3,13 @@ from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedInputFile
-from config import OMER_CHAT_ID, notify_both, bot
+# ✅ DÜZELTİLDİ: StockAddState doğrudan config'den çekiliyor
+from config import OMER_CHAT_ID, notify_both, bot, StockAddState
 from database import (
     load_stocks, save_stocks, safe_stock_qty, parse_qty_safe,
     find_best_matches
 )
 from pdf_tools import extract_part_image_from_pdf
-from handlers.common import StockAddState
 
 router = Router()
 
@@ -71,7 +71,7 @@ async def start_stock_add(msg: types.Message, state: FSMContext):
                 p_name, tag = target["name"], " 🆕 [YENİ TANIMLANDI]"
             save_stocks(stocks)
             op = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
-            await notify_both(bot, f"📥 <b>STOK EKLENDİ!</b>\n⚙️ <code>[{code_in}]</code> {html.escape(p_name)}{tag}\n📈 <b>+{qty_in}</b> | Stok: <b>{new_q} ADT</b>\n👷‍♂️ Ekleyen: <b>{op}</b>")
+            await notify_both(f"📥 <b>STOK EKLENDİ!</b>\n⚙️ <code>[{code_in}]</code> {html.escape(p_name)}{tag}\n📈 <b>+{qty_in}</b> | Stok: <b>{new_q} ADT</b>\n👷‍♂️ Ekleyen: <b>{op}</b>")
             return
         except Exception: pass
 
@@ -160,7 +160,7 @@ async def stock_add_process_qty(msg: types.Message, state: FSMContext):
     save_stocks(stocks)
     await state.clear()
     op = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
-    await notify_both(bot, f"📥 <b>STOK EKLENDİ!</b>\n⚙️ <code>[{p.get('code')}]</code> {html.escape(p.get('name', ''))}{tag}\n📈 <b>+{qty}</b> | Yeni Stok: <b>{new_q} ADT</b>\n👷‍♂️ Ekleyen: <b>{op}</b>")
+    await notify_both(f"📥 <b>STOK EKLENDİ!</b>\n⚙️ <code>[{p.get('code')}]</code> {html.escape(p.get('name', ''))}{tag}\n📈 <b>+{qty}</b> | Yeni Stok: <b>{new_q} ADT</b>\n👷‍♂️ Ekleyen: <b>{op}</b>")
 
 # SADECE ÖMER'E ÖZEL SİLME MOTORU
 @router.message(Command("stoksil", ignore_mention=True))
@@ -204,7 +204,7 @@ async def on_del_p(cb: types.CallbackQuery):
     if mode == "silent":
         await cb.message.edit_text(f"🔕 <code>[{code}]</code> parçası depodan <b>kimseye bildirim gitmeden</b> sessizce silindi.", parse_mode="HTML")
     else:
-        await notify_both(bot, f"🗑️ <b>DEPO PARÇASI SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(target.get('name', ''))}\n👷‍♂️ Silen: <b>Ömer</b>")
+        await notify_both(f"🗑️ <b>DEPO PARÇASI SİLİNDİ</b>\n⚙️ <code>[{code}]</code> {html.escape(target.get('name', ''))}\n👷‍♂️ Silen: <b>Ömer</b>")
         await cb.message.edit_text(f"🗑️ <code>[{code}]</code> silindi ve herkese bildirildi.", parse_mode="HTML")
 
 @router.callback_query(F.data == "cb_close")

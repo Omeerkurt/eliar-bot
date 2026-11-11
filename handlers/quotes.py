@@ -15,7 +15,7 @@ from pdf_tools import extract_part_image_from_pdf, parse_eliar_pdf_locally
 router = Router()
 
 # ==============================================================================
-#      1. PDF TEKLİF YÜKLEME (KAMİL YÜKLEYİNCE ÖMER'E ANINDA BİLDİRİM GİDER)
+#   1. PDF TEKLİF YÜKLEME (KİM YÜKLERSE DİĞERİNE ANINDA TAM KARTLA GİDER)
 # ==============================================================================
 @router.message(F.document)
 async def handle_pdf_upload(msg: types.Message):
@@ -26,13 +26,15 @@ async def handle_pdf_upload(msg: types.Message):
         await msg.answer("⚠️ Lütfen PDF formatında bir teklif belgesi yükleyin.")
         return
 
-    # Orijinal PDF'i sunucu arşivine kaydet
     save_path = os.path.join(PDF_STORAGE_DIR, f"{int(time.time())}_{doc.file_name}")
     await bot.download(doc, destination=save_path)
 
     wait = await msg.answer("⏳ <i>PDF taranıyor, parçalar Elips deposuyla eşleştiriliyor...</i>", parse_mode="HTML")
     parsed = parse_eliar_pdf_locally(save_path, doc.file_name)
     await wait.delete()
+
+    uploader = "Ömer" if msg.chat.id == OMER_CHAT_ID else "Kamil"
+    other_cid = KAMIL_CHAT_ID if msg.chat.id == OMER_CHAT_ID else OMER_CHAT_ID
 
     quote_id = f"TK-{int(time.time())}"
     quote_data = {
@@ -44,26 +46,27 @@ async def handle_pdf_upload(msg: types.Message):
         "grand_total": parsed.get("grand_total", "-"),
         "status": "PENDING",
         "items": parsed.get("items", []),
-        "pdf_file": save_path
+        "pdf_file": save_path,
+        "updated_by": uploader,
+        "updated_at": get_now_uz().strftime("%d.%m.%Y %H:%M")
     }
 
     quotes = load_quotes()
     quotes.append(quote_data)
     save_quotes(quotes)
 
-    # Yükleyen kişiye kartı göster
+    # 1. Yükleyen kişiye göster
     await render_quote_card(msg, quote_data, is_new=True)
 
-    # ✅ EĞER YÜKLEYEN KAMİL İSE: Ömer'e anında tam teklif kartıyla bildirim gönder!
-    if msg.chat.id == KAMIL_CHAT_ID:
-        await render_quote_card(
-            OMER_CHAT_ID,
-            quote_data,
-            is_new=True,
-            extra_header="📥 <b>KAMİL YENİ BİR TEKLİF PDF'İ YÜKLEDİ!</b>"
-        )
+    # 2. ✅ DİĞER KİŞİYE DE ANINDA İŞLEM KARTIYLA BİRLİKTE BİLDİR!
+    await render_quote_card(
+        other_cid,
+        quote_data,
+        is_new=True,
+        extra_header=f"📥 <b>{uploader.upper()} YENİ BİR TEKLİF PDF'İ YÜKLEDİ!</b>"
+    )
 
-# TEKLİF DETAY KARTINI VE İŞLEM BUTONLARINI ÇİZEN MERKEZİ FONKSİYON
+# MERKEZİ TEKLİF KARTI ÇİZİCİ
 async def render_quote_card(target, q, is_new=False, extra_header=""):
     quote_id = q["id"]
     status_map = {
@@ -87,16 +90,19 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
     default_header = "📄 <b>NİLAY HANIM'DAN YENİ TEKLİF ALINDI!</b>" if is_new else "📄 <b>TEKLİF DOSYA KARTI</b>"
     title_header = extra_header if extra_header else default_header
 
+    last_op_info = f"👤 <b>Son İşlem:</b> {q.get('updated_by', 'Sistem')} ({q.get('updated_at', '-')})\n" if q.get('updated_by') else ""
+
     text = (
         f"{title_header}\n"
         f"═══════════════════════════════\n"
         f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
         f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code> | 📅 <b>Tarih:</b> {q.get('date')}\n"
         f"💰 <b>Tutar:</b> <b>{q.get('grand_total', '-')} {cur}</b>\n"
-        f"📍 <b>Güncel Durum:</b> <b>{cur_status}</b>\n\n"
+        f"📍 <b>Güncel Durum:</b> <b>{cur_status}</b>\n"
+        f"{last_op_info}\n"
         f"<b>📦 ÖZBEKİSTAN (ELİPS) DEPO ANALİZİ:</b>\n" +
         ("\n".join(analysis_lines) if analysis_lines else "⚠️ <i>Kalem tablosu tespit edilemedi.</i>") +
-        f"\n\n⚙️ <i>Aşağıdaki butonlarla teklif durumunu belirleyebilir veya sonradan değiştirebilirsiniz:</i>"
+        f"\n\n⚙️ <i>Aşağıdan durumu belirleyebilirsin (Yaptığın seçim ikinize de anında bildirilir):</i>"
     )
 
     buttons = [
@@ -109,7 +115,6 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
         ]
     ]
 
-    # Orijinal PDF dosyası varsa indirme butonu
     if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
         buttons.append([InlineKeyboardButton(text="📄 Orijinal PDF'i Geri İndir", callback_data=f"q_download_pdf:{quote_id}")])
 
@@ -119,8 +124,6 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
     ])
 
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-    
-    # Hedef ister chat_id olsun, ister callback, ister mesaj nesnesi; hatasız gönderir
     if isinstance(target, int):
         await bot.send_message(chat_id=target, text=text, reply_markup=kb, parse_mode="HTML")
     elif hasattr(target, "answer"):
@@ -128,7 +131,7 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
     else:
         await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
-# TEDARİK YERİ SEÇİMİ (Özbek Depo vs. TR Eliar)
+# TEDARİK YERİ SEÇİMİ
 @router.callback_query(F.data.startswith("q_prompt_route:"))
 async def on_prompt_route(cb: types.CallbackQuery):
     await cb.answer()
@@ -139,7 +142,7 @@ async def on_prompt_route(cb: types.CallbackQuery):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🇺🇿 Özbek (Elips) Depodan Karşıla", callback_data=f"q_apply_route:{quote_id}:ELIPS")],
-        [InlineKeyboardButton(text="🇹🇷 Eliar TR'den Gelecek (Kamil'e Görev Aç)", callback_data=f"q_apply_route:{quote_id}:TR")],
+        [InlineKeyboardButton(text="🇹🇷 Eliar TR'den Gelecek (Kargo Emri Aç)", callback_data=f"q_apply_route:{quote_id}:TR")],
         [InlineKeyboardButton(text="🔙 Vazgeç / Geri Dön", callback_data=f"q_view:{quote_id}")]
     ])
     await cb.message.edit_text(
@@ -149,7 +152,7 @@ async def on_prompt_route(cb: types.CallbackQuery):
         parse_mode="HTML"
     )
 
-# KABUL EDİLEN TEKLİFİN SEVKİYAT İŞLEMİ
+# KABUL EDİLEN TEKLİFİN SEVKİYAT İŞLEMİ (HER İKİSİNE DE ANINDA BİLDİRİR)
 @router.callback_query(F.data.startswith("q_apply_route:"))
 async def on_apply_route(cb: types.CallbackQuery):
     await cb.answer()
@@ -158,11 +161,15 @@ async def on_apply_route(cb: types.CallbackQuery):
     q = next((x for x in quotes if x["id"] == quote_id), None)
     if not q: await cb.message.edit_text("⚠️ Teklif bulunamadı."); return
 
+    actor = "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil"
+
     q["status"] = "APPROVED"
     q["source"] = "TR_DEPO" if route == "TR" else "ELIPS_DEPO"
+    q["updated_by"] = actor
+    q["updated_at"] = get_now_uz().strftime("%d.%m.%Y %H:%M")
     save_quotes(quotes)
 
-    # 1. TÜRKİYE'DEN GELECEKSE: Kamil'e kargo emri at, Özbek stoğuna dokunma!
+    # 1. TÜRKİYE'DEN GELECEKSE
     if route == "TR":
         sales = load_sales()
         sales.append({
@@ -172,29 +179,22 @@ async def on_apply_route(cb: types.CallbackQuery):
         })
         save_sales(sales)
 
-        tr_msg = (
-            f"📦 <b>KAMİL - YENİ TR SEVKİYAT / KARGO EMRİ</b>\n"
+        notif_msg = (
+            f"🇹🇷 <b>TEKLİF KABUL EDİLDİ & ONAYLANDI (TR SEVKİYAT)</b>\n"
             f"═══════════════════════════════\n"
-            f"🏭 <b>Müşteri:</b> <b>{html.escape(q['firm'])}</b>\n"
-            f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code>\n\n"
+            f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
+            f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code>\n"
+            f"👷‍♂️ <b>Onaylayan:</b> <b>{actor}</b>\n"
+            f"📍 <b>Tedarik:</b> Türkiye Eliar Merkez (Kargo Görevi Açıldı)\n\n"
             f"<b>Paketlenecek Parçalar:</b>\n" +
             "\n".join([f"• [{i.get('code')}] {i.get('name')} ➔ <b>{i.get('qty')} Adet</b>" for i in q.get("items", [])]) +
-            "\n\n✈️ <i>Lütfen Özbekistan sevkiyat kolisine ekle.</i>"
+            f"\n\n✅ <i>Teklif 'Tamamlanan Teklifler'e işlendi.</i>"
         )
-        if not TEST_MODE:
-            try: await bot.send_message(KAMIL_CHAT_ID, tr_msg, parse_mode="HTML")
-            except Exception: pass
-
-        await cb.message.edit_text(
-            f"🇹🇷 <b>TEKLİF KABUL EDİLDİ (TÜRKİYE'DEN GELECEK)</b>\n\n"
-            f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n"
-            f"📦 Kamil'e paketleme ve kargo emri iletildi.\n"
-            f"✅ <i>Özbekistan Elips depo stoklarına dokunulmadı. 'Tamamlanan Teklifler'e işlendi.</i>",
-            parse_mode="HTML"
-        )
+        await notify_both(notif_msg)
+        await cb.message.edit_text("✅ Teklif onaylandı (Türkiye'den gelecek). Her ikinize de bildirildi.", parse_mode="HTML")
         return
 
-    # 2. ÖZBEKİSTAN DEPOSUNDAN KARŞILANACAKSA: Elips stoğundan düş ve Z-raporuna yaz!
+    # 2. ÖZBEKİSTAN DEPOSUNDAN KARŞILANACAKSA
     stocks = load_stocks()
     sales = load_sales()
     deducted = []
@@ -216,15 +216,19 @@ async def on_apply_route(cb: types.CallbackQuery):
     })
     save_sales(sales)
 
-    await notify_both(
-        f"📦 <b>ELİPS DEPO - STOK ÇIKIŞI YAPILDI!</b>\n"
+    notif_msg = (
+        f"🇺🇿 <b>TEKLİF KABUL EDİLDİ (ELİPS DEPO ÇIKIŞI)</b>\n"
         f"═══════════════════════════════\n"
-        f"🏢 Firma: <b>{html.escape(q['firm'])}</b>\n\n" +
-        ("\n".join(deducted) if deducted else "Stoktan parça düşülemedi.")
+        f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
+        f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code>\n"
+        f"👷‍♂️ <b>Onaylayan:</b> <b>{actor}</b>\n\n"
+        f"<b>Düşülen Parçalar:</b>\n" +
+        ("\n".join(deducted) if deducted else "Stok düşülemedi.")
     )
-    await cb.message.edit_text("✅ <b>Teklif kabul edildi, Elips stoğundan düşüldü ve Tamamlananlar'a kaydedildi.</b>", parse_mode="HTML")
+    await notify_both(notif_msg)
+    await cb.message.edit_text("✅ Teklif kabul edildi ve Özbekistan Elips stoğundan düşüldü. Her ikinize de bildirildi.", parse_mode="HTML")
 
-# DURUMU SONRADAN DEĞİŞTİRME
+# DURUMU REDDEDİLDİ VEYA BEKLEMEDE OLARAK GÜNCELLEME (HER İKİSİNE DE BİLDİRİR)
 @router.callback_query(F.data.startswith("q_set_status:"))
 async def on_set_quote_status(cb: types.CallbackQuery):
     await cb.answer()
@@ -233,12 +237,36 @@ async def on_set_quote_status(cb: types.CallbackQuery):
     q = next((x for x in quotes if x["id"] == quote_id), None)
     if not q: await cb.message.edit_text("⚠️ Teklif bulunamadı."); return
 
-    q["status"] = new_st
-    save_quotes(quotes)
-    st_title = "Beklemeye alındı" if new_st == "PENDING" else "Reddedildi olarak güncellendi"
-    await cb.message.edit_text(f"👌 <b>{html.escape(q['firm'])}</b> teklifi <b>{st_title}</b>.", parse_mode="HTML")
+    actor = "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil"
 
-# ORİJİNAL PDF DOSYASINI GERİ İNDİRME
+    q["status"] = new_st
+    q["updated_by"] = actor
+    q["updated_at"] = get_now_uz().strftime("%d.%m.%Y %H:%M")
+    save_quotes(quotes)
+
+    if new_st == "REJECTED":
+        notif = (
+            f"🔴 <b>TEKLİF REDDEDİLDİ!</b>\n"
+            f"═══════════════════════════════\n"
+            f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
+            f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code>\n"
+            f"👷‍♂️ <b>İşlemi Yapan:</b> <b>{actor}</b>\n"
+            f"❌ <i>Müşteri teklifi kabul etmediği için reddedildi olarak güncellendi.</i>"
+        )
+    else:
+        notif = (
+            f"⏳ <b>TEKLİF BEKLEMEYE ALINDI</b>\n"
+            f"═══════════════════════════════\n"
+            f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
+            f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code>\n"
+            f"👷‍♂️ <b>İşlemi Yapan:</b> <b>{actor}</b>\n"
+            f"⌛ <i>Müşteri düşünüyor / karar aşamasında olarak işaretlendi.</i>"
+        )
+
+    await notify_both(notif)
+    await cb.message.edit_text(f"👌 Teklif durumu güncellendi ve her ikinize de iletildi.", parse_mode="HTML")
+
+# ORİJİNAL PDF İNDİRME
 @router.callback_query(F.data.startswith("q_download_pdf:"))
 async def on_download_quote_pdf(cb: types.CallbackQuery):
     await cb.answer("PDF belgesi gönderiliyor...")
@@ -248,15 +276,13 @@ async def on_download_quote_pdf(cb: types.CallbackQuery):
     if q and q.get("pdf_file") and os.path.exists(q["pdf_file"]):
         await cb.message.answer_document(
             FSInputFile(q["pdf_file"]),
-            caption=f"📄 <b>{html.escape(q['firm'])}</b> Fiyat Teklifi PDF Belgesi\n🔖 Ref: <code>{q.get('ref_no','-')}</code>",
+            caption=f"📄 <b>{html.escape(q['firm'])}</b> Teklif Belgesi\n🔖 Ref: <code>{q.get('ref_no','-')}</code>",
             parse_mode="HTML"
         )
     else:
         await cb.message.answer("⚠️ Orijinal PDF dosyası bulunamadı.")
 
-# ==============================================================================
-#      2. TEKLİF SİLME (EMİN MİSİNİZ KORUMASIYLA)
-# ==============================================================================
+# TEKLİF SİLME (BİLDİRİMLİ VE KALICI)
 @router.callback_query(F.data.startswith("q_delete_confirm_prompt:"))
 async def on_quote_delete_prompt(cb: types.CallbackQuery):
     await cb.answer()
@@ -285,18 +311,29 @@ async def on_quote_do_delete(cb: types.CallbackQuery):
     quote_id = cb.data.split(":")[1]
     quotes = load_quotes()
     target_q = next((x for x in quotes if x["id"] == quote_id), None)
+    actor = "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil"
+
     if target_q:
         if target_q.get("pdf_file") and os.path.exists(target_q["pdf_file"]):
             try: os.remove(target_q["pdf_file"])
             except Exception: pass
         quotes = [x for x in quotes if x["id"] != quote_id]
         save_quotes(quotes)
-        await cb.message.edit_text(f"🗑️ <b>{html.escape(target_q['firm'])}</b> teklifi kalıcı olarak silindi.", parse_mode="HTML")
+
+        del_msg = (
+            f"🗑️ <b>TEKLİF SİLİNDİ</b>\n"
+            f"═══════════════════════════════\n"
+            f"🏢 <b>Firma:</b> <b>{html.escape(target_q['firm'])}</b>\n"
+            f"🔖 <b>Ref:</b> <code>{target_q.get('ref_no','-')}</code>\n"
+            f"👷‍♂️ <b>Silen:</b> <b>{actor}</b>"
+        )
+        await notify_both(del_msg)
+        await cb.message.edit_text(f"🗑️ Teklif silindi ve her ikinize de bildirildi.", parse_mode="HTML")
     else:
         await cb.message.edit_text("⚠️ Teklif zaten silinmiş.")
 
 # ==============================================================================
-#      3. GEÇMİŞİ LİSTELEME VE İNCELEME
+#      3. GEÇMİŞİ LİSTELEME (BEKLEYENLER / TAMAMLANANLAR / TÜMÜ)
 # ==============================================================================
 @router.message(Command("bekleyenler", ignore_mention=True))
 @router.message(F.text == "⏳ Bekleyen Teklifler")
@@ -332,7 +369,7 @@ async def show_all_quotes(msg: types.Message):
     for q in reversed(quotes[-15:]):
         st_icon = "🟢" if q.get("status") == "APPROVED" else ("🔴" if q.get("status") == "REJECTED" else "🟡")
         btns.append([InlineKeyboardButton(text=f"{st_icon} {q['firm']} ({str(q.get('date'))[:10]})", callback_data=f"q_view:{q['id']}")])
-    await msg.answer("📂 <b>TÜM TEKLİFLER ARŞİVİ:</b>\nDurumunu değiştirmek veya PDF'ini almak için seçin:", reply_markup=InlineKeyboardMarkup(inline_keyboard=btns), parse_mode="HTML")
+    await msg.answer("📂 <b>TÜM TEKLİFLER ARŞİVİ:</b>\nİncelemek veya durumunu değiştirmek için seçin:", reply_markup=InlineKeyboardMarkup(inline_keyboard=btns), parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("q_view:"))
 async def on_quote_view(cb: types.CallbackQuery):
@@ -344,7 +381,7 @@ async def on_quote_view(cb: types.CallbackQuery):
     await render_quote_card(cb.message, q, is_new=False)
 
 # ==============================================================================
-#      4. MANUEL TEKLİF HAZIRLAMA SİHİRBAZI (NİLAY HANIM METNİ)
+#      4. MANUEL TEKLİF HAZIRLAMA SİHİRBAZI
 # ==============================================================================
 @router.message(Command("teklif", ignore_mention=True))
 @router.message(F.text == "📝 Eliar'dan Teklif Al")
@@ -514,7 +551,9 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
         "date": get_now_uz().strftime("%d.%m.%Y %H:%M"),
         "status": "PENDING",
         "items": items,
-        "pdf_file": None
+        "pdf_file": None,
+        "updated_by": "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil",
+        "updated_at": get_now_uz().strftime("%d.%m.%Y %H:%M")
     })
     save_quotes(quotes)
 

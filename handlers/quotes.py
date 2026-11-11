@@ -1,4 +1,4 @@
-import html, time, os
+import html, time, os, re
 from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -15,7 +15,26 @@ from pdf_tools import extract_part_image_from_pdf, parse_eliar_pdf_locally
 router = Router()
 
 # ==============================================================================
-#   1. PDF TEKLİF YÜKLEME (KİM YÜKLERSE DİĞERİNE ANINDA TAM KARTLA GİDER)
+#      SATIR AYIKLAYICI (TOPLU METİNLERDEN KOD VE ADEDİ AYIRIR)
+# ==============================================================================
+def parse_multi_line_entry(line: str):
+    line = line.strip()
+    if not line: return None, None
+    # 1. Format: "5x 90567" veya "5 * 90567"
+    m1 = re.match(r"^(\d+)\s*[xX*]\s*(.+)$", line)
+    if m1:
+        return m1.group(2).strip(), int(m1.group(1))
+    # 2. Format: "90567 5", "90567 - 5 adet", "90567: 2 tane"
+    m2 = re.search(r"[-:\s]+(\d+)\s*(?:adet|adt|tane|pcs)?$", line, re.IGNORECASE)
+    if m2:
+        qty = int(m2.group(1))
+        query = line[:m2.start()].strip(" -:")
+        if query and qty > 0:
+            return query, qty
+    return line, None
+
+# ==============================================================================
+#      1. PDF TEKLİF YÜKLEME (KARŞILIKLI CANLI SENKRONİZASYON)
 # ==============================================================================
 @router.message(F.document)
 async def handle_pdf_upload(msg: types.Message):
@@ -55,10 +74,10 @@ async def handle_pdf_upload(msg: types.Message):
     quotes.append(quote_data)
     save_quotes(quotes)
 
-    # 1. Yükleyen kişiye göster
+    # Yükleyen kişiye kartı sun
     await render_quote_card(msg, quote_data, is_new=True)
 
-    # 2. ✅ DİĞER KİŞİYE DE ANINDA İŞLEM KARTIYLA BİRLİKTE BİLDİR!
+    # Karşı tarafa anında işlem kartıyla bildir
     await render_quote_card(
         other_cid,
         quote_data,
@@ -66,7 +85,6 @@ async def handle_pdf_upload(msg: types.Message):
         extra_header=f"📥 <b>{uploader.upper()} YENİ BİR TEKLİF PDF'İ YÜKLEDİ!</b>"
     )
 
-# MERKEZİ TEKLİF KARTI ÇİZİCİ
 async def render_quote_card(target, q, is_new=False, extra_header=""):
     quote_id = q["id"]
     status_map = {
@@ -89,7 +107,6 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
 
     default_header = "📄 <b>NİLAY HANIM'DAN YENİ TEKLİF ALINDI!</b>" if is_new else "📄 <b>TEKLİF DOSYA KARTI</b>"
     title_header = extra_header if extra_header else default_header
-
     last_op_info = f"👤 <b>Son İşlem:</b> {q.get('updated_by', 'Sistem')} ({q.get('updated_at', '-')})\n" if q.get('updated_by') else ""
 
     text = (
@@ -102,7 +119,7 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
         f"{last_op_info}\n"
         f"<b>📦 ÖZBEKİSTAN (ELİPS) DEPO ANALİZİ:</b>\n" +
         ("\n".join(analysis_lines) if analysis_lines else "⚠️ <i>Kalem tablosu tespit edilemedi.</i>") +
-        f"\n\n⚙️ <i>Aşağıdan durumu belirleyebilirsin (Yaptığın seçim ikinize de anında bildirilir):</i>"
+        f"\n\n⚙️ <i>Durumu belirleyebilirsin (Seçiminiz ikinize de anında bildirilir):</i>"
     )
 
     buttons = [
@@ -110,9 +127,7 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
             InlineKeyboardButton(text="🟢 Müşteri Kabul Etti (Onayla)", callback_data=f"q_prompt_route:{quote_id}"),
             InlineKeyboardButton(text="🔴 Müşteri Reddetti", callback_data=f"q_set_status:{quote_id}:REJECTED")
         ],
-        [
-            InlineKeyboardButton(text="⏳ Beklemeye Al (Düşünüyor)", callback_data=f"q_set_status:{quote_id}:PENDING")
-        ]
+        [InlineKeyboardButton(text="⏳ Beklemeye Al (Düşünüyor)", callback_data=f"q_set_status:{quote_id}:PENDING")]
     ]
 
     if q.get("pdf_file") and os.path.exists(q["pdf_file"]):
@@ -131,7 +146,6 @@ async def render_quote_card(target, q, is_new=False, extra_header=""):
     else:
         await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
-# TEDARİK YERİ SEÇİMİ
 @router.callback_query(F.data.startswith("q_prompt_route:"))
 async def on_prompt_route(cb: types.CallbackQuery):
     await cb.answer()
@@ -148,11 +162,9 @@ async def on_prompt_route(cb: types.CallbackQuery):
     await cb.message.edit_text(
         f"🏢 <b>{html.escape(q['firm'])}</b> teklifi kabul edildi.\n\n"
         f"❓ <b>Bu parçalar nereden sevk edilecek?</b>",
-        reply_markup=kb,
-        parse_mode="HTML"
+        reply_markup=kb, parse_mode="HTML"
     )
 
-# KABUL EDİLEN TEKLİFİN SEVKİYAT İŞLEMİ (HER İKİSİNE DE ANINDA BİLDİRİR)
 @router.callback_query(F.data.startswith("q_apply_route:"))
 async def on_apply_route(cb: types.CallbackQuery):
     await cb.answer()
@@ -162,14 +174,12 @@ async def on_apply_route(cb: types.CallbackQuery):
     if not q: await cb.message.edit_text("⚠️ Teklif bulunamadı."); return
 
     actor = "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil"
-
     q["status"] = "APPROVED"
     q["source"] = "TR_DEPO" if route == "TR" else "ELIPS_DEPO"
     q["updated_by"] = actor
     q["updated_at"] = get_now_uz().strftime("%d.%m.%Y %H:%M")
     save_quotes(quotes)
 
-    # 1. TÜRKİYE'DEN GELECEKSE
     if route == "TR":
         sales = load_sales()
         sales.append({
@@ -194,7 +204,7 @@ async def on_apply_route(cb: types.CallbackQuery):
         await cb.message.edit_text("✅ Teklif onaylandı (Türkiye'den gelecek). Her ikinize de bildirildi.", parse_mode="HTML")
         return
 
-    # 2. ÖZBEKİSTAN DEPOSUNDAN KARŞILANACAKSA
+    # Özbek Elips Depo Çıkışı
     stocks = load_stocks()
     sales = load_sales()
     deducted = []
@@ -228,7 +238,6 @@ async def on_apply_route(cb: types.CallbackQuery):
     await notify_both(notif_msg)
     await cb.message.edit_text("✅ Teklif kabul edildi ve Özbekistan Elips stoğundan düşüldü. Her ikinize de bildirildi.", parse_mode="HTML")
 
-# DURUMU REDDEDİLDİ VEYA BEKLEMEDE OLARAK GÜNCELLEME (HER İKİSİNE DE BİLDİRİR)
 @router.callback_query(F.data.startswith("q_set_status:"))
 async def on_set_quote_status(cb: types.CallbackQuery):
     await cb.answer()
@@ -238,7 +247,6 @@ async def on_set_quote_status(cb: types.CallbackQuery):
     if not q: await cb.message.edit_text("⚠️ Teklif bulunamadı."); return
 
     actor = "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil"
-
     q["status"] = new_st
     q["updated_by"] = actor
     q["updated_at"] = get_now_uz().strftime("%d.%m.%Y %H:%M")
@@ -251,7 +259,7 @@ async def on_set_quote_status(cb: types.CallbackQuery):
             f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
             f"🔖 <b>Ref No:</b> <code>{q.get('ref_no', 'YOK')}</code>\n"
             f"👷‍♂️ <b>İşlemi Yapan:</b> <b>{actor}</b>\n"
-            f"❌ <i>Müşteri teklifi kabul etmediği için reddedildi olarak güncellendi.</i>"
+            f"❌ <i>Müşteri teklifi reddetti olarak güncellendi.</i>"
         )
     else:
         notif = (
@@ -266,7 +274,6 @@ async def on_set_quote_status(cb: types.CallbackQuery):
     await notify_both(notif)
     await cb.message.edit_text(f"👌 Teklif durumu güncellendi ve her ikinize de iletildi.", parse_mode="HTML")
 
-# ORİJİNAL PDF İNDİRME
 @router.callback_query(F.data.startswith("q_download_pdf:"))
 async def on_download_quote_pdf(cb: types.CallbackQuery):
     await cb.answer("PDF belgesi gönderiliyor...")
@@ -282,7 +289,6 @@ async def on_download_quote_pdf(cb: types.CallbackQuery):
     else:
         await cb.message.answer("⚠️ Orijinal PDF dosyası bulunamadı.")
 
-# TEKLİF SİLME (BİLDİRİMLİ VE KALICI)
 @router.callback_query(F.data.startswith("q_delete_confirm_prompt:"))
 async def on_quote_delete_prompt(cb: types.CallbackQuery):
     await cb.answer()
@@ -301,8 +307,7 @@ async def on_quote_delete_prompt(cb: types.CallbackQuery):
         f"🏢 <b>Firma:</b> <b>{html.escape(q['firm'])}</b>\n"
         f"🔖 <b>Ref:</b> <code>{q.get('ref_no','-')}</code>\n\n"
         f"Bu teklif kaydı ve sunucudaki PDF belgesi <b>kalıcı olarak silinecektir</b>. Emin misiniz?",
-        reply_markup=kb,
-        parse_mode="HTML"
+        reply_markup=kb, parse_mode="HTML"
     )
 
 @router.callback_query(F.data.startswith("q_do_delete:"))
@@ -328,12 +333,12 @@ async def on_quote_do_delete(cb: types.CallbackQuery):
             f"👷‍♂️ <b>Silen:</b> <b>{actor}</b>"
         )
         await notify_both(del_msg)
-        await cb.message.edit_text(f"🗑️ Teklif silindi ve her ikinize de bildirildi.", parse_mode="HTML")
+        await cb.message.edit_text("🗑️ Teklif silindi ve her ikinize de bildirildi.", parse_mode="HTML")
     else:
         await cb.message.edit_text("⚠️ Teklif zaten silinmiş.")
 
 # ==============================================================================
-#      3. GEÇMİŞİ LİSTELEME (BEKLEYENLER / TAMAMLANANLAR / TÜMÜ)
+#      2. GEÇMİŞİ LİSTELEME (BEKLEYENLER / TAMAMLANANLAR / TÜMÜ)
 # ==============================================================================
 @router.message(Command("bekleyenler", ignore_mention=True))
 @router.message(F.text == "⏳ Bekleyen Teklifler")
@@ -381,7 +386,7 @@ async def on_quote_view(cb: types.CallbackQuery):
     await render_quote_card(cb.message, q, is_new=False)
 
 # ==============================================================================
-#      4. MANUEL TEKLİF HAZIRLAMA SİHİRBAZI
+#   3. ÇOKLU & TOPLU GİRİŞ DESTEKLİ MANUEL TEKLİF SİHİRBAZI
 # ==============================================================================
 @router.message(Command("teklif", ignore_mention=True))
 @router.message(F.text == "📝 Eliar'dan Teklif Al")
@@ -395,7 +400,17 @@ async def start_quote_wizard(msg: types.Message, state: FSMContext):
 async def quote_firm(msg: types.Message, state: FSMContext):
     await state.update_data(firm=msg.text.strip().upper())
     await state.set_state(QuoteState.waiting_item_query)
-    await msg.answer("🔍 <b>Parça kodu veya adını yazın:</b>\n(Örn: <code>90567</code> veya <code>diyafram</code>)", parse_mode="HTML")
+    
+    help_text = (
+        "🔍 <b>Parçaları nasıl girmek istersiniz?</b>\n\n"
+        "1️⃣ <b>Tek Parça:</b> Kodu veya adını yazın (Örn: <code>90567</code> veya <code>diyafram</code>)\n\n"
+        "2️⃣ ⚡ <b>ÇOKLU LİSTE (Toplu Giriş):</b> Alt alta adetleriyle birlikte tek mesajda yapıştırabilirsiniz:\n"
+        "<code>90567 5\n"
+        "90880 2 adet\n"
+        "Pd320 1\n"
+        "40647 3 tane</code>"
+    )
+    await msg.answer(help_text, parse_mode="HTML")
 
 def render_search_page(matches, page_idx, query):
     page_size = 5
@@ -418,9 +433,77 @@ def render_search_page(matches, page_idx, query):
     text = f"🔍 <b>'{html.escape(query)}' Arama Sonuçları:</b> (Sayfa: {page_idx + 1}/{total_pages})\nLütfen teklife eklenecek parçayı seçin:"
     return text, InlineKeyboardMarkup(inline_keyboard=buttons)
 
+# ✅ ÇOKLU LİSTE VE TEK PARÇA GİRİŞİNİ OTOMATİK AYIRT EDEN MOTOR
 @router.message(QuoteState.waiting_item_query, ~F.text.startswith("/"))
 async def quote_item_search(msg: types.Message, state: FSMContext):
-    query = msg.text.strip()
+    raw_text = msg.text.strip()
+    lines = [l for l in raw_text.split("\n") if l.strip()]
+
+    # DURUM 1: KULLANICI ALT ALTA ÇOKLU LİSTE GİRDİ
+    if len(lines) > 1:
+        data = await state.get_data()
+        items = data.get("quote_items", [])
+        added_lines = []
+        stocks = load_stocks()
+
+        for line in lines:
+            q_part, q_qty = parse_multi_line_entry(line)
+            if not q_part: continue
+            qty = q_qty if q_qty else 1
+
+            matches = find_best_matches(q_part)
+            if matches:
+                top = matches[0][0]
+                code, name = top.get("code", "KODSUZ"), top.get("name", q_part)
+            else:
+                code, name = "KODSUZ", q_part
+
+            items.append({"code": code, "name": name, "qty": qty})
+            added_lines.append(f"• <code>[{code}]</code> {html.escape(name[:30])} ➔ <b>{qty} Adet</b>")
+
+        await state.update_data(quote_items=items)
+        await state.set_state(QuoteState.confirm_more)
+
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Başka Parça Ekle", callback_data="q_more")],
+            [InlineKeyboardButton(text="🏁 Teklifi Bitir ve Metni Al", callback_data="q_done")]
+        ])
+
+        summary_text = (
+            f"✅ <b>{len(added_lines)} KALEM PARÇA TEKLİFE TOPLU EKLENDİ!</b>\n"
+            f"═══════════════════════════════\n" +
+            "\n".join(added_lines) +
+            f"\n\nNe yapmak istersin?"
+        )
+        await msg.answer(summary_text, reply_markup=kb, parse_mode="HTML")
+        return
+
+    # DURUM 2: TEK SATIRDA KOD VE ADET GİRİLMİŞ (Örn: "90567 5" veya "diyafram 3")
+    q_part, q_qty = parse_multi_line_entry(raw_text)
+    if q_qty and q_qty > 0:
+        matches = find_best_matches(q_part)
+        data = await state.get_data()
+        items = data.get("quote_items", [])
+
+        if matches and (q_part.lower() == str(matches[0][0].get('code', '')).lower() or matches[0][1] > 0.85):
+            top = matches[0][0]
+            code, name = top.get("code", "KODSUZ"), top.get("name", q_part)
+        else:
+            code, name = "KODSUZ", q_part
+
+        items.append({"code": code, "name": name, "qty": q_qty})
+        await state.update_data(quote_items=items)
+        await state.set_state(QuoteState.confirm_more)
+
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Başka Parça Ekle", callback_data="q_more")],
+            [InlineKeyboardButton(text="🏁 Teklifi Bitir ve Metni Al", callback_data="q_done")]
+        ])
+        await msg.answer(f"✅ <code>[{code}]</code> {html.escape(name)} ➔ <b>{q_qty} Adet</b> eklendi!\nNe yapmak istersin?", reply_markup=kb, parse_mode="HTML")
+        return
+
+    # DURUM 3: KLASİK ARAMA (Sadece parça adı yazıldı, adet sonra sorulacak)
+    query = raw_text
     await state.update_data(search_query=query, custom_query=query)
     matches = find_best_matches(query)
 
@@ -493,7 +576,7 @@ async def on_qb_custom(cb: types.CallbackQuery, state: FSMContext):
     await state.set_state(QuoteState.waiting_qty)
     await cb.message.answer(f"🎯 <b>Seçilen:</b> {html.escape(q)} <i>(Katalog Dışı)</i>\n\n🔢 Kaç <b>adet</b> teklif istenecek?", parse_mode="HTML")
 
-# ADET ALICI: 0 VEYA İPTAL İLE ATLAYIP DEVAM ETME
+# ADET ALICI
 @router.message(QuoteState.waiting_qty, ~F.text.startswith("/"))
 async def quote_process_qty(msg: types.Message, state: FSMContext):
     text = msg.text.strip().lower()
@@ -526,7 +609,7 @@ async def quote_process_qty(msg: types.Message, state: FSMContext):
 async def on_q_more(cb: types.CallbackQuery, state: FSMContext):
     await cb.answer()
     await state.set_state(QuoteState.waiting_item_query)
-    await cb.message.edit_text("🔍 Yeni parçanın kodunu veya adını yazın:")
+    await cb.message.edit_text("🔍 Yeni parçayı yazın (Tek veya alt alta toplu):")
 
 @router.callback_query(F.data == "q_done")
 async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
@@ -551,9 +634,7 @@ async def on_q_done(cb: types.CallbackQuery, state: FSMContext):
         "date": get_now_uz().strftime("%d.%m.%Y %H:%M"),
         "status": "PENDING",
         "items": items,
-        "pdf_file": None,
-        "updated_by": "Ömer" if cb.from_user.id == OMER_CHAT_ID else "Kamil",
-        "updated_at": get_now_uz().strftime("%d.%m.%Y %H:%M")
+        "pdf_file": None
     })
     save_quotes(quotes)
 
